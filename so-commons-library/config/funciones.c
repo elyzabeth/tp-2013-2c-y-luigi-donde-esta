@@ -2,7 +2,7 @@
  * funciones.c
  *
  *  Created on: 22/09/2013
- *      Author: arwen
+ *      Author: elyzabeth
  */
 
 #include "funciones.h"
@@ -35,4 +35,18 @@ t_log_level obtenerLogLevel (char *LOG_NIVEL) {
 	if(strcmp(LOG_NIVEL, "ERROR") == 0) return LOG_LEVEL_ERROR;
 	// valor por defecto
 	return LOG_LEVEL_TRACE;
+}
+
+void quitarCorchetes (char *to, char *from) {
+	int i = 0, j = 0;
+
+	while ( i < strlen(from) ){
+		if(from[i] != ']' && from[i] != '[')
+			to[j++] = from[i++];
+		else
+			i++;
+	}
+
+	to[j] = '\0';
+
 }

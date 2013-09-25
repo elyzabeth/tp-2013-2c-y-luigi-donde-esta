@@ -23,6 +23,14 @@
 #define MAXCHARLEN 200
 #define MAXOBJXNIVEL 50 // Cantidad maxima de objetivos por nivel.
 
+typedef struct {
+		char nivel[200+1];
+		char objetivos[50][2];
+} t_objetivosxNivel;
+
+
+// DECLARACION DE FUNCIONES
+
 void levantarArchivoConfiguracionPersonaje ();
 
 const char * configPersonajeNombre();

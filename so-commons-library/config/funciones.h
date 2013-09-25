@@ -17,5 +17,7 @@
 
 void separarIpPuerto(char *ipPuerto, char *ip, int32_t *puerto);
 t_log_level obtenerLogLevel (char *LOG_NIVEL);
+void quitarCorchetes (char *to, char *from);
+
 
 #endif /* FUNCIONES_H_ */

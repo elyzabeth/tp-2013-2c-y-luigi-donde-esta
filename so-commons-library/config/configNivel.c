@@ -268,15 +268,15 @@ void GenerarListaRecursos(t_config *config) {
 	}
 }
 
-void separarIpPuertoNivel(char *ipPuerto) {
-	char** substring;
-	substring = (char**)string_split(ipPuerto, ":");
-	strcpy(configNivel.PLATAFORMAIP, substring[0]);
-	configNivel.PLATAFORMAPUERTO = atoi(substring[1]);
-
-	string_iterate_lines(substring, (void*) free);
-	free(substring);
-}
+//void separarIpPuertoNivel(char *ipPuerto) {
+//	char** substring;
+//	substring = (char**)string_split(ipPuerto, ":");
+//	strcpy(configNivel.PLATAFORMAIP, substring[0]);
+//	configNivel.PLATAFORMAPUERTO = atoi(substring[1]);
+//
+//	string_iterate_lines(substring, (void*) free);
+//	free(substring);
+//}
 
 void levantarArchivoConfiguracionNivel () {
 	t_config *config;
@@ -343,3 +343,4 @@ void levantarCambiosArchivoConfiguracionNivel () {
 	// puedo/debo destruir la estructura config.
 	config_destroy(config);
 }
+

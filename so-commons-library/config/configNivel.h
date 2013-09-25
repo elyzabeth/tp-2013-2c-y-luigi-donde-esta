@@ -2,7 +2,7 @@
  * configNivel.h
  *
  *  Created on: Sep 19, 2013
- *      Author: elizabeth
+ *      Author: elyzabeth
  */
 
 #ifndef CONFIGNIVEL_H_

@@ -2,7 +2,7 @@
  * suiteConfigNivel.h
  *
  *  Created on: 22/09/2013
- *      Author: arwen
+ *      Author: elyzabeth
  */
 
 #ifndef SUITECONFIGNIVEL_H_

@@ -7,8 +7,7 @@
 
 #include "configPersonaje.h"
 
-
-
+// Estructura privada
 typedef struct {
 	char NOMBRE[MAXCHARLEN+1];			// nombre=Mario
 	char SIMBOLO;						// simbolo=@
@@ -24,6 +23,12 @@ typedef struct {
 
 t_configPersonaje configPersonaje;
 
+
+// Declaracion de prototipos privados
+t_queue* clonarColaPlan(t_queue* planDeNiveles);
+
+
+// FUNCIONES
 void inicializarconfigPersonaje () {
 
 	configPersonaje.NOMBRE[0]='\0';
@@ -40,6 +45,12 @@ void inicializarconfigPersonaje () {
 }
 
 
+// GETTERS
+// **************
+
+/**
+ * @NAME configPersonajeNombre
+ */
 const char * configPersonajeNombre() {
 	return configPersonaje.NOMBRE;
 }
@@ -53,7 +64,7 @@ int32_t configPersonajeVidas() {
 }
 
 t_queue* configPersonajePlanDeNiveles() {
-	return configPersonaje.PLANDENIVELES;
+	return clonarColaPlan(configPersonaje.PLANDENIVELES);
 }
 
 const char * configPersonajePlataforma() {
@@ -90,16 +101,73 @@ void destruirConfigPersonaje () {
 	queue_destroy_and_destroy_elements(configPersonaje.PLANDENIVELES, (void*)free);
 }
 
+t_queue* clonarColaPlan(t_queue* planDeNiveles) {
+	int i;
+	t_queue* clon = queue_create();
+	t_objetivosxNivel* oxn;
+
+	for (i = 0 ; i < queue_size(planDeNiveles); i++) {
+
+		t_objetivosxNivel* copia = (t_objetivosxNivel*)malloc(sizeof(t_objetivosxNivel));
+		oxn = (t_objetivosxNivel*)queue_pop(planDeNiveles);
+		queue_push(planDeNiveles, oxn);
+
+		strcpy(copia->nivel, oxn->nivel);
+		strcpy(copia->objetivos, oxn->objetivos);
+
+		queue_push(clon, copia);
+	}
+
+	return clon;
+}
+
 void GenerarListaObjetivos(t_config *config, char* planDNiveles) {
 	// TODO Armar la lista FIFO dinamica del Plan de niveles y los objetivos.
+	char plan[MAXCHARLEN+1]={0};
+	char objetivo[200+1]={0};
+	char key[20] = { 0 };
+	char** substring;
+	char** recursos;
+	int i=0;
+	t_queue *PLANDENIVELES = queue_create();
 
 	// planDeNiveles=[Nivel3,Nivel4,Nivel1]
 	// obj[Nivel1]=[F,H,F,M]
 	// obj[Nivel3]=[C,J,C]
 	// obj[Nivel4]=[P,Q,M]
-	//char** plan = string_split(configPersonaje.PLANDENIVELES, ",");
-	//plan = strrchr(configPersonaje.PLANDENIVELES, ']');
-	//configPersonaje.PLANDENIVELES;
+
+	// Quito los corchetes de la expresion "[Nivel3,Nivel4,Nivel1]"
+	quitarCorchetes(plan, config_get_string_value(config, "PLANDENIVELES"));
+	substring = string_split(plan, ",");
+
+	void _add_objetives(char *nivel) {
+		t_objetivosxNivel *objxniv;
+		objxniv = (t_objetivosxNivel*)malloc(sizeof(t_objetivosxNivel));
+		strcpy(objxniv->nivel, nivel);
+		sprintf(key, "obj[%s]", nivel );
+
+		// Quito los corchetes de la expresion "[F,H,F,M]"
+		quitarCorchetes(objetivo, config_get_string_value(config, key));
+		recursos = string_split(objetivo, ",");
+
+		void _add_resource(char *rec) {
+			objxniv->objetivos[i][0] = rec[0];
+			objxniv->objetivos[i][1] = 0;
+			i++;
+		}
+
+		string_iterate_lines(recursos, _add_resource);
+		queue_push(PLANDENIVELES, objxniv);
+
+		string_iterate_lines(recursos, (void*)free);
+		free(recursos);
+
+	}
+
+	string_iterate_lines(substring, _add_objetives);
+	string_iterate_lines(substring, (void*) free);
+	free(substring);
+
 }
 
 void levantarArchivoConfiguracionPersonaje () {

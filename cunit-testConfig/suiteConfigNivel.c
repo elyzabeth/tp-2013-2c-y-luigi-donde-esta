@@ -2,7 +2,7 @@
  * suiteConfigNivel.c
  *
  *  Created on: 22/09/2013
- *      Author: arwen
+ *      Author: elyzabeth
  */
 
 #include "suiteConfigNivel.h"
