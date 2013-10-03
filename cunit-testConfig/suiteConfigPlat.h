@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <CUnit/Basic.h>
 #include "config/configPlataforma.h"
+#include "commons/log.h"
 
 int suiteConfigPlat ();
 

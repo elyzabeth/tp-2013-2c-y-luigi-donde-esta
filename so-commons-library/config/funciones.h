@@ -15,6 +15,12 @@
 #include "../commons/string.h"
 #include "../commons/log.h"
 
+#define PATH_CONFIG_NIVEL "./nivel.conf"
+#define PATH_CONFIG_PERSONAJE "./personaje.conf"
+#define PATH_CONFIG_PLATAFORMA "./plataforma.conf"
+
+#define MAXCHARLEN 200
+
 void separarIpPuerto(char *ipPuerto, char *ip, int32_t *puerto);
 t_log_level obtenerLogLevel (char *LOG_NIVEL);
 void quitarCorchetes (char *to, char *from);

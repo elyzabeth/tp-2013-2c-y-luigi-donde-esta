@@ -8,11 +8,12 @@
 #include "configPlataforma.h"
 
 typedef struct {
-	int32_t PUERTO;   //ej PUERTO=5000
-	char KOOPA[MAXCHARLEN+1];  //ej KOOPA=/home/utnso/koopa
-	char SCRIPT[MAXCHARLEN+1]; //ej SCRIPT=/home/utnso/evaluacion.sh
-	char PATH_LOG[MAXCHARLEN+1]; //ej PATH_LOG=/tmp/plataforma.log
-	char NIVEL_LOG[MAXCHARLEN+1]; //ej NIVEL_LOG=DEBUG|WARN|ERROR
+	int32_t PUERTO;					// PUERTO=5000
+	char KOOPA[MAXCHARLEN+1];		// KOOPA=/home/utnso/koopa
+	char SCRIPT[MAXCHARLEN+1];		// SCRIPT=/home/utnso/evaluacion.sh
+	char LOG_PATH[MAXCHARLEN+1];	// LOG_PATH=/tmp/plataforma.log
+	t_log_level LOG_NIVEL;			// LOG_NIVEL=TRACE|DEBUG|INFO|WARNING|ERROR
+	int32_t LOG_CONSOLA;			// LOG_CONSOLA=0|1 (off/on)
 } t_configPlat;
 
 t_configPlat configPlat;
@@ -21,8 +22,9 @@ void inicializarConfigPlat () {
 	configPlat.PUERTO = 0;
 	configPlat.KOOPA[0]='\0';
 	configPlat.SCRIPT[0]='\0';
-	configPlat.PATH_LOG[0]='\0';
-	configPlat.NIVEL_LOG[0]='\0';
+	configPlat.LOG_PATH[0]='\0';
+	configPlat.LOG_NIVEL=0;
+	configPlat.LOG_CONSOLA=0;
 }
 
 /**
@@ -41,7 +43,7 @@ int32_t configPlatPuerto (){
  * Representa el Path al archivo koopa
  * ej:Koopa=/utnso/koopa
  */
-char* configPlatKoopa () {
+const char* configPlatKoopa () {
 	return configPlat.KOOPA;
 }
 
@@ -51,29 +53,41 @@ char* configPlatKoopa () {
  * Representa el Path al archivo
  * ej: Script=/utnso/script.sh
  */
-char* configPlatScript (){
+const char* configPlatScript (){
 	return configPlat.SCRIPT;
 }
 
 /**
- * @NAME: configPlatPathLog
+ * @NAME: configPlatLogPath
  * @DESC: Devuelve Valor del campo Path_log del archivo de configuracion
  * Representa el Path al archivo de log
  * ej: PATH_LOG=/utnso/plataforma.log
  */
-char* configPlatPathLog (){
-	return configPlat.PATH_LOG;
+const char* configPlatLogPath (){
+	return configPlat.LOG_PATH;
 }
 
 /**
- * @NAME: configPlatNivelLog
+ * @NAME: configPlatLogNivel
  * @DESC: Devuelve Valor del campo Nivel_log del archivo de configuracion
  * Representa el nivel de logueo DEBUG|WARN|ERROR
  * ej: NIVEL_LOG=DEBUG
  */
-char* configPlatNivelLog (){
-	return configPlat.NIVEL_LOG;
+t_log_level configPlatLogNivel (){
+	return configPlat.LOG_NIVEL;
 }
+
+/**
+ * @NAME: configPlatLogConsola
+ * @DESC: Devuelve Valor del campo LOG_CONSOLA del archivo de configuracion
+ * Representa el valor de si el log tambien se ve por pantalla true/false
+ * ej: LOG_CONSOLA=1|0 (true/false)
+ */
+int32_t configPlatLogConsola (){
+	return configPlat.LOG_CONSOLA;
+}
+
+
 
 
 void levantarArchivoConfiguracionPlataforma() {
@@ -82,7 +96,7 @@ void levantarArchivoConfiguracionPlataforma() {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_PLATAFORMA);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
@@ -92,8 +106,10 @@ void levantarArchivoConfiguracionPlataforma() {
 
 	strcpy(configPlat.KOOPA, config_get_string_value(config, "KOOPA"));
 	strcpy(configPlat.SCRIPT, config_get_string_value(config, "SCRIPT"));
-	strcpy(configPlat.PATH_LOG, config_get_string_value(config, "PATH_LOG"));
-	strcpy(configPlat.NIVEL_LOG, config_get_string_value(config, "NIVEL_LOG"));
+
+	strcpy(configPlat.LOG_PATH, config_get_string_value(config, "LOG_PATH"));
+	configPlat.LOG_NIVEL = obtenerLogLevel( config_get_string_value(config, "LOG_NIVEL"));
+	configPlat.LOG_CONSOLA = config_get_int_value(config, "LOG_CONSOLA");
 
 	// Una vez que se levantaron los datos del archivo de configuracion
 	// puedo/debo destruir la estructura config.

@@ -26,8 +26,18 @@ void test3 () {
 }
 
 void test4 () {
-	printf("Soy test3 y pruebo que configPlat->NIVEL_LOG sea igual a 'DEBUG': ");
-	CU_ASSERT_STRING_EQUAL(configPlatNivelLog(), "DEBUG");
+	printf("Soy test4 y pruebo que configPlat->LOG_PATH sea igual a '/tmp/plataforma.log': ");
+	CU_ASSERT_STRING_EQUAL(configPlatLogPath(), "/tmp/plataforma.log");
+}
+
+void test5 () {
+	printf("Soy test5 y pruebo que configPlat->NIVEL_LOG sea igual a 'DEBUG': ");
+	CU_ASSERT_EQUAL(configPlatLogNivel(), LOG_LEVEL_DEBUG);
+}
+
+void test6 () {
+	printf("Soy test6 y pruebo que configPlat->LOG_CONSOLA sea igual a 1: ");
+	CU_ASSERT_EQUAL(configPlatLogConsola(), 1);
 }
 
 int suiteConfigPlat () {

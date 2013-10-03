@@ -1,22 +1,23 @@
 /*
- * nivel.h
+ * funcionesNivel.h
  *
- *  Created on: 22/09/2013
+ *  Created on: Oct 3, 2013
  *      Author: elyzabeth
  */
 
-#ifndef NIVEL_H_
-#define NIVEL_H_
+#ifndef FUNCIONESNIVEL_H_
+#define FUNCIONESNIVEL_H_
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <curses.h>
+#include <signal.h>
 
+#include "tad_items.h"
 #include "commons/log.h"
-#include <commons/collections/list.h>
+//#include "commons/collections/list.h"
 
 #include "config/configNivel.h"
-#include "tad_items.h"
 
 
 t_log* LOGGER;
@@ -28,6 +29,8 @@ void principal ();
 void inicializar ();
 void finalizar ();
 
+void signal_callback_handler(int signum);
+
 void rnd(int *x, int max);
 
-#endif /* NIVEL_H_ */
+#endif /* FUNCIONESNIVEL_H_ */

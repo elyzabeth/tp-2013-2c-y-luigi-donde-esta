@@ -108,12 +108,13 @@ t_queue* clonarColaPlan(t_queue* planDeNiveles) {
 
 	for (i = 0 ; i < queue_size(planDeNiveles); i++) {
 
-		t_objetivosxNivel* copia = (t_objetivosxNivel*)malloc(sizeof(t_objetivosxNivel));
+		t_objetivosxNivel* copia = (t_objetivosxNivel*)calloc(1,sizeof(t_objetivosxNivel));
 		oxn = (t_objetivosxNivel*)queue_pop(planDeNiveles);
 		queue_push(planDeNiveles, oxn);
 
 		strcpy(copia->nivel, oxn->nivel);
 		strcpy(copia->objetivos, oxn->objetivos);
+		copia->totalObjetivos = oxn->totalObjetivos;
 
 		queue_push(clon, copia);
 	}
@@ -121,14 +122,14 @@ t_queue* clonarColaPlan(t_queue* planDeNiveles) {
 	return clon;
 }
 
-void GenerarListaObjetivos(t_config *config, char* planDNiveles) {
+void GenerarPlanDeNiveles(t_config *config) {
 	// TODO Armar la lista FIFO dinamica del Plan de niveles y los objetivos.
 	char plan[MAXCHARLEN+1]={0};
-	char objetivo[200+1]={0};
+	char objetivos[200+1]={0};
 	char key[20] = { 0 };
 	char** substring;
 	char** recursos;
-	int i=0;
+
 	t_queue *PLANDENIVELES = queue_create();
 
 	// planDeNiveles=[Nivel3,Nivel4,Nivel1]
@@ -141,22 +142,29 @@ void GenerarListaObjetivos(t_config *config, char* planDNiveles) {
 	substring = string_split(plan, ",");
 
 	void _add_objetives(char *nivel) {
+		int32_t cantObjetivos = 0;
+		//int i=0;
 		t_objetivosxNivel *objxniv;
-		objxniv = (t_objetivosxNivel*)malloc(sizeof(t_objetivosxNivel));
+		objxniv = (t_objetivosxNivel*)calloc(1, sizeof(t_objetivosxNivel));
 		strcpy(objxniv->nivel, nivel);
 		sprintf(key, "obj[%s]", nivel );
 
 		// Quito los corchetes de la expresion "[F,H,F,M]"
-		quitarCorchetes(objetivo, config_get_string_value(config, key));
-		recursos = string_split(objetivo, ",");
+		quitarCorchetes(objetivos, config_get_string_value(config, key));
+		recursos = string_split(objetivos, ",");
 
 		void _add_resource(char *rec) {
-			objxniv->objetivos[i][0] = rec[0];
-			objxniv->objetivos[i][1] = 0;
-			i++;
+			objxniv->objetivos[cantObjetivos] = rec[0];
+			cantObjetivos++;
+			//objxniv->objetivos[i][0] = rec[0];
+			//objxniv->objetivos[i][1] = 0;
+			//i++;
 		}
 
 		string_iterate_lines(recursos, _add_resource);
+		objxniv->totalObjetivos = cantObjetivos;
+
+		// Agrego a la cola el Nivel con sus objetivos
 		queue_push(PLANDENIVELES, objxniv);
 
 		string_iterate_lines(recursos, (void*)free);
@@ -176,7 +184,7 @@ void levantarArchivoConfiguracionPersonaje () {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_PERSONAJE);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
@@ -199,7 +207,7 @@ void levantarArchivoConfiguracionPersonaje () {
 	configPersonaje.LOG_CONSOLA = config_get_int_value(config, "LOG_CONSOLA");
 
 	// Armo lista dinamica de recursos
-	GenerarListaObjetivos(config, config_get_string_value(config, "planDeNiveles"));
+	GenerarPlanDeNiveles(config);
 
 	// Una vez que se levantaron los datos del archivo de configuracion
 	// puedo/debo destruir la estructura config.

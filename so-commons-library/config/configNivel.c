@@ -187,7 +187,7 @@ t_log_level configNivelLogNivel() {
  * @NAME: configNivelLogPantalla
  * @DESC: Devuelve Valor del campo LOG_CONSOLA del archivo de configuracion
  * Representa el valor de si el log tambien se ve por pantalla true/false
- * ej: LOG_PANTALLA=1|0 (true/false)
+ * ej: LOG_CONSOLA=1|0 (true/false)
  */
 int32_t configNivelLogConsola() {
 	return configNivel.LOG_CONSOLA;
@@ -284,7 +284,7 @@ void levantarArchivoConfiguracionNivel () {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
