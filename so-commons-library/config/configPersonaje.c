@@ -123,7 +123,7 @@ t_queue* clonarColaPlan(t_queue* planDeNiveles) {
 }
 
 void GenerarPlanDeNiveles(t_config *config) {
-	// TODO Armar la lista FIFO dinamica del Plan de niveles y los objetivos.
+	// Armo la lista FIFO dinamica del Plan de niveles y los objetivos.
 	char plan[MAXCHARLEN+1]={0};
 	char objetivos[200+1]={0};
 	char key[20] = { 0 };
@@ -136,8 +136,9 @@ void GenerarPlanDeNiveles(t_config *config) {
 	// obj[Nivel4]=[P,Q,M]
 
 	// Quito los corchetes de la expresion "[Nivel3,Nivel4,Nivel1]"
-	quitarCorchetes(plan, config_get_string_value(config, "planDeNiveles"));
-	substring = string_split(plan, ",");
+	//quitarCorchetes(plan, config_get_string_value(config, "planDeNiveles"));
+	//substring = string_split(plan, ",");
+	substring = string_get_string_as_array(config_get_string_value(config, "planDeNiveles"));
 
 	void _add_objetives(char *nivel) {
 		int32_t cantObjetivos = 0;
@@ -148,21 +149,19 @@ void GenerarPlanDeNiveles(t_config *config) {
 		sprintf(key, "obj[%s]", nivel );
 
 		// Quito los corchetes de la expresion "[F,H,F,M]"
-		quitarCorchetes(objetivos, config_get_string_value(config, key));
-		recursos = string_split(objetivos, ",");
+		//quitarCorchetes(objetivos, config_get_string_value(config, key));
+		//recursos = string_split(objetivos, ",");
+		recursos = string_get_string_as_array(config_get_string_value(config, key));
 
 		void _add_resource(char *rec) {
 			objxniv->objetivos[cantObjetivos] = rec[0];
 			cantObjetivos++;
-			//objxniv->objetivos[i][0] = rec[0];
-			//objxniv->objetivos[i][1] = 0;
-			//i++;
 		}
 
 		string_iterate_lines(recursos, _add_resource);
 		objxniv->totalObjetivos = cantObjetivos;
 
-		// Agrego a la cola el Nivel con sus objetivos
+		// Agrego a la cola, el Nivel con sus objetivos
 		queue_push(configPersonaje.PLANDENIVELES, objxniv);
 
 		string_iterate_lines(recursos, (void*)free);

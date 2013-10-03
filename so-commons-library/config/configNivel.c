@@ -270,15 +270,7 @@ void GenerarListaRecursos(t_config *config) {
 	}
 }
 
-//void separarIpPuertoNivel(char *ipPuerto) {
-//	char** substring;
-//	substring = (char**)string_split(ipPuerto, ":");
-//	strcpy(configNivel.PLATAFORMAIP, substring[0]);
-//	configNivel.PLATAFORMAPUERTO = atoi(substring[1]);
-//
-//	string_iterate_lines(substring, (void*) free);
-//	free(substring);
-//}
+
 
 void levantarArchivoConfiguracionNivel () {
 	t_config *config;
@@ -299,7 +291,6 @@ void levantarArchivoConfiguracionNivel () {
 
 	strcpy(configNivel.PLATAFORMA, config_get_string_value(config, "Plataforma"));
 	//SPLIT DE PLATAFORMA PARA SEPARAR IP DE PUERTO
-	//separarIpPuerto(configNivel.PLATAFORMA);
 	separarIpPuerto(configNivel.PLATAFORMA, configNivel.PLATAFORMAIP, &(configNivel.PLATAFORMAPUERTO));
 
 	configNivel.TIEMPOCHEQUEODEADLOCK = config_get_int_value(config, "TiempoChequeoDeadlock");
@@ -329,7 +320,7 @@ void levantarCambiosArchivoConfiguracionNivel () {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
