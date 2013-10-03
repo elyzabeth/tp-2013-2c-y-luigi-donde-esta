@@ -198,6 +198,7 @@ int32_t configNivelLogConsola() {
  * @DESC: Devuelve el recurso (t_caja) asociado al simbolo
  */
 t_caja* configNivelRecurso(char simboloRecurso) {
+	// TODO Modificar para que devuelva una copia.
 	char simbolo[2] = {0};
 	simbolo[0] = simboloRecurso;
 	return (t_caja*)dictionary_get(configNivel.RECURSOS, simbolo);
@@ -208,6 +209,7 @@ t_caja* configNivelRecurso(char simboloRecurso) {
  * @DESC: Devuelve el listado de recursos del Nivel (t_dictionary)
  */
 t_dictionary* configNivelRecursos() {
+	// TODO Modificar para que devuelva una copia.
 	return configNivel.RECURSOS;
 }
 

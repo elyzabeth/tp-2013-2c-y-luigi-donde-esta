@@ -22,12 +22,14 @@
 
 t_log* LOGGER;
 char NOMBRENIVEL[20+1];
+t_list* GUIITEMS;
+int MAXROWS, MAXCOLS;
 
 int correrTest();
 void principal ();
 
-void inicializar ();
-void finalizar ();
+void inicializarNivel ();
+void finalizarNivel ();
 
 void signal_callback_handler(int signum);
 
