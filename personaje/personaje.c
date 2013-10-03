@@ -14,6 +14,8 @@ int main () {
 
 	// TODO agregar logica del personaje
 
+	finalizarPersonaje();
+
 	return EXIT_SUCCESS;
 }
 
@@ -34,5 +36,7 @@ void inicializarPersonaje() {
  * @DESC: Finaliza todas las variables y estructuras que fueron creadas para el proceso personaje
  */
 void finalizarPersonaje() {
+	log_info(LOGGER, "FINALIZANDO PERSONAJE\n");
 	destruirConfigPersonaje();
+	log_destroy(LOGGER);
 }

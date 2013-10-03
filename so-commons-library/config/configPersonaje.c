@@ -130,15 +130,13 @@ void GenerarPlanDeNiveles(t_config *config) {
 	char** substring;
 	char** recursos;
 
-	t_queue *PLANDENIVELES = queue_create();
-
 	// planDeNiveles=[Nivel3,Nivel4,Nivel1]
 	// obj[Nivel1]=[F,H,F,M]
 	// obj[Nivel3]=[C,J,C]
 	// obj[Nivel4]=[P,Q,M]
 
 	// Quito los corchetes de la expresion "[Nivel3,Nivel4,Nivel1]"
-	quitarCorchetes(plan, config_get_string_value(config, "PLANDENIVELES"));
+	quitarCorchetes(plan, config_get_string_value(config, "planDeNiveles"));
 	substring = string_split(plan, ",");
 
 	void _add_objetives(char *nivel) {
@@ -165,7 +163,7 @@ void GenerarPlanDeNiveles(t_config *config) {
 		objxniv->totalObjetivos = cantObjetivos;
 
 		// Agrego a la cola el Nivel con sus objetivos
-		queue_push(PLANDENIVELES, objxniv);
+		queue_push(configPersonaje.PLANDENIVELES, objxniv);
 
 		string_iterate_lines(recursos, (void*)free);
 		free(recursos);
