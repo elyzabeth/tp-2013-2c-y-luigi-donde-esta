@@ -33,6 +33,7 @@ typedef struct {
 // DECLARACION DE FUNCIONES
 
 void levantarArchivoConfiguracionPersonaje ();
+void destruirConfigPersonaje ();
 
 const char * configPersonajeNombre();
 char configPersonajeSimbolo();

@@ -13,4 +13,10 @@
 #include "config/configPersonaje.h"
 #include "commons/log.h"
 
+t_log* LOGGER;
+
+void inicializarPersonaje();
+void finalizarPersonaje();
+
+
 #endif /* PERSONAJE_H_ */
