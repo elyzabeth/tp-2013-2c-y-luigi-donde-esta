@@ -124,8 +124,8 @@ t_queue* clonarColaPlan(t_queue* planDeNiveles) {
 
 void GenerarPlanDeNiveles(t_config *config) {
 	// Armo la lista FIFO dinamica del Plan de niveles y los objetivos.
-	char plan[MAXCHARLEN+1]={0};
-	char objetivos[200+1]={0};
+	//char plan[MAXCHARLEN+1]={0};
+	//char objetivos[200+1]={0};
 	char key[20] = { 0 };
 	char** substring;
 	char** recursos;
