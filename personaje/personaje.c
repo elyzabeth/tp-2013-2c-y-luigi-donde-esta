@@ -7,30 +7,36 @@
 
 #include "personaje.h"
 
-t_log* LOGGER;
-
-int inicializar();
-
 
 int main () {
 
-	inicializar();
+	inicializarPersonaje();
 
 	// TODO agregar logica del personaje
+
+	finalizarPersonaje();
 
 	return EXIT_SUCCESS;
 }
 
 /**
- * @NAME: inicializar
- * @DESC: Inicializa todas las variables y estructuras necesarias para el personaje
+ * @NAME: inicializarPersonaje
+ * @DESC: Inicializa todas las variables y estructuras necesarias para el proceso personaje
  */
-int inicializar() {
+void inicializarPersonaje() {
 	levantarArchivoConfiguracionPersonaje();
 	// TODO agregar inicializaciones necesarias
 	LOGGER = log_create(configPersonajeLogPath(), "PERSONAJE", configPersonajeLogConsola(), configPersonajeLogNivel() );
 	log_info(LOGGER, "INICIALIZANDO PERSONAJE '%s' ", configPersonajeNombre());
 
+}
 
-	return EXIT_SUCCESS;
+/**
+ * @NAME: finalizarPersonaje
+ * @DESC: Finaliza todas las variables y estructuras que fueron creadas para el proceso personaje
+ */
+void finalizarPersonaje() {
+	log_info(LOGGER, "FINALIZANDO PERSONAJE\n");
+	destruirConfigPersonaje();
+	log_destroy(LOGGER);
 }

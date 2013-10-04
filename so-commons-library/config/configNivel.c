@@ -187,7 +187,7 @@ t_log_level configNivelLogNivel() {
  * @NAME: configNivelLogPantalla
  * @DESC: Devuelve Valor del campo LOG_CONSOLA del archivo de configuracion
  * Representa el valor de si el log tambien se ve por pantalla true/false
- * ej: LOG_PANTALLA=1|0 (true/false)
+ * ej: LOG_CONSOLA=1|0 (true/false)
  */
 int32_t configNivelLogConsola() {
 	return configNivel.LOG_CONSOLA;
@@ -198,6 +198,7 @@ int32_t configNivelLogConsola() {
  * @DESC: Devuelve el recurso (t_caja) asociado al simbolo
  */
 t_caja* configNivelRecurso(char simboloRecurso) {
+	// TODO Modificar para que devuelva una copia.
 	char simbolo[2] = {0};
 	simbolo[0] = simboloRecurso;
 	return (t_caja*)dictionary_get(configNivel.RECURSOS, simbolo);
@@ -208,6 +209,7 @@ t_caja* configNivelRecurso(char simboloRecurso) {
  * @DESC: Devuelve el listado de recursos del Nivel (t_dictionary)
  */
 t_dictionary* configNivelRecursos() {
+	// TODO Modificar para que devuelva una copia.
 	return configNivel.RECURSOS;
 }
 
@@ -268,15 +270,7 @@ void GenerarListaRecursos(t_config *config) {
 	}
 }
 
-//void separarIpPuertoNivel(char *ipPuerto) {
-//	char** substring;
-//	substring = (char**)string_split(ipPuerto, ":");
-//	strcpy(configNivel.PLATAFORMAIP, substring[0]);
-//	configNivel.PLATAFORMAPUERTO = atoi(substring[1]);
-//
-//	string_iterate_lines(substring, (void*) free);
-//	free(substring);
-//}
+
 
 void levantarArchivoConfiguracionNivel () {
 	t_config *config;
@@ -284,7 +278,7 @@ void levantarArchivoConfiguracionNivel () {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
@@ -297,7 +291,6 @@ void levantarArchivoConfiguracionNivel () {
 
 	strcpy(configNivel.PLATAFORMA, config_get_string_value(config, "Plataforma"));
 	//SPLIT DE PLATAFORMA PARA SEPARAR IP DE PUERTO
-	//separarIpPuerto(configNivel.PLATAFORMA);
 	separarIpPuerto(configNivel.PLATAFORMA, configNivel.PLATAFORMAIP, &(configNivel.PLATAFORMAPUERTO));
 
 	configNivel.TIEMPOCHEQUEODEADLOCK = config_get_int_value(config, "TiempoChequeoDeadlock");
@@ -327,7 +320,7 @@ void levantarCambiosArchivoConfiguracionNivel () {
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION");
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
 		config_destroy(config);
 		exit(-1);
 	}

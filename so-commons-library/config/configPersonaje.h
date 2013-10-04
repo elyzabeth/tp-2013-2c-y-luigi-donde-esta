@@ -19,19 +19,21 @@
 
 #include "funciones.h"
 
-#define PATH_CONFIG_PERSONAJE "./personaje.conf"
-#define MAXCHARLEN 200
+
 #define MAXOBJXNIVEL 50 // Cantidad maxima de objetivos por nivel.
 
 typedef struct {
-		char nivel[200+1];
-		char objetivos[50][2];
+		char nivel[MAXCHARLEN+1];
+		char objetivos[MAXOBJXNIVEL];
+		int32_t totalObjetivos;
+		//char objetivos[MAXOBJXNIVEL][2];
 } t_objetivosxNivel;
 
 
 // DECLARACION DE FUNCIONES
 
 void levantarArchivoConfiguracionPersonaje ();
+void destruirConfigPersonaje ();
 
 const char * configPersonajeNombre();
 char configPersonajeSimbolo();
