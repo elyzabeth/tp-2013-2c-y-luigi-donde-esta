@@ -180,8 +180,8 @@ void levantarArchivoConfiguracionPersonaje () {
 	config = config_create(PATH_CONFIG_PERSONAJE);
 
 	if (config->properties->elements_amount == 0) {
-		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_PERSONAJE);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
+		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s \n", PATH_CONFIG_PERSONAJE);
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION \n( Don't PANIC! Si estas por consola ejecutar: ln -s ../personaje.conf personaje.conf )\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
