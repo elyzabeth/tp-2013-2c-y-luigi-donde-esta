@@ -1,8 +1,6 @@
 #include "funciones_comunes.h"
 
-int cambiar_nombre_proceso(char **argv,int argc,char *nombre)
-
-{
+int cambiar_nombre_proceso(char **argv,int argc,char *nombre) {
 	int i,aux;
 
 	if(*argv != NULL && argv != NULL && argc >= 0 && nombre != NULL)
@@ -19,4 +17,13 @@ int cambiar_nombre_proceso(char **argv,int argc,char *nombre)
 	else
 		return ERROR;
 	return EXITO;
+}
+
+/**
+ * @NAME: calcularDistancia
+ * @DESC: Calcula la distancia entre 2 puntos
+ * Recibe las coordenadas del punto y del objetivo
+ */
+int32_t calcularDistancia (int32_t posX, int32_t posY, int32_t objX, int32_t objY) {
+	return abs((objX+objY)-(posX+posY));
 }

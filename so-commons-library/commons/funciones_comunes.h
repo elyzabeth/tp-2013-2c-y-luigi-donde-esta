@@ -1,4 +1,10 @@
-// funciones_comunes.h
+/*
+ * funciones_comunes.h
+ */
+
+#ifndef FUNCIONES_COMUNES_H_
+#define FUNCIONES_COMUNES_H_
+
 #include <termio.h>
 #include <sys/ioctl.h>
 #include <math.h>
@@ -17,3 +23,7 @@
 #define WARNING          2
 
 int cambiar_nombre_proceso(char **argv,int argc,char *nombre);
+int32_t calcularDistancia (int32_t posX, int32_t posY, int32_t objX, int32_t objY);
+
+
+#endif /* FUNCIONES_COMUNES_H_ */
