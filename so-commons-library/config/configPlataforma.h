@@ -21,7 +21,7 @@
 // DECLARACION DE FUNCIONES
 
 void levantarArchivoConfiguracionPlataforma();
-
+void destruirConfigPlataforma();
 
 int32_t configPlatPuerto ();
 const char* configPlatKoopa ();

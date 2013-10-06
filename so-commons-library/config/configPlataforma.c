@@ -27,6 +27,10 @@ void inicializarConfigPlat () {
 	configPlat.LOG_CONSOLA=0;
 }
 
+void destruirConfigPlataforma(){
+	// No hay estructuras dinamicas a destruir...
+}
+
 /**
  * @NAME: configPlatPuerto
  * @DESC: Devuelve Valor del campo Puerto del archivo de configuracion
@@ -95,8 +99,8 @@ void levantarArchivoConfiguracionPlataforma() {
 	config = config_create(PATH_CONFIG_PLATAFORMA);
 
 	if (config->properties->elements_amount == 0) {
-		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_PLATAFORMA);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
+		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s \n", PATH_CONFIG_PLATAFORMA);
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n( Don't PANIC! Si estas por consola ejecuta: ln -s ../plataforma.conf plataforma.conf )\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
