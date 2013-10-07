@@ -24,8 +24,9 @@ void validarPosicionCaja(char s, int32_t x, int32_t y) {
 
 }
 
-/*
- * Agrega al listado de items las cajas
+/**
+ * @NAME: agregarCajasRecursos
+ * @DESC: Agrega al listado de items las cajas
  * de recursos que figuran en el archivo de configuracion.
  */
 void agregarCajasRecursos() {
@@ -41,10 +42,28 @@ void agregarCajasRecursos() {
 
 }
 
+/**
+ * @NAME: agregarEnemigos
+ * @DESC: Agrega al listado de items la cantidad de enemigos
+ * que figuran en el archivo de configuracion.
+ */
 void agregarEnemigos() {
 
 	// TODO agregar los enemigos
-	//int32_t cantEnemigos = configNivelEnemigos();
+	int x=211, y=135;
+	int i;
+	int32_t cantEnemigos = configNivelEnemigos();
+
+//	CrearEnemigo(GUIITEMS, '1', ex1, ey1);
+//	CrearEnemigo(GUIITEMS, '2', ex2, ey2);
+	for(i=0; i < cantEnemigos; i++) {
+		rnd(&x, MAXCOLS);
+		rnd(&y, MAXROWS);
+		log_debug(LOGGER,"(%d,%d)",x,y);
+		CrearEnemigo(GUIITEMS, (char)i+49, x, y);
+		rnd(&x, MAXCOLS);
+		rnd(&y, MAXROWS);
+	}
 
 }
 
@@ -56,6 +75,7 @@ void inicializarNivelGui() {
 	nivel_gui_inicializar();
     nivel_gui_get_area_nivel(&MAXROWS, &MAXCOLS);
     agregarCajasRecursos();
+    agregarEnemigos();
     nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
 }
 

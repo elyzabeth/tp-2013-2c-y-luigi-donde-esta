@@ -46,8 +46,8 @@ void principal () {
 		CrearPersonaje(GUIITEMS, '@', p, q);
 		CrearPersonaje(GUIITEMS, '#', x, y);
 
-		CrearEnemigo(GUIITEMS, '1', ex1, ey1);
-		CrearEnemigo(GUIITEMS, '2', ex2, ey2);
+//		CrearEnemigo(GUIITEMS, '1', ex1, ey1);
+//		CrearEnemigo(GUIITEMS, '2', ex2, ey2);
 
 //		CrearCaja(GUIITEMS, 'H', 26, 10, 5);
 //		CrearCaja(GUIITEMS, 'M', 8, 15, 3);

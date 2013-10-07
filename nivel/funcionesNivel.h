@@ -19,6 +19,11 @@
 
 #include "config/configNivel.h"
 
+typedef struct enemigo {
+	int32_t id;
+	int32_t posX;
+	int32_t posY;
+} t_enemigo;
 
 t_log* LOGGER;
 char NOMBRENIVEL[20+1];

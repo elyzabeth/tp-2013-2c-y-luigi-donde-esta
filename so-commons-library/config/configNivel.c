@@ -277,8 +277,8 @@ void levantarArchivoConfiguracionNivel () {
 	config = config_create(PATH_CONFIG_NIVEL);
 
 	if (config->properties->elements_amount == 0) {
-		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);
-		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n\n");
+		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s\n", PATH_CONFIG_NIVEL);
+		perror("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION\n( Don't PANIC! Te olvidaste de ejecutar:  ln -s ../nivel.conf nivel.conf )\n\n");
 		config_destroy(config);
 		exit(-1);
 	}
