@@ -67,7 +67,7 @@ const char* configPlatScript (){
  * Representa el Path al archivo de log
  * ej: PATH_LOG=/utnso/plataforma.log
  */
-const char* configPlatLogPath (){
+char* configPlatLogPath (){
 	return configPlat.LOG_PATH;
 }
 

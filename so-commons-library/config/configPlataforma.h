@@ -26,7 +26,7 @@ void destruirConfigPlataforma();
 int32_t configPlatPuerto ();
 const char* configPlatKoopa ();
 const char* configPlatScript ();
-const char* configPlatLogPath ();
+char* configPlatLogPath ();
 t_log_level configPlatLogNivel ();
 int32_t configPlatLogConsola ();
 
