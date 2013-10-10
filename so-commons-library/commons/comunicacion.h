@@ -26,9 +26,11 @@
 #define NUEVO_PERSONAJE			0x10
 #define NUEVO_NIVEL				0x11
 #define PERSONAJE_CONECTADO 	0x12
+#define NIVEL_CONECTADO			0x13
 #define CONECTAR_NIVEL 			0x20
 
 
+#pragma pack(1)
 typedef struct header_s
 {
   //char id[LARGOID];
@@ -36,6 +38,7 @@ typedef struct header_s
   int  largo_mensaje;
 
 }header_t;
+#pragma pack(0)
 
 int enviar(int sock, char *buffer, int tamano);
 int recibir(int sock, char *buffer, int tamano);

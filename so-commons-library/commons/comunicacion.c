@@ -107,6 +107,7 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 	if (ret == ERROR) {
 		free(buffer);
 		//return trazarError(errorTrace, "Error al recibir datos :S", ERROR,"comunicacion.h", "recibirHeader()");
+		return ERROR;
 	}
 
 	memcpy(header, buffer, sizeof(header_t)); /*ojo que el memcopy si lo haces afuera el primer parametro tiene que tener &*/
