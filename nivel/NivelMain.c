@@ -31,9 +31,10 @@ int main (int argc, char**argv) {
 
 
 void principal () {
+		int id_proceso = getpid();
+		int sock = -1;
 
 		int q, p;
-
 		int x = 1;
 		int y = 1;
 
@@ -43,15 +44,19 @@ void principal () {
 		p = MAXCOLS;
 		q = MAXROWS;
 
+		log_info(LOGGER,"************** Iniciando Nivel '%s' (PID: %d) ***************\n", NOMBRENIVEL, id_proceso);
+		// Conectar con proceso Plataforma
+		conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sock);
+		if (enviarMSJNuevoNivel(sock) != EXITO){
+			log_error(LOGGER, "ERROR en conexion con Plataforma");
+			finalizarNivel();
+			exit(EXIT_FAILURE);
+		}
+
+
+
 		CrearPersonaje(GUIITEMS, '@', p, q);
 		CrearPersonaje(GUIITEMS, '#', x, y);
-
-//		CrearEnemigo(GUIITEMS, '1', ex1, ey1);
-//		CrearEnemigo(GUIITEMS, '2', ex2, ey2);
-
-//		CrearCaja(GUIITEMS, 'H', 26, 10, 5);
-//		CrearCaja(GUIITEMS, 'M', 8, 15, 3);
-//		CrearCaja(GUIITEMS, 'F', 19, 9, 2);
 
 		nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
 

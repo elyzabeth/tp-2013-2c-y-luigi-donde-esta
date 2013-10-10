@@ -141,6 +141,7 @@ void muertePersonaje(MOTIVO_MUERTE motivo) {
 //			break;
 //		case MUERTE_POR_SIGTERM:
 //			break;
+		default: log_info(LOGGER, "Motivo de muerte no valido"); break;
 	}
 	// TODO llamar funcion para reiniciar el juego
 

@@ -42,11 +42,6 @@ void agregarCajasRecursos() {
 
 }
 
-/**
- * @NAME: agregarEnemigos
- * @DESC: Agrega al listado de items la cantidad de enemigos
- * que figuran en el archivo de configuracion.
- */
 void agregarEnemigos() {
 
 	// TODO agregar los enemigos
@@ -99,6 +94,8 @@ void finalizarNivel () {
 	// finalizar NIVEL-GUI
 	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
 	nivel_gui_terminar();
+
+	free(buffer_header);
 
 	log_info(LOGGER, "FINALIZANDO NIVEL '%s'", NOMBRENIVEL);
 	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE CONFIG-NIVEL '%s'", NOMBRENIVEL);
@@ -157,6 +154,34 @@ void rnd(int *x, int max) {
 	*x = (*x>0) ? *x : 1;
 }
 
+int enviarMSJNuevoNivel(int sock) {
+	header_t header;
+	header.tipo = NUEVO_NIVEL;
+	header.largo_mensaje = strlen(NOMBRENIVEL);
+	char* buffer = malloc(header.largo_mensaje+1);
+	strcpy(buffer, NOMBRENIVEL);
+
+	buffer_header = calloc(1,sizeof(header_t)/*TAMHEADER*/); /*primera y unica vez */
+	memset(buffer_header, '\0', sizeof(header_t)/*TAMHEADER*/);
+	memcpy(buffer_header, &header, sizeof(header_t)/*TAMHEADER*/);
+
+	log_info(LOGGER, "sizeof(header): %d, largo mensaje: %d  buffer_header: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
+
+	if (enviar(sock, buffer_header, sizeof(header_t)) != EXITO)
+	{
+		log_error(LOGGER,"Error al enviar header NUEVO_NIVEL\n\n");
+		return WARNING;
+	}
+
+	if (enviar(sock, buffer, header.largo_mensaje) != EXITO)
+	{
+		log_error(LOGGER,"Error al enviar NOMBRE NIVEL\n\n");
+		return WARNING;
+	}
+
+	free(buffer);
+	return EXITO;
+}
 
 void ejemploGui () {
 
