@@ -33,7 +33,7 @@
 #pragma pack(1)
 typedef struct header_s
 {
-  //char id[LARGOID];
+  char id[16];
   char tipo;
   int  largo_mensaje;
 
@@ -48,6 +48,7 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 int aceptar_conexion(int *listener, int *nuevoSock);
 int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int crear_listener(int puerto, int *listener);
+void genId(char idMsg[]);
 
 void senialMurioHijo(int senial);
 //void senialSuspendido(int senial);

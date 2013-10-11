@@ -169,6 +169,23 @@ int crear_listener(int puerto, int *listener)
   return EXITO;
 }
 
+void genId(char idMsg[])
+{
+  	time_t tTiempo;
+	//header_t msgId;
+
+	int x;
+
+	/*******Planto la semilla***********/
+	tTiempo = time(&tTiempo) + (getpid() * 20);
+	srand(tTiempo);
+
+		for (x=0;x<15;x++)
+			idMsg[x]= rand() % 25 + 97;
+
+	idMsg[15]='\0';
+	//strncpy(idMsg, idMsg, sizeof(idMsg));
+}
 
 
 /***********Señales *********/
