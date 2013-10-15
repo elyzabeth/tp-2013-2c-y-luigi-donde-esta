@@ -18,6 +18,8 @@
 #include <time.h>
 #include <netinet/tcp.h>
 
+#include "../tads/tad_personaje.h"
+
 #define ERROR		    0
 #define EXITO		    1
 #define WARNING         2
@@ -45,6 +47,7 @@ int recibir(int sock, char *buffer, int tamano);
 int conectar(char ip[15+1], int puerto, int *sock);
 int aceptar_conexion(int *listener, int *nuevo_sock);
 int recibir_header(int sock, header_t *header, fd_set *master/*por si se desconecta*/, int *seDesconecto);
+int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seDesconecto);
 int aceptar_conexion(int *listener, int *nuevoSock);
 int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int crear_listener(int puerto, int *listener);

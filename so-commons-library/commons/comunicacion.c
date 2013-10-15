@@ -21,8 +21,9 @@ int enviar(int sock, char *buffer, int tamano)
 
 int recibir(int sock, char *buffer, int tamano)
 {
-  int val;
+	int val;
 	int leidos = 0;
+	memset(buffer, '\0', tamano);
 
 	while (leidos < tamano)
 	{
@@ -116,6 +117,43 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 
 	printf("sock: %d --- largo: %d ---- ", sock, header->largo_mensaje);
 	printf("tipo: %d\n", header->tipo);
+	free(buffer);
+
+	return EXITO;
+
+}
+
+int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seDesconecto)
+{
+	int ret;
+	char *buffer = NULL;
+	//char strAux[50];
+
+	buffer = malloc(sizeof(t_personaje));
+	*seDesconecto = FALSE; /*False =0 define*/
+
+	printf("Espero recibir t_personaje %lu", sizeof(t_personaje));
+	ret = recibir(sock, buffer, sizeof(t_personaje));
+
+	if (ret == WARNING) {
+	//	sprintf(strAux, "Se desconecto el socket: %d\n", sock);
+		FD_CLR(sock, master);
+		close(sock);
+		*seDesconecto = TRUE;
+		free(buffer);
+		return WARNING;
+	}
+
+	if (ret == ERROR) {
+		free(buffer);
+		//return trazarError(errorTrace, "Error al recibir datos :S", ERROR,"comunicacion.h", "recibirHeader()");
+		return ERROR;
+	}
+
+	memcpy(personaje, buffer, sizeof(t_personaje)); /*ojo que el memcopy si lo haces afuera el primer parametro tiene que tener &*/
+	/* Por ejemplo si la estructua no fuera por referencia y fuera local, debes hacer asi:
+	memcpy(&header, buffer, sizeof(header_t));*/
+
 	free(buffer);
 
 	return EXITO;
