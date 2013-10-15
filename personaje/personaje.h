@@ -15,6 +15,7 @@
 #include "commons/log.h"
 #include "commons/comunicacion.h"
 #include "commons/funciones_comunes.h"
+#include "tads/tad_personaje.h"
 
 t_log* LOGGER;
 int32_t VIDAS;
@@ -51,6 +52,6 @@ void manejoSIGTERM();
 int32_t incrementarVida();
 int32_t decrementarVida();
 
-
+int enviarMsjNuevoPersonaje( int sock );
 
 #endif /* PERSONAJE_H_ */

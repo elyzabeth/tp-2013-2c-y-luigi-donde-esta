@@ -42,27 +42,16 @@ int principal(int argc, char *argv[]) {
 	 */
 	id_proceso = getpid();
 	system("clear");
+
 	log_info(LOGGER,"************** Iniciando Personaje '%s' (PID: %d) ***************\n", personaje.nombre, id_proceso);
 	//cambiar_nombre_proceso(argv,argc, personaje.nombre);
 
 	/***************** ME CONECTO Y ARMO MENSAJE DE PRESENTACION *******/
 	log_info(LOGGER,"************** CONECTANDOSE  ***************\n");
-
-	//conectar(personaje.ip, personaje.puerto, &sock);
-	//conectar("127.0.0.1", 5000, &sock);
 	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
 
-	header.tipo = NUEVO_PERSONAJE;
-	header.largo_mensaje = 0/*TAMPRESENT*/;
 
-	buffer_header = calloc(1,sizeof(header_t)/*TAMHEADER*/); /*primera y unica vez */
-	memset(buffer_header, '\0', sizeof(header_t)/*TAMHEADER*/);
-	memcpy(buffer_header, &header, sizeof(header_t)/*TAMHEADER*/);
-
-	log_debug(LOGGER,"sizeof(header): %d, largo mensaje: %d  buffer_header: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
-
-
-	if (enviar(sock, buffer_header, sizeof(header_t)) != EXITO)
+	if (enviarMsjNuevoPersonaje(sock) != EXITO)
 	{
 		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE\n\n");
 		return WARNING;
@@ -71,23 +60,21 @@ int principal(int argc, char *argv[]) {
 	while(1)
 	{
 
-		memset(buffer_header, '\0', sizeof(header_t));
-		//memset(header, '\0', sizeof(header_t)); // se puede?
-
 		recibir (sock, buffer_header, sizeof(header_t));
 		memcpy(&header, buffer_header, sizeof(header_t));
-
-		//free (buffer_header); Como siempre lo uso libero al final
 
 		switch (header.tipo) /*recibo estado */
 		{
 			case PERSONAJE_CONECTADO: log_info(LOGGER,"Personaje Conectado");
+				enviarInfoPersonaje(sock);
 			break;
 
-			case OTRO: 	log_info(LOGGER, "otro");
+			case OTRO: log_info(LOGGER, "otro");
 			break;
 
 		}
+
+		sleep(15);
 	}
 
 	//free (buffer_header); /* Solo al final porque lo uso siempre */ Movido a finalizarPersonaje()
@@ -110,6 +97,8 @@ void inicializarPersonaje() {
 	personaje.puerto_orquestador = configPersonajePlataformaPuerto();
 	VIDAS = configPersonajeVidas();
 	REINTENTOS = 0;
+
+	buffer_header = calloc(1,sizeof(header_t)); /*primera y unica vez */
 }
 
 /**
