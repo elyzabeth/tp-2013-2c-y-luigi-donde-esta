@@ -1,4 +1,4 @@
-#!/bin/sh
+#!#!/bin/bash
 dir=`pwd`
 
 for x in so-commons-library plataforma personaje nivel-gui nivel 
