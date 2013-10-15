@@ -5,7 +5,6 @@
 	<projects>
 		<project>so-commons-library</project>
 		<project>nivel-gui</project>
-		<project>cunit-testConfig</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

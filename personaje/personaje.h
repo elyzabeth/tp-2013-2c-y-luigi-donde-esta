@@ -53,5 +53,6 @@ int32_t incrementarVida();
 int32_t decrementarVida();
 
 int enviarMsjNuevoPersonaje( int sock );
+int enviarInfoPersonaje(int sock);
 
 #endif /* PERSONAJE_H_ */

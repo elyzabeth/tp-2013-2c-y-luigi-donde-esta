@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lnivel-gui -lso-commons-library -lpthread
+LIBS := -lnivel-gui -lso-commons-library -lcunit -lpthread
 

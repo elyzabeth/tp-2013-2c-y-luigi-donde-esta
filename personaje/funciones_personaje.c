@@ -22,7 +22,7 @@ int enviarMsjNuevoPersonaje( int sock ) {
 	return enviar(sock, buffer_header, sizeof(header_t));
 }
 
-int enviarInfoPersonaje(sock) {
+int enviarInfoPersonaje(int sock) {
 	// PRUEBA
 	header_t header;
 	t_personaje yo;
