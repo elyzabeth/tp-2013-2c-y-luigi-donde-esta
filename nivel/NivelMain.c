@@ -33,16 +33,11 @@ int main (int argc, char**argv) {
 void principal () {
 		int id_proceso = getpid();
 		int sock = -1;
-
-		int q, p;
-		int x = 1;
-		int y = 1;
-
-		int ex1 = 10, ey1 = 14;
-		int ex2 = 20, ey2 = 3;
-
-		p = MAXCOLS;
-		q = MAXROWS;
+		fd_set master;
+		fd_set read_fds;
+		FD_ZERO(&master);
+		FD_ZERO(&read_fds);
+		int max_desc = 0;
 
 		log_info(LOGGER,"************** Iniciando Nivel '%s' (PID: %d) ***************\n", NOMBRENIVEL, id_proceso);
 		// Conectar con proceso Plataforma
@@ -53,108 +48,18 @@ void principal () {
 			exit(EXIT_FAILURE);
 		}
 
+		// Devuelve en fdPipeMainToEnemy[0] el descriptor de lectura y en fdPipeMainToEnemy[1] el descriptor de escritura
+		// NivelMain debe escribir en fdPipeMainToEnemy[1] y el hilo enemigo debe leer en fdPipeMainToEnemy[0]
+		pipe(fdPipeMainToEnemy);
 
+		agregar_descriptor(sock, &master, &max_desc);
+		pthread_create (&idHiloInterbloqueo, NULL, (void*) interbloqueo, NULL);
 
-		CrearPersonaje(GUIITEMS, '@', p, q);
-		CrearPersonaje(GUIITEMS, '#', x, y);
-
-		nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
-
-		while ( 1 ) {
-			int key = getch();
-
-			switch( key ) {
-
-				case KEY_UP:
-					if (y > 1) {
-						y--;
-					}
-				break;
-
-				case KEY_DOWN:
-					if (y < MAXROWS) {
-						y++;
-					}
-				break;
-
-				case KEY_LEFT:
-					if (x > 1) {
-						x--;
-					}
-				break;
-				case KEY_RIGHT:
-					if (x < MAXCOLS) {
-						x++;
-					}
-				break;
-				case 'w':
-				case 'W':
-					if (q > 1) {
-						q--;
-					}
-				break;
-
-				case 's':
-				case 'S':
-					if (q < MAXROWS) {
-						q++;
-					}
-				break;
-
-				case 'a':
-				case 'A':
-					if (p > 1) {
-						p--;
-					}
-				break;
-				case 'D':
-				case 'd':
-					if (p < MAXCOLS) {
-						p++;
-					}
-				break;
-				case 'Q':
-				case 'q':
-					//nivel_gui_terminar();
-					//exit(0);
-				break;
-			}
-
-
-			rnd(&ex1, MAXCOLS);
-			rnd(&ey1, MAXROWS);
-			rnd(&ex2, MAXCOLS);
-			rnd(&ey2, MAXROWS);
-			MoverPersonaje(GUIITEMS, '1', ex1, ey1 );
-			MoverPersonaje(GUIITEMS, '2', ex2, ey2 );
-
-			MoverPersonaje(GUIITEMS, '@', p, q);
-			MoverPersonaje(GUIITEMS, '#', x, y);
-
-			if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
-				restarRecurso(GUIITEMS, 'H');
-			}
-
-			if (   ((p == 19) && (q == 9)) || ((x == 19) && (y == 9)) ) {
-				restarRecurso(GUIITEMS, 'F');
-			}
-
-			if (   ((p == 8) && (q == 15)) || ((x == 8) && (y == 15)) ) {
-				restarRecurso(GUIITEMS, 'M');
-			}
-
-			if((p == x) && (q == y)) {
-				BorrarItem(GUIITEMS, '#'); //si chocan, borramos uno (!)
-			}
-
-			nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
-
-			if (key=='q' || key=='Q')
-				break;
-		}
+		//while(1);
+		simulacroJuego ();
+		//ejemploGui();
 
 		return;
-
 }
 
 
