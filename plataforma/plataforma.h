@@ -28,23 +28,32 @@ t_log* LOGGER;
 int32_t PUERTO;
 config_plataforma_t plataforma;
 
-t_queue *listaPersonajesNuevos;
+t_list *listaPersonajesNuevos;
+t_list *listaPersonajesEnJuego;
 t_dictionary *listaNiveles;
 
 pthread_mutex_t mutexListaPersonajesNuevos;
+pthread_mutex_t mutexListaPersonajesEnJuego;
+
 
 void inicializarPlataforma();
 void finalizarPlataforma();
 
-void* orquestador(void *parametro);
-void nuevoPersonaje(int fdPersonaje);
+void nuevoPersonaje(int fdPersonaje, fd_set *master);
 void nuevoNivel(int fdNivel, header_t header) ;
+
+// hilos
+void* orquestador(void *parametro);
+void* planificador(t_nivel *nivel);
 
 // señales
 void plat_signal_callback_handler(int signum);
 
 //Listas compartidas
 void agregarPersonajeNuevo(t_personaje* personaje);
+t_personaje* quitarPersonajeNuevoxNivel(char* nivel);
+void agregarPersonajeEnJuego(t_personaje* personaje);
+
 
 #endif /* plataforma_H_ */
 

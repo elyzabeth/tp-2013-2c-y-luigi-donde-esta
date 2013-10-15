@@ -1,8 +1,9 @@
 #include "plataforma.h"
 
-char *buffer_header;
+
 pthread_t idHiloOrquestador;
 pthread_t idHilosPlanificador[100];
+int32_t cantHilosPlanificador;
 
 void principal();
 
@@ -87,7 +88,7 @@ void principal() {
 
 				aceptar_conexion(&listener, &nuevo_sock);
 				//	FD_SET(desc, listaDesc);
-				agregar_descriptor(nuevo_sock, &master, &max_desc);
+				//agregar_descriptor(nuevo_sock, &master, &max_desc);
 
 				recibir_header(nuevo_sock, &header, &master, &se_desconecto);
 
@@ -95,12 +96,13 @@ void principal() {
 				{
 					case NUEVO_PERSONAJE:
 						log_info(LOGGER, "NUEVO PERSONAJE");
-						nuevoPersonaje(nuevo_sock);
+						nuevoPersonaje(nuevo_sock, &master);
 						break;
 
 					case NUEVO_NIVEL:
 						log_info(LOGGER, "NUEVO NIVEL");
 						nuevoNivel(nuevo_sock, header);
+						agregar_descriptor(nuevo_sock, &master, &max_desc);
 						break;
 
 					case OTRO:
@@ -110,7 +112,7 @@ void principal() {
 
 			if (FD_ISSET(i, &read_fds) && (i != listener))
 			{
-				log_debug(LOGGER, "recibo mensaje");
+				log_debug(LOGGER, "recibo mensaje socket %d", i);
 				recibir_header(i, &header, &master, &se_desconecto);
 				log_debug(LOGGER, "el tipo de mensaje es: %d\n", header.tipo);
 
@@ -135,28 +137,98 @@ void principal() {
 
 	pthread_join (idHiloOrquestador, NULL); //espera que finalice el hilo orquestador para continuar
 
+	return;
 }
 
-
-void nuevoPersonaje(int fdPersonaje) {
+int enviarMsjPersonajeConectado (int fd) {
+	int ret;
 	header_t header;
+	char* buffer_header = malloc(sizeof(header_t));
 
-	/**Contesto Mensaje **/
+	memset(&header, '\0', sizeof(header_t));
 	header.tipo=PERSONAJE_CONECTADO;
 	header.largo_mensaje=0;
 
 	memset(buffer_header, '\0', sizeof(header_t));
 	memcpy(buffer_header, &header, sizeof(header_t));
 
-	if (enviar(fdPersonaje, buffer_header, sizeof(header_t)) != EXITO)
+	log_info(LOGGER, "Envio mensaje de personaje conectado...");
+
+	ret =  enviar(fd, buffer_header, sizeof(header_t));
+	free(buffer_header);
+
+	return ret;
+}
+
+int enviarMsjNivelConectado (int fd) {
+	header_t header;
+	char* buffer_header = malloc(sizeof(header_t));
+	int ret;
+
+	memset(&header, '\0', sizeof(header_t));
+	header.tipo=NIVEL_CONECTADO;
+	header.largo_mensaje=0;
+
+	memset(buffer_header, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
+
+	log_info(LOGGER, "Envio mensaje de personaje conectado...");
+
+	ret = enviar(fd, buffer_header, sizeof(header_t));
+
+	free(buffer_header);
+
+	return ret;
+}
+
+void nuevoPersonaje(int fdPersonaje, fd_set *master) {
+	t_nivel *nivel;
+	header_t header;
+	t_personaje *personaje;
+	int se_desconecto;
+
+	/**Contesto Mensaje **/
+
+	log_info(LOGGER, "Envio mensaje de PERSONAJE_CONECTADO al personaje...");
+	if (enviarMsjPersonajeConectado(fdPersonaje) != EXITO)
 	{
 		log_error(LOGGER, "Error al enviar header PERSONAJE_CONECTADO\n\n");
+
 	} else {
-		//queue_push(listaPersonajesNuevos, crearPersonaje("MARIO", '@', 0,0, fdPersonaje));
 		// TODO quitar hardcodeo!!
-		// pedir/recibir informacion del personaje.
-		agregarPersonajeNuevo(crearPersonaje("MARIO", '@', 0, 0, fdPersonaje));
-		plataforma.personajes_en_juego++;
+		// recibir informacion del personaje.
+		// SI existe el nivel solicitado lo agrego si no, enviar mensaje de nivel inexistente??
+
+		log_debug(LOGGER, "Espero header CONECTAR_NIVEL (%d)...", CONECTAR_NIVEL);
+		recibir_header(fdPersonaje, &header, master, &se_desconecto);
+		log_debug(LOGGER, "Recibo %d...", header.tipo);
+
+		if (!se_desconecto && header.tipo == CONECTAR_NIVEL) {
+			personaje = crearPersonajeVacio();
+			log_debug(LOGGER, "Espero recibir estructura personaje (size:%d)...", header.largo_mensaje);
+			recibir_personaje(fdPersonaje, personaje, master, &se_desconecto);
+			log_debug(LOGGER, "Llego: %s, %c, %s", personaje->nombre, personaje->id, personaje->nivel);
+
+			// Verifico si existe el nivel solicitado
+			if(dictionary_has_key(listaNiveles, personaje->nivel)) {
+				nivel = dictionary_get(listaNiveles, personaje->nivel);
+
+				log_info(LOGGER, "Agrego personaje a lista de personajes Nuevos.");
+				agregarPersonajeNuevo(personaje);
+				plataforma.personajes_en_juego++;
+
+				//Informo al planificador correspondiente
+				log_info(LOGGER, "Informo al planificador correspondiente.");
+
+				//enviar(nivel->fdPipe[1], buffer_header, sizeof(header_t));
+				write (nivel->fdPipe[1], "NUEVOPERSONAJE", 15);
+			} else {
+				//TODO Que hago si no existe el nivel????
+			}
+		} else {
+			log_info(LOGGER, "Se esperaba mensaje CONECTAR_NIVEL se recibio: %d",header.tipo);
+		}
+
 	}
 }
 
@@ -170,34 +242,22 @@ void nuevoNivel(int fdNivel, header_t header) {
 	recibir (fdNivel, buffer, header.largo_mensaje);
 
 	nivel = crearNivel(buffer, fdNivel);
-	//strncpy(nivel->nombre, buffer, header.largo_mensaje);
+
 	log_info(LOGGER, "Se conecto el Nivel: %s\n", nivel->nombre);
 
 	/**Contesto Mensaje **/
-	header.tipo=NIVEL_CONECTADO;
-	header.largo_mensaje=0;
-
-	if (enviar(fdNivel, buffer_header, sizeof(header_t)) != EXITO)
+	if (enviarMsjNivelConectado(fdNivel) != EXITO)
 	{
 		log_error(LOGGER, "Error al enviar header NIVEL_CONECTADO\n\n");
 	} else {
 		// TODO levantar hilo Planificador para el nivel
 		// pedir/recibir informacion del nivel.
-
+		log_info(LOGGER, "Levanto Hilo Planificador para Nivel '%s'", nivel->nombre);
+		pthread_create(&idHilosPlanificador[cantHilosPlanificador++], NULL, (void*)planificador, nivel);
+		// Agrego el nivel al diccionario de nieveles
+		dictionary_put(listaNiveles, nivel->nombre, nivel);
 	}
-	/*
-printf("HilosIot a crear %d\n", configPP.hilosIot);
-		sleep(3);
-		for (i = 1 ; i <= configPP.hilosIot; i++)
-		{
-			sleep(1);
-			pthread_t thread_iot[i];
 
-			pthread_create(&thread_iot[i], NULL, hiloIot, NULL);
-			//pthread_join(printf("thread_iot%d",i), NULL);
-			puts("hilosIOT");
-		}
-	 */
 	free(buffer);
 }
 
@@ -214,10 +274,13 @@ void inicializarPlataforma () {
 
 	PUERTO = configPlatPuerto();
 	plataforma.personajes_en_juego=0;
-	buffer_header = malloc(sizeof(header_t));
-	listaPersonajesNuevos = queue_create();
+
+	listaPersonajesNuevos = list_create();
+	listaPersonajesEnJuego = list_create();
 	listaNiveles = dictionary_create();
 	pthread_mutex_init (&mutexListaPersonajesNuevos, NULL);
+	pthread_mutex_init (&mutexListaPersonajesEnJuego, NULL);
+	cantHilosPlanificador = 0;
 }
 
 /**
@@ -227,13 +290,14 @@ void inicializarPlataforma () {
 void finalizarPlataforma() {
 	log_info(LOGGER, "FINALIZANDO PLATAFORMA");
 	// Libero listas
-	queue_destroy_and_destroy_elements(listaPersonajesNuevos, (void*)free);
+	list_destroy_and_destroy_elements(listaPersonajesNuevos, (void*)free);
+	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)free);
 	dictionary_destroy_and_destroy_elements(listaNiveles, (void*)free);
 
 	// Libero semaforos
 	pthread_mutex_destroy(&mutexListaPersonajesNuevos);
-	// Libero buffer
-	free(buffer_header);
+	pthread_mutex_destroy(&mutexListaPersonajesEnJuego);
+
 	// Libero estructuras de configuracion
 	destruirConfigPlataforma();
 	// Libero logger
