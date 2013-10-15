@@ -177,6 +177,7 @@ void GenerarPlanDeNiveles(t_config *config) {
 
 void levantarArchivoConfiguracionPersonaje () {
 	t_config *config;
+	char simbolo[2];
 	config = config_create(PATH_CONFIG_PERSONAJE);
 
 	if (config->properties->elements_amount == 0) {
@@ -191,7 +192,8 @@ void levantarArchivoConfiguracionPersonaje () {
 
 	//Levanto los parametros necesarios para el Personaje
 	strcpy(configPersonaje.NOMBRE, config_get_string_value(config, "nombre"));
-	configPersonaje.SIMBOLO = config_get_int_value(config, "simbolo");
+	strncpy(simbolo, config_get_string_value(config, "simbolo"), 1);
+	configPersonaje.SIMBOLO = simbolo[0];
 
 	strcpy(configPersonaje.PLATAFORMA, config_get_string_value(config, "orquestador"));
 	//SPLIT DE PLATAFORMA PARA SEPARAR IP DE PUERTO
