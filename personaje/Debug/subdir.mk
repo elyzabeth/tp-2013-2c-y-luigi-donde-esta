@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../funciones_personaje.c \
 ../personaje.c 
 
 OBJS += \
+./funciones_personaje.o \
 ./personaje.o 
 
 C_DEPS += \
+./funciones_personaje.d \
 ./personaje.d 
 
 
