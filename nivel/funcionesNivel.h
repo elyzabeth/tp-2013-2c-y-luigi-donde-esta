@@ -28,6 +28,9 @@
 
 #define MAXCANTENEMIGOS 50
 
+#define EVENT_SIZE ( sizeof (struct inotify_event) + 24 )
+#define BUF_LEN ( 1024 * EVENT_SIZE )
+
 int32_t watchDescriptor;
 int32_t notifyFD;
 
