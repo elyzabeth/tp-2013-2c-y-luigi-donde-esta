@@ -111,6 +111,7 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 		return ERROR;
 	}
 
+	memset(header, '\0', sizeof(header_t));
 	memcpy(header, buffer, sizeof(header_t)); /*ojo que el memcopy si lo haces afuera el primer parametro tiene que tener &*/
 	/* Por ejemplo si la estructua no fuera por referencia y fuera local, debes hacer asi:
 	memcpy(&header, buffer, sizeof(header_t));*/
@@ -132,7 +133,7 @@ int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seD
 	buffer = malloc(sizeof(t_personaje));
 	*seDesconecto = FALSE; /*False =0 define*/
 
-	printf("Espero recibir t_personaje %lu", sizeof(t_personaje));
+	printf("Espero recibir t_personaje (%lu)", sizeof(t_personaje));
 	ret = recibir(sock, buffer, sizeof(t_personaje));
 
 	if (ret == WARNING) {

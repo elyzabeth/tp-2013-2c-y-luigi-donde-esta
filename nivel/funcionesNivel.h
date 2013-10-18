@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/inotify.h>
 
 #include "tad_items.h"
 #include "commons/log.h"
@@ -22,29 +23,31 @@
 #include "commons/comunicacion.h"
 
 #include "config/configNivel.h"
+#include "tads/tad_nivel.h"
+#include "tads/tad_enemigo.h"
+
 #define MAXCANTENEMIGOS 50
 
-//typedef struct enemigo {
-//
-//} t_enemigo;
+int32_t watchDescriptor;
+int32_t notifyFD;
 
 t_log* LOGGER;
 char NOMBRENIVEL[20+1];
 t_list* GUIITEMS;
 int MAXROWS, MAXCOLS;
 
+t_list *listaEnemigos;
 pthread_mutex_t mutexLockGlobalGUI;
 
 pthread_t idHiloInterbloqueo;
-pthread_t idHiloEnemigo[MAXCANTENEMIGOS];
-// Para comunicacion con hilos;
-int32_t fdPipeMainToEnemy [2];
+
 
 int correrTest();
 void principal ();
 
 void inicializarNivel ();
 void finalizarNivel ();
+int crearNotifyFD();
 
 void simulacroJuego ();
 void ejemploGui ();
@@ -54,11 +57,12 @@ void gui_dibujar();
 void gui_mover_personaje (char id, int x, int y);
 void gui_crearEnemigo(char id, int x, int y);
 void gui_crearCaja(char id, int x, int y, int instancias);
-
+void gui_crearPersonaje(char id, int x, int y);
+void gui_borrarItem(char id);
 
 //hilos
 void* interbloqueo(void *parametro);
-void* enemigo(int *idEnemigo);
+void* enemigo (t_enemigo *enemy);
 
 // señales
 void signal_callback_handler(int signum);

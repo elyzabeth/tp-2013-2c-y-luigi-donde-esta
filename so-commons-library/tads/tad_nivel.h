@@ -11,11 +11,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../config/funciones.h"
+
 #pragma pack(1)
 typedef struct nivel {
-	char nombre[50+1];
+	char nombre[MAXCHARLEN+1];
+	char algoritmo[MAXCHARLEN+1];
+	int32_t quantum;
+	int32_t retardo;
 	int32_t fdSocket;
-	int32_t fdPipe[2]; // fdPipe[0] de lectura/ fdPipe[1] de escritura
 } t_nivel;
 #pragma pack(0)
 

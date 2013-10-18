@@ -24,6 +24,15 @@ void validarPosicionCaja(char s, int32_t x, int32_t y) {
 
 }
 
+void gui_borrarItem(char id) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+    bool _search_by_id(ITEM_NIVEL* item) {
+        return item->id == id;
+    }
+    free(list_remove_by_condition(GUIITEMS, (void*) _search_by_id));
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
 void gui_crearPersonaje(char id, int x, int y) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
 	CrearPersonaje(GUIITEMS, id, x, y);
@@ -83,13 +92,16 @@ void agregarEnemigos() {
 	int i;
 	int32_t cantEnemigos = configNivelEnemigos();
 	int idEnemigo = '1';
+	t_enemigo *enemy;
 
 	for(i=0; i < cantEnemigos; i++) {
+		enemy = crearEnemigo(idEnemigo);
 
 		// Creo el hilo para el enemigo
-		pthread_create (&idHiloEnemigo[i], NULL, (void*) enemigo, (int32_t*)idEnemigo);
+		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_enemigo*)enemy);
+		log_info(LOGGER, "idHiloEnemigo: %ul", enemy->tid);
+		list_add(listaEnemigos, enemy);
 		idEnemigo++;
-
 	}
 
 }
@@ -119,39 +131,69 @@ void inicializarNivel () {
 	log_debug(LOGGER, "DEBUG: INICIALIZANDO NIVEL '%s' ", NOMBRENIVEL);
 
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
-	//pthread_mutex_init (&mutexLockGlobalMoverPersonaje, NULL);
+
+	// inicializo listas
+	listaEnemigos = list_create();
+
+	// inicializo inotify
+	notifyFD = crearNotifyFD();
+	watchDescriptor = inotify_add_watch(notifyFD, PATH_CONFIG_NIVEL, IN_MODIFY);
 
 	//inicializar NIVEL-GUI
 	inicializarNivelGui();
 
 }
 
-void finalizarHiloEnemigo() {
+void finalizarHilosEnemigos() {
 	int i ;
+	int32_t cantEnemigos = configNivelEnemigos();
+	header_t header;
+	char* buffer_header = malloc(sizeof(header_t));
 
 	log_info(LOGGER, "FINALIZANDO HILOS ENEMIGOS '%s'", NOMBRENIVEL);
-	write (fdPipeMainToEnemy[1], "FIN", 4);
 
-	for (i=0; i < configNivelEnemigos(); i++)
-		pthread_join(idHiloEnemigo[i], NULL);
+	memset(&header, '\0', sizeof(header_t));
+	header.tipo = FINALIZAR;
+	header.largo_mensaje=0;
+
+	memset(buffer_header, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
+
+	void _finalizar_hilo(t_enemigo *enemy) {
+		log_debug(LOGGER, "%d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", i+1, cantEnemigos, enemy->id, enemy->tid);
+		write(enemy->fdPipe[1], buffer_header, sizeof(header_t));
+		pthread_join(enemy->tid, NULL);
+		sleep(1);
+	}
+
+	list_iterate(listaEnemigos, (void*)_finalizar_hilo);
+
+	free(buffer_header);
 }
 
 void finalizarNivel () {
 
 	log_info(LOGGER, "FINALIZANDO NIVEL-GUI '%s'", NOMBRENIVEL);
+
+	// finalizo hilos enemigos
+	finalizarHilosEnemigos();
+
 	// Libero / finalizo NIVEL-GUI
-	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
 	nivel_gui_terminar();
 
 	log_info(LOGGER, "FINALIZANDO NIVEL '%s'", NOMBRENIVEL);
 
-	// libero Tuberia de comunicacion con hilos
-	finalizarHiloEnemigo();
-	close (fdPipeMainToEnemy[0]);
-	close (fdPipeMainToEnemy[1]);
+	// Libero listas dinamicas
+	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
+	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirEnemigo);
 
+	// Finalizo inotify
+	inotify_rm_watch(notifyFD, watchDescriptor);
+	close(notifyFD);
+
+	// libero semaforos
 	pthread_mutex_destroy(&mutexLockGlobalGUI);
-	//pthread_mutex_destroy(&mutexLockGlobalMoverPersonaje);
+
 
 	// Libero estructuras de configuracion
 	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE CONFIG-NIVEL '%s'", NOMBRENIVEL);
@@ -163,6 +205,26 @@ void finalizarNivel () {
 
 	// Libero a Willy!
 	// free (Willy);
+}
+
+int crearNotifyFD() {
+
+	int fd;
+
+	//char *p;
+	//int inotifyFd, j;
+	//struct inotify_event *event;
+
+	/*creating the INOTIFY instance*/
+	fd = inotify_init();
+
+	/*checking for error*/
+	if (fd < 0) {
+		perror("inotify_init");
+	}
+
+	//wd = inotify_add_watch( fd, "/tmp", IN_CREATE | IN_DELETE );
+	return fd;
 }
 
 
@@ -215,32 +277,42 @@ void rnd(int *x, int max) {
 
 int enviarMSJNuevoNivel(int sock) {
 	header_t header;
+	t_nivel nivel;
+	char* buffer_header;
+	char* buffer_payload;
+
 	header.tipo = NUEVO_NIVEL;
-	header.largo_mensaje = strlen(NOMBRENIVEL);
-	char* bufferheader;
-	char* bufferpayload = malloc(header.largo_mensaje+1);
-	strcpy(bufferpayload, NOMBRENIVEL);
+	header.largo_mensaje = sizeof(t_nivel);
 
-	bufferheader = calloc(1,sizeof(header_t)); /*primera y unica vez */
-	memset(bufferheader, '\0', sizeof(header_t));
-	memcpy(bufferheader, &header, sizeof(header_t));
+	buffer_header = calloc(1,sizeof(header_t));
+	//memset(bufferheader, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
 
-	log_info(LOGGER, "sizeof(header): %d, largo mensaje: %d  bufferheader: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&bufferheader));
+	log_info(LOGGER, "sizeof(header): %d, largo mensaje: %d  bufferheader: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
 
-	if (enviar(sock, bufferheader, sizeof(header_t)) != EXITO)
+	if (enviar(sock, buffer_header, sizeof(header_t)) != EXITO)
 	{
 		log_error(LOGGER,"Error al enviar header NUEVO_NIVEL\n\n");
 		return WARNING;
 	}
 
-	if (enviar(sock, bufferpayload, header.largo_mensaje) != EXITO)
+	strcpy(nivel.nombre, configNivelNombre());
+	strcpy(nivel.algoritmo, configNivelAlgoritmo());
+	nivel.quantum = configNivelQuantum();
+	nivel.retardo = configNivelRetardo();
+
+	buffer_payload = calloc(1,sizeof(t_nivel));
+	memcpy(buffer_payload, &nivel, sizeof(t_nivel));
+
+	if (enviar(sock, buffer_payload, header.largo_mensaje) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar NOMBRE NIVEL\n\n");
+		log_error(LOGGER,"Error al enviar datos del nivel\n\n");
 		return WARNING;
 	}
 
-	free(bufferpayload);
-	free(bufferheader);
+	free(buffer_payload);
+	free(buffer_header);
+
 	return EXITO;
 }
 

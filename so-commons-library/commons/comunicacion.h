@@ -29,7 +29,10 @@
 #define NUEVO_NIVEL				0x11
 #define PERSONAJE_CONECTADO 	0x12
 #define NIVEL_CONECTADO			0x13
-#define CONECTAR_NIVEL 			0x20
+#define CONECTAR_NIVEL 			0x14
+#define SOLICITUD_RECURSO		0x15
+#define RECURSO_CONCEDIDO		0x16
+#define FINALIZAR				0x20
 
 
 #pragma pack(1)
