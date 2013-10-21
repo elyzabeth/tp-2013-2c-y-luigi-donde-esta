@@ -23,6 +23,7 @@ int recibir(int sock, char *buffer, int tamano)
 {
 	int val;
 	int leidos = 0;
+
 	memset(buffer, '\0', tamano);
 
 	while (leidos < tamano)

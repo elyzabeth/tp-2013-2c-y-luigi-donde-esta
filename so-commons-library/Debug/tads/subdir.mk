@@ -6,17 +6,20 @@
 C_SRCS += \
 ../tads/tad_enemigo.c \
 ../tads/tad_nivel.c \
-../tads/tad_personaje.c 
+../tads/tad_personaje.c \
+../tads/tad_planificador.c 
 
 OBJS += \
 ./tads/tad_enemigo.o \
 ./tads/tad_nivel.o \
-./tads/tad_personaje.o 
+./tads/tad_personaje.o \
+./tads/tad_planificador.o 
 
 C_DEPS += \
 ./tads/tad_enemigo.d \
 ./tads/tad_nivel.d \
-./tads/tad_personaje.d 
+./tads/tad_personaje.d \
+./tads/tad_planificador.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
