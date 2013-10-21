@@ -26,10 +26,10 @@
 #include "tads/tad_nivel.h"
 #include "tads/tad_enemigo.h"
 
-#define MAXCANTENEMIGOS 50
-
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 24 )
 #define BUF_LEN ( 1024 * EVENT_SIZE )
+
+#define MAXCANTENEMIGOS 50
 
 int32_t watchDescriptor;
 int32_t notifyFD;
@@ -52,12 +52,13 @@ void inicializarNivel ();
 void finalizarNivel ();
 int crearNotifyFD();
 
+//Pruebas (borrar cuando ya no se use)
 void simulacroJuego ();
 void ejemploGui ();
 
 // funciones GUI sincronizadas por semaforo mutex
 void gui_dibujar();
-void gui_mover_personaje (char id, int x, int y);
+void gui_moverPersonaje (char id, int x, int y);
 void gui_crearEnemigo(char id, int x, int y);
 void gui_crearCaja(char id, int x, int y, int instancias);
 void gui_crearPersonaje(char id, int x, int y);

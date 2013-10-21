@@ -56,7 +56,7 @@ void* enemigo (t_enemigo *enemy) {
 			rnd(&x, MAXCOLS);
 			rnd(&y, MAXROWS);
 
-			gui_mover_personaje(id, x, y );
+			gui_moverPersonaje(id, x, y );
 			gui_dibujar();
 
 		}

@@ -13,17 +13,8 @@ int correrTest() {
 	return EXIT_SUCCESS;
 }
 
-
-void validarPosicionCaja(char s, int32_t x, int32_t y) {
-	if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
-		log_error(LOGGER, "ERROR AL CREAR CAJA '%c' POSICION (%d, %d) FUERA DE LOS LIMITES (%d, %d)", s, x, y, MAXCOLS, MAXROWS);
-		perror("ERROR AL CREAR CAJA POSICION FUERA DE LOS LIMITES");
-		finalizarNivel();
-		exit(-1);
-	}
-
-}
-
+// FUNCIONES de la interfaz grafica sincronizadas con semaforo mutex.
+// Porque se acceden consurrentemente desde varios hilos.
 void gui_borrarItem(char id) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
     bool _search_by_id(ITEM_NIVEL* item) {
@@ -51,7 +42,7 @@ void gui_crearEnemigo(char id, int x, int y) {
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
-void gui_mover_personaje (char id, int x, int y) {
+void gui_moverPersonaje (char id, int x, int y) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
 	MoverPersonaje(GUIITEMS, id, x, y );
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
@@ -61,6 +52,21 @@ void gui_dibujar() {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
 	nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
+
+/**
+ * @NAME: validarPosicionCaja
+ * @DESC: Valida que la caja de recursos que se va a agregar este dentro de los limites.
+ */
+void validarPosicionCaja(char s, int32_t x, int32_t y) {
+	if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
+		log_error(LOGGER, "ERROR AL CREAR CAJA '%c' POSICION (%d, %d) FUERA DE LOS LIMITES (%d, %d)", s, x, y, MAXCOLS, MAXROWS);
+		perror("ERROR AL CREAR CAJA POSICION FUERA DE LOS LIMITES");
+		finalizarNivel();
+		exit(-1);
+	}
+
 }
 
 
@@ -99,7 +105,7 @@ void agregarEnemigos() {
 
 		// Creo el hilo para el enemigo
 		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_enemigo*)enemy);
-		log_info(LOGGER, "idHiloEnemigo: %ul", enemy->tid);
+		log_info(LOGGER, "agregarEnemigos: idHiloEnemigo: %u", enemy->tid);
 		list_add(listaEnemigos, enemy);
 		idEnemigo++;
 	}
@@ -127,8 +133,7 @@ void inicializarNivel () {
 
 	// Creo LOGGER
 	LOGGER = log_create(configNivelLogPath(), "NIVEL", configNivelLogConsola(), configNivelLogNivel() );
-	log_info(LOGGER, "INFO: INICIALIZANDO NIVEL '%s'\n", NOMBRENIVEL);
-	log_debug(LOGGER, "DEBUG: INICIALIZANDO NIVEL '%s' ", NOMBRENIVEL);
+	log_info(LOGGER, " ********************* INICIALIZANDO NIVEL '%s' ***************************\n", NOMBRENIVEL);
 
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
 
@@ -144,11 +149,15 @@ void inicializarNivel () {
 
 }
 
+/**
+ * @NAME: finalizarHilosEnemigos
+ * @DESC: Finaliza los hilos creados para cada enemigo enviandoles por pipe el mensaje FINALIZAR
+ */
 void finalizarHilosEnemigos() {
-	int i ;
+	int i = 0;
 	int32_t cantEnemigos = configNivelEnemigos();
 	header_t header;
-	char* buffer_header = malloc(sizeof(header_t));
+	char* buffer_header = calloc(1,sizeof(header_t));
 
 	log_info(LOGGER, "FINALIZANDO HILOS ENEMIGOS '%s'", NOMBRENIVEL);
 
@@ -160,7 +169,7 @@ void finalizarHilosEnemigos() {
 	memcpy(buffer_header, &header, sizeof(header_t));
 
 	void _finalizar_hilo(t_enemigo *enemy) {
-		log_debug(LOGGER, "%d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", i+1, cantEnemigos, enemy->id, enemy->tid);
+		log_debug(LOGGER, "%d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", ++i, cantEnemigos, enemy->id, enemy->tid);
 		write(enemy->fdPipe[1], buffer_header, sizeof(header_t));
 		pthread_join(enemy->tid, NULL);
 		sleep(1);
@@ -200,7 +209,7 @@ void finalizarNivel () {
 	destruirConfigNivel();
 
 	// Libero logger
-	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE LOGGER '%s' \n\n (Adios Mundo CRUEL!) piiiiiiiiiiiiiii.....\n\n", NOMBRENIVEL);
+	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE LOGGER '%s' \n\n (Adios Mundo CRUEL!) piiiiiiiiiiiiiii.....\n--------------------------------------\n", NOMBRENIVEL);
 	log_destroy(LOGGER);
 
 	// Libero a Willy!
@@ -211,10 +220,6 @@ int crearNotifyFD() {
 
 	int fd;
 
-	//char *p;
-	//int inotifyFd, j;
-	//struct inotify_event *event;
-
 	/*creating the INOTIFY instance*/
 	fd = inotify_init();
 
@@ -223,7 +228,6 @@ int crearNotifyFD() {
 		perror("inotify_init");
 	}
 
-	//wd = inotify_add_watch( fd, "/tmp", IN_CREATE | IN_DELETE );
 	return fd;
 }
 
@@ -231,7 +235,7 @@ int crearNotifyFD() {
 /*
  * @NAME: signal_callback_handler
  * @DESC: Define la funcion a llamar cuando una señal es enviada al proceso
- * ctrl-c (SIGINT)
+ * ej: ctrl-c (SIGINT)
  */
 void signal_callback_handler(int signum)
 {
@@ -281,21 +285,23 @@ int enviarMSJNuevoNivel(int sock) {
 	char* buffer_header;
 	char* buffer_payload;
 
+	memset(&header, '\0', sizeof(header_t));
 	header.tipo = NUEVO_NIVEL;
 	header.largo_mensaje = sizeof(t_nivel);
 
-	buffer_header = calloc(1,sizeof(header_t));
+	buffer_header = calloc(1, sizeof(header_t));
 	//memset(bufferheader, '\0', sizeof(header_t));
 	memcpy(buffer_header, &header, sizeof(header_t));
 
-	log_info(LOGGER, "sizeof(header): %d, largo mensaje: %d  bufferheader: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
+	log_info(LOGGER, "enviarMSJNuevoNivel: sizeof(header): %d, largo mensaje: %d  bufferheader: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
 
 	if (enviar(sock, buffer_header, sizeof(header_t)) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar header NUEVO_NIVEL\n\n");
+		log_error(LOGGER,"enviarMSJNuevoNivel: Error al enviar header NUEVO_NIVEL\n\n");
 		return WARNING;
 	}
 
+	memset(&nivel, '\0', sizeof(t_nivel));
 	strcpy(nivel.nombre, configNivelNombre());
 	strcpy(nivel.algoritmo, configNivelAlgoritmo());
 	nivel.quantum = configNivelQuantum();
@@ -306,7 +312,7 @@ int enviarMSJNuevoNivel(int sock) {
 
 	if (enviar(sock, buffer_payload, header.largo_mensaje) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar datos del nivel\n\n");
+		log_error(LOGGER,"enviarMSJNuevoNivel: Error al enviar datos del nivel\n\n");
 		return WARNING;
 	}
 
@@ -317,6 +323,11 @@ int enviarMSJNuevoNivel(int sock) {
 }
 
 
+
+
+
+// FUNCIONES DE PRUEBA - BORRAR CUANDO YA NO SE USEN (simulacroJuego y ejemploGui)
+// -------------------------------------------------------------------------------
 void simulacroJuego () {
 
 	int q, p;
@@ -401,8 +412,8 @@ void simulacroJuego () {
 //		MoverPersonaje(GUIITEMS, '1', ex1, ey1 );
 //		MoverPersonaje(GUIITEMS, '2', ex2, ey2 );
 
-		gui_mover_personaje('@', p, q);
-		gui_mover_personaje('#', x, y);
+		gui_moverPersonaje('@', p, q);
+		gui_moverPersonaje('#', x, y);
 
 		if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
 			restarRecurso(GUIITEMS, 'H');

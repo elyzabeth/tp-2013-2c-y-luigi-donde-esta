@@ -21,6 +21,7 @@ int main (int argc, char**argv) {
 	signal(SIGTERM, signal_callback_handler);
 
 	inicializarNivel();
+
 	principal ();
 
 	finalizarNivel();
@@ -43,9 +44,9 @@ void principal () {
 	id_proceso = getpid();
 	log_info(LOGGER,"************** Iniciando Nivel '%s' (PID: %d) ***************\n", NOMBRENIVEL, id_proceso);
 
+	// Lanzo Hilo de Interbloqueo
+	pthread_create (&idHiloInterbloqueo, NULL, (void*) interbloqueo, NULL);
 
-	// Agrego descriptor del inotify
-	agregar_descriptor(notifyFD, &master, &max_desc);
 
 	// Conectar con proceso Plataforma
 	conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sock);
@@ -58,8 +59,8 @@ void principal () {
 	// Agrego descriptor del socket
 	agregar_descriptor(sock, &master, &max_desc);
 
-	// Lanzo Hilo de Interbloqueo
-	pthread_create (&idHiloInterbloqueo, NULL, (void*) interbloqueo, NULL);
+	// Agrego descriptor del inotify
+	agregar_descriptor(notifyFD, &master, &max_desc);
 
 	//simulacroJuego ();
 	//ejemploGui();
@@ -83,6 +84,17 @@ void principal () {
 					{
 						log_info(LOGGER, "Se desconecto el socket %d", i);
 						FD_CLR(i, &master);
+					} else {
+
+						log_debug(LOGGER, "Llego mensaje %d (fd:%d)", header.tipo, i);
+
+						switch(header.tipo) {
+							case NIVEL_CONECTADO:
+								log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
+								break;
+							default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
+								break;
+						}
 					}
 				}
 
@@ -96,20 +108,27 @@ void principal () {
 
 				if (FD_ISSET(i, &read_fds) && (i != sock) && (i != notifyFD))
 				{
-					log_debug(LOGGER, "2) recibo mensaje socket %d", i);
+					log_debug(LOGGER, "2) actividad en el socket %d", i);
 					recibir_header(i, &header, &master, &se_desconecto);
 
 					if(se_desconecto)
 					{
 						log_info(LOGGER, "Se desconecto el socket %d", i);
 						FD_CLR(i, &master);
+					} else {
+						log_debug(LOGGER, "2) Llego mensaje del socket %d: %d NO RECONOCIDO", i, header.tipo);
 					}
+
 				}
 
 			}
 
 		}
 	}
+
+	pthread_join (idHiloInterbloqueo, NULL); //espera que finalice el hilo de interbloqueo para continuar
+
+	close (sock);
 
 	return;
 }
