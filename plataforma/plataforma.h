@@ -14,6 +14,7 @@
 #include "commons/collections/queue.h"
 #include "tads/tad_personaje.h"
 #include "tads/tad_nivel.h"
+#include "tads/tad_planificador.h"
 
 typedef struct config_plataforma_s
 {
@@ -24,27 +25,40 @@ typedef struct config_plataforma_s
 
 } config_plataforma_t;
 
+typedef struct orq {
+	pthread_t tid;
+	int32_t fdPipe[2]; // fdPipe[0] de lectura/ fdPipe[1] de escritura
+} t_hiloOrquestador;
+
+t_hiloOrquestador hiloOrquestador;
+
 t_log* LOGGER;
 int32_t PUERTO;
 config_plataforma_t plataforma;
 
 t_list *listaPersonajesNuevos;
 t_list *listaPersonajesEnJuego;
+t_list *listaPersonajesFinAnormal;
 t_dictionary *listaNiveles;
 
 pthread_mutex_t mutexListaPersonajesNuevos;
 pthread_mutex_t mutexListaPersonajesEnJuego;
+pthread_mutex_t mutexListaPersonajesFinAnormal;
+pthread_mutex_t mutexListaNiveles;
 
 
 void inicializarPlataforma();
 void finalizarPlataforma();
 
+void principal();
+void matarHilos();
+
 void nuevoPersonaje(int fdPersonaje, fd_set *master);
 void nuevoNivel(int fdNivel, header_t header) ;
 
 // hilos
-void* orquestador(void *parametro);
-void* planificador(t_nivel *nivel);
+void* orquestador(t_hiloOrquestador *hiloOrquestador);
+void* planificador(t_planificador *nivel);
 
 // señales
 void plat_signal_callback_handler(int signum);
@@ -53,6 +67,16 @@ void plat_signal_callback_handler(int signum);
 void agregarPersonajeNuevo(t_personaje* personaje);
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel);
 void agregarPersonajeEnJuego(t_personaje* personaje);
+void moverPersonajesAFinAnormalxNivel (char *nivel);
+bool existeNivel(char* nivel);
+t_planificador* obtenerNivel(char* nivel);
+t_estado obtenerEstadoNivel(char* nivel);
+void agregarAListaNiveles(t_planificador* planner);
+int eliminarNivelesFinalizados ();
+t_planificador* quitarDeListaNiveles(char *nivel);
+t_planificador* cambiarEstadoNivelaFinalizado (char* nivel);
+t_planificador* cambiarEstadoNivelaCorriendo (char* nivel);
+
 
 
 #endif /* plataforma_H_ */
