@@ -76,15 +76,15 @@ void validarPosicionCaja(char s, int32_t x, int32_t y) {
  * de recursos que figuran en el archivo de configuracion.
  */
 void agregarCajasRecursos() {
-
-	t_dictionary *recursos = configNivelRecursos();
+	// Diccionario de recursos con clave=simbolo data=t_caja
+	//t_dictionary *recursos = configNivelRecursos();
 
 	void _add_box(char *simbolo, t_caja *caja) {
 		validarPosicionCaja(caja->SIMBOLO, caja->POSX, caja->POSY);
 		gui_crearCaja(caja->SIMBOLO, caja->POSX, caja->POSY, caja->INSTANCIAS);
 	}
 
-	dictionary_iterator(recursos, (void*)_add_box);
+	dictionary_iterator(listaRecursos, (void*)_add_box);
 
 }
 
@@ -98,13 +98,13 @@ void agregarEnemigos() {
 	int i;
 	int32_t cantEnemigos = configNivelEnemigos();
 	int idEnemigo = '1';
-	t_enemigo *enemy;
+	t_hiloEnemigo *enemy;
 
 	for(i=0; i < cantEnemigos; i++) {
 		enemy = crearEnemigo(idEnemigo);
 
 		// Creo el hilo para el enemigo
-		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_enemigo*)enemy);
+		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_hiloEnemigo*)enemy);
 		log_info(LOGGER, "agregarEnemigos: idHiloEnemigo: %u", enemy->tid);
 		list_add(listaEnemigos, enemy);
 		idEnemigo++;
@@ -135,10 +135,15 @@ void inicializarNivel () {
 	LOGGER = log_create(configNivelLogPath(), "NIVEL", configNivelLogConsola(), configNivelLogNivel() );
 	log_info(LOGGER, " ********************* INICIALIZANDO NIVEL '%s' ***************************\n", NOMBRENIVEL);
 
+	// Inicializo estructura de hilo de deteccion de interbloqueo
+	memset(&hiloInterbloqueo,'\0',sizeof(t_hiloInterbloqueo));
+	pipe(hiloInterbloqueo.fdPipe);
+
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
 
 	// inicializo listas
 	listaEnemigos = list_create();
+	listaRecursos = configNivelRecursos();
 
 	// inicializo inotify
 	notifyFD = crearNotifyFD();
@@ -161,14 +166,14 @@ void finalizarHilosEnemigos() {
 
 	log_info(LOGGER, "FINALIZANDO HILOS ENEMIGOS '%s'", NOMBRENIVEL);
 
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = FINALIZAR;
 	header.largo_mensaje=0;
 
 	memset(buffer_header, '\0', sizeof(header_t));
 	memcpy(buffer_header, &header, sizeof(header_t));
 
-	void _finalizar_hilo(t_enemigo *enemy) {
+	void _finalizar_hilo(t_hiloEnemigo *enemy) {
 		log_debug(LOGGER, "%d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", ++i, cantEnemigos, enemy->id, enemy->tid);
 		write(enemy->fdPipe[1], buffer_header, sizeof(header_t));
 		pthread_join(enemy->tid, NULL);
@@ -187,6 +192,9 @@ void finalizarNivel () {
 	// finalizo hilos enemigos
 	finalizarHilosEnemigos();
 
+	// finalizo hilo Interbloqueo
+	enviarMsjAInterbloqueo(FINALIZAR);
+
 	// Libero / finalizo NIVEL-GUI
 	nivel_gui_terminar();
 
@@ -195,6 +203,7 @@ void finalizarNivel () {
 	// Libero listas dinamicas
 	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
 	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirEnemigo);
+	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 
 	// Finalizo inotify
 	inotify_rm_watch(notifyFD, watchDescriptor);
@@ -202,7 +211,6 @@ void finalizarNivel () {
 
 	// libero semaforos
 	pthread_mutex_destroy(&mutexLockGlobalGUI);
-
 
 	// Libero estructuras de configuracion
 	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE CONFIG-NIVEL '%s'", NOMBRENIVEL);
@@ -279,13 +287,35 @@ void rnd(int *x, int max) {
 	*x = (*x>0) ? *x : 1;
 }
 
+int enviarMsjAInterbloqueo (char msj) {
+	int ret;
+	header_t header;
+	char* buffer_header = malloc(sizeof(header_t));
+
+	memset(&header, '\0', sizeof(header_t));
+	header.tipo = msj;
+	header.largo_mensaje=0;
+
+	memset(buffer_header, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
+
+	log_info(LOGGER, "Enviando mensaje al orquestador.");
+
+	ret =  write(hiloInterbloqueo.fdPipe[1], buffer_header, sizeof(header_t));
+	pthread_join(hiloInterbloqueo.tid, NULL);
+
+	free(buffer_header);
+
+	return ret;
+}
+
 int enviarMSJNuevoNivel(int sock) {
 	header_t header;
 	t_nivel nivel;
 	char* buffer_header;
 	char* buffer_payload;
 
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = NUEVO_NIVEL;
 	header.largo_mensaje = sizeof(t_nivel);
 
@@ -301,7 +331,8 @@ int enviarMSJNuevoNivel(int sock) {
 		return WARNING;
 	}
 
-	memset(&nivel, '\0', sizeof(t_nivel));
+	//memset(&nivel, '\0', sizeof(t_nivel));
+	initNivel(&nivel);
 	strcpy(nivel.nombre, configNivelNombre());
 	strcpy(nivel.algoritmo, configNivelAlgoritmo());
 	nivel.quantum = configNivelQuantum();
@@ -323,7 +354,30 @@ int enviarMSJNuevoNivel(int sock) {
 }
 
 
+void tratarSolicitudUbicacion(int sock, header_t header) {
+	t_personaje personaje;
+	char* buffer_payload;
+	buffer_payload = calloc(1, header.largo_mensaje);
 
+	// Si llega un mensaje de SOLICITUD_UBICACION luego espero recibir un t_personaje
+	if (recibir(sock, buffer_payload, header.largo_mensaje) != EXITO)
+	{
+		log_error(LOGGER,"tratarSolicitudUbicacion: ERROR al recibir payload SOLICITUD_UBICACION\n\n");
+		free(buffer_payload);
+		// TODO cancelo o solo retorno??
+		return;
+	}
+
+	initPersonje(&personaje);
+	memcpy(&personaje, buffer_payload, sizeof(t_personaje));
+
+	// TODO agegar personaje a lista de personajes en juego
+	// y a la lista GUIITEMS para graficarlo.
+	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+
+	free(buffer_payload);
+
+}
 
 
 // FUNCIONES DE PRUEBA - BORRAR CUANDO YA NO SE USEN (simulacroJuego y ejemploGui)

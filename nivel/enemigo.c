@@ -8,7 +8,7 @@
 #include "funcionesNivel.h"
 
 
-void* enemigo (t_enemigo *enemy) {
+void* enemigo (t_hiloEnemigo *enemy) {
 
 	int32_t id = (int32_t) enemy->id;
 	int32_t sleepEnemigos;

@@ -45,7 +45,7 @@ void principal () {
 	log_info(LOGGER,"************** Iniciando Nivel '%s' (PID: %d) ***************\n", NOMBRENIVEL, id_proceso);
 
 	// Lanzo Hilo de Interbloqueo
-	pthread_create (&idHiloInterbloqueo, NULL, (void*) interbloqueo, NULL);
+	pthread_create (&hiloInterbloqueo.tid, NULL, (void*) interbloqueo, NULL);
 
 
 	// Conectar con proceso Plataforma
@@ -78,6 +78,7 @@ void principal () {
 				if (FD_ISSET(i, &read_fds) && (i == sock))
 				{
 					log_debug(LOGGER, "1) recibo mensaje socket %d", i);
+					initHeader(&header);
 					recibir_header(i, &header, &master, &se_desconecto);
 
 					if(se_desconecto)
@@ -91,6 +92,15 @@ void principal () {
 						switch(header.tipo) {
 							case NIVEL_CONECTADO:
 								log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
+								break;
+
+							case SOLICITUD_UBICACION:
+								log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
+								tratarSolicitudUbicacion(i, header);
+								break;
+
+							case SOLICITUD_RECURSO:
+								log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
 								break;
 							default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
 								break;
@@ -126,7 +136,7 @@ void principal () {
 		}
 	}
 
-	pthread_join (idHiloInterbloqueo, NULL); //espera que finalice el hilo de interbloqueo para continuar
+	pthread_join (hiloInterbloqueo.tid, NULL); //espera que finalice el hilo de interbloqueo para continuar
 
 	close (sock);
 

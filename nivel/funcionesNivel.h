@@ -25,6 +25,8 @@
 #include "config/configNivel.h"
 #include "tads/tad_nivel.h"
 #include "tads/tad_enemigo.h"
+#include "tads/tad_caja.h"
+#include "tads/tad_personaje.h"
 
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 24 )
 #define BUF_LEN ( 1024 * EVENT_SIZE )
@@ -36,14 +38,22 @@ int32_t notifyFD;
 
 t_log* LOGGER;
 char NOMBRENIVEL[20+1];
-t_list* GUIITEMS;
-int MAXROWS, MAXCOLS;
 
+int MAXROWS, MAXCOLS;
+t_list* GUIITEMS;
+
+// Diccionario de recursos con clave=simbolo data=t_caja
+t_dictionary *listaRecursos;
 t_list *listaEnemigos;
+
 pthread_mutex_t mutexLockGlobalGUI;
 
-pthread_t idHiloInterbloqueo;
+typedef struct {
+	pthread_t tid;
+	int32_t fdPipe[2];
+} t_hiloInterbloqueo;
 
+t_hiloInterbloqueo hiloInterbloqueo;
 
 int correrTest();
 void principal ();
@@ -65,14 +75,16 @@ void gui_crearPersonaje(char id, int x, int y);
 void gui_borrarItem(char id);
 
 //hilos
-void* interbloqueo(void *parametro);
-void* enemigo (t_enemigo *enemy);
+void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo);
+void* enemigo (t_hiloEnemigo *enemy);
 
 // señales
 void signal_callback_handler(int signum);
 
 //comunicacion
+int enviarMsjAInterbloqueo (char msj);
 int enviarMSJNuevoNivel(int sock);
+void tratarSolicitudUbicacion(int sock, header_t header);
 
 
 void rnd(int *x, int max);

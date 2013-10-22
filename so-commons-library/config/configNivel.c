@@ -21,9 +21,9 @@ typedef struct configNivel {
 	char PLATAFORMAIP[MAXCHARLEN+1];
 	char ALGORITMO[MAXCHARLEN+1];
 	char LOG_PATH[MAXCHARLEN+1]; 	// LOG_PATH=/tmp/plataforma.log
-	t_log_level LOG_NIVEL; 	// LOG_NIVEL=TRACE|DEBUG|INFO|WARNING|ERROR
+	t_log_level LOG_NIVEL;			// LOG_NIVEL=TRACE|DEBUG|INFO|WARNING|ERROR
 	int32_t LOG_CONSOLA;			// LOG_CONSOLA=0|1 (off/on)
-	t_dictionary *RECURSOS;
+	t_dictionary *RECURSOS;			// Diccionario de recursos con clave=simbolo data=t_caja
 
 } t_configNivel;
 
@@ -47,7 +47,7 @@ void inicializarConfigNivel () {
 	configNivel.RECURSOS = dictionary_create();
 }
 
-
+t_dictionary* clonarDiccionarioRecursos ();
 
 // GETTERS
 // ********
@@ -204,13 +204,14 @@ t_caja* configNivelRecurso(char simboloRecurso) {
 	return (t_caja*)dictionary_get(configNivel.RECURSOS, simbolo);
 }
 
+
 /**
  * @NAME: configNivelRecursos
  * @DESC: Devuelve el listado de recursos del Nivel (t_dictionary)
  */
 t_dictionary* configNivelRecursos() {
 	// TODO Modificar para que devuelva una copia.
-	return configNivel.RECURSOS;
+	return clonarDiccionarioRecursos();
 }
 
 
@@ -219,12 +220,28 @@ t_dictionary* configNivelRecursos() {
 /// FUNCIONES PRIVADAS
 // *********************
 
-t_caja* crearCaja() {
-	return (t_caja*)malloc(sizeof(t_caja));
-}
+t_dictionary* clonarDiccionarioRecursos () {
 
-void destruirCaja(t_caja* caja) {
-	free(caja);
+	t_dictionary *clon = dictionary_create();
+	t_caja *copia;
+
+	void __add_box(char* key, t_caja *caja) {
+		copia = crearCaja();
+		strcpy(copia->NOMBRE, caja->NOMBRE);
+		strcpy(copia->RECURSO, caja->RECURSO);
+		copia->SIMBOLO = caja->SIMBOLO;
+		copia->INSTANCIAS = caja->INSTANCIAS;
+		copia->POSX = caja->POSX;
+		copia->POSY = caja->POSY;
+		char simbolo[2] = {0};
+		simbolo[0] = caja->SIMBOLO;
+
+		dictionary_put(clon, simbolo, copia);
+	}
+
+	dictionary_iterator(configNivel.RECURSOS, (void*)__add_box);
+
+	return clon;
 }
 
 void destruirConfigNivel () {

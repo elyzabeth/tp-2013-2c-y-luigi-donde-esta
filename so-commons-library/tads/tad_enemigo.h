@@ -17,11 +17,11 @@ typedef struct enemy {
 	int32_t id;
 	pthread_t tid;
 	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura
-} t_enemigo;
+} t_hiloEnemigo;
 #pragma pack(0)
 
-t_enemigo* crearEnemigo(int32_t idEnemigo);
-void destruirEnemigo (t_enemigo* enemigo);
+t_hiloEnemigo* crearEnemigo(int32_t idEnemigo);
+void destruirEnemigo (t_hiloEnemigo* enemigo);
 
 
 #endif /* TAD_ENEMIGO_H_ */

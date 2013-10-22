@@ -7,9 +7,9 @@
 
 #include "tad_enemigo.h"
 
-t_enemigo* crearEnemigo(int32_t idEnemigo) {
-	t_enemigo *nuevoEnemigo;
-	nuevoEnemigo = calloc(1, sizeof(t_enemigo));
+t_hiloEnemigo* crearEnemigo(int32_t idEnemigo) {
+	t_hiloEnemigo *nuevoEnemigo;
+	nuevoEnemigo = calloc(1, sizeof(t_hiloEnemigo));
 
 	nuevoEnemigo->id = idEnemigo;
 
@@ -24,7 +24,7 @@ t_enemigo* crearEnemigo(int32_t idEnemigo) {
 	return nuevoEnemigo;
 }
 
-void destruirEnemigo (t_enemigo* enemigo) {
+void destruirEnemigo (t_hiloEnemigo* enemigo) {
 	close(enemigo->fdPipe[0]);
 	close(enemigo->fdPipe[1]);
 	free(enemigo);

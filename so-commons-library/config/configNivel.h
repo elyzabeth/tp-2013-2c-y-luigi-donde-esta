@@ -18,18 +18,19 @@
 #include "../commons/collections/dictionary.h"
 
 #include "funciones.h"
+#include "../tads/tad_caja.h"
 
 
 #define MAXCANTCAJAS 50 // Cantidad maxima de cajas de recursos por nivel
 
-typedef struct {
-	char NOMBRE[MAXCHARLEN+1]; // Nombre caja ej: Caja1
-	char RECURSO[MAXCHARLEN+1]; // Nombre del recurso ej: Flores
-	char SIMBOLO;
-	int32_t INSTANCIAS;
-	int32_t POSX;
-	int32_t POSY;
-} t_caja;
+//typedef struct {
+//	char NOMBRE[MAXCHARLEN+1]; // Nombre caja ej: Caja1
+//	char RECURSO[MAXCHARLEN+1]; // Nombre del recurso ej: Flores
+//	char SIMBOLO;
+//	int32_t INSTANCIAS;
+//	int32_t POSX;
+//	int32_t POSY;
+//} t_caja;
 
 
 // DECLARACION DE FUNCIONES
