@@ -18,6 +18,7 @@ t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX,
 	nuevoPersonaje->posActual.y = posY;
 	nuevoPersonaje->fd = fd;
 	strcpy(nuevoPersonaje->nivel, nivel);
+	nuevoPersonaje->recurso = '\0';
 
 	return nuevoPersonaje;
 }
@@ -26,15 +27,22 @@ t_personaje* crearPersonajeVacio () {
 
 	t_personaje* nuevoPersonaje;
 
-	nuevoPersonaje = (t_personaje*)malloc(sizeof(t_personaje));
-	memset(nuevoPersonaje->nombre, '\0', MAXLENNOMBRE+1);
-	memset(nuevoPersonaje->nivel, '\0', MAXLENNOMBRE+1);
-	nuevoPersonaje->id = 0;
-	nuevoPersonaje->posActual.x = 0;
-	nuevoPersonaje->posActual.y = 0;
-	nuevoPersonaje->fd = 0;
+	nuevoPersonaje = (t_personaje*)calloc(1, sizeof(t_personaje));
+
+//	nuevoPersonaje = (t_personaje*)malloc(sizeof(t_personaje));
+//	memset(nuevoPersonaje->nombre, '\0', MAXLENNOMBRE+1);
+//	memset(nuevoPersonaje->nivel, '\0', MAXLENNOMBRE+1);
+//	nuevoPersonaje->id = 0;
+//	nuevoPersonaje->posActual.x = 0;
+//	nuevoPersonaje->posActual.y = 0;
+//	nuevoPersonaje->fd = 0;
+//	nuevoPersonaje->recurso = '\0';
 
 	return nuevoPersonaje;
+}
+
+void initPersonje(t_personaje *personaje) {
+	memset(personaje, '\0', sizeof(t_personaje));
 }
 
 /**

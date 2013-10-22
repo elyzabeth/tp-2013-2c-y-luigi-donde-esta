@@ -17,6 +17,10 @@ t_nivel * crearNivel ( char *nombre, int32_t fdNivel) {
 	return nuevoNivel;
 }
 
+void initNivel(t_nivel *nivel) {
+	memset(nivel, '\0', sizeof(t_nivel));
+}
+
 void destruirNivel (t_nivel *nivel) {
 	free(nivel);
 }

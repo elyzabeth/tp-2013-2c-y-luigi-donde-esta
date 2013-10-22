@@ -28,11 +28,13 @@ typedef struct personaje {
 	t_posicion posActual;
 	int32_t fd;
 	char nivel[MAXLENNOMBRE+1];
+	char recurso;
 } t_personaje;
 #pragma pack(0)
 
 t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX, int32_t posY, int32_t fd, char* nivel);
-t_personaje* crearPersonajeVacio () ;
+t_personaje* crearPersonajeVacio ();
+void initPersonje(t_personaje *personaje);
 void destruirPersonaje (t_personaje * personaje);
 
 #endif /* TAD_PERSONAJE_H_ */
