@@ -30,8 +30,10 @@
 #define PERSONAJE_CONECTADO 	0x12
 #define NIVEL_CONECTADO			0x13
 #define CONECTAR_NIVEL 			0x14
-#define SOLICITUD_RECURSO		0x15
-#define RECURSO_CONCEDIDO		0x16
+#define SOLICITUD_UBICACION		0x15
+#define SOLICITUD_RECURSO		0x16
+#define RECURSO_CONCEDIDO		0x17
+#define RECURSO_DENEGADO		0x18
 #define FINALIZAR				0x20
 
 
@@ -45,6 +47,8 @@ typedef struct header_s
 }header_t;
 #pragma pack(0)
 
+header_t* crearHeader();
+void initHeader(header_t* header);
 int enviar(int sock, char *buffer, int tamano);
 int recibir(int sock, char *buffer, int tamano);
 int conectar(char ip[15+1], int puerto, int *sock);

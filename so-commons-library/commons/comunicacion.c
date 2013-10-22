@@ -1,5 +1,14 @@
 #include "comunicacion.h"
 
+header_t* crearHeader() {
+	header_t *nuevoHeader;
+	nuevoHeader = calloc(1, sizeof(header_t));
+	return nuevoHeader;
+}
+
+void initHeader(header_t* header) {
+	memset(header, '\0', sizeof(header_t));
+}
 
 int enviar(int sock, char *buffer, int tamano)
 {

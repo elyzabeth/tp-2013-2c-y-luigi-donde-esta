@@ -94,6 +94,7 @@ void* planificador(t_planificador *planner) {
 				if (FD_ISSET(i, &read_fds) && (i != planner->fdPipe[0]))
 				{
 					log_info(LOGGER, "PLANIFICADOR %s: NUEVO MENSAJE en socket %d", planner->nivel.nombre, i);
+					initHeader(&header);
 					recibir_header(i, &header, &master, &se_desconecto);
 
 					if(se_desconecto)

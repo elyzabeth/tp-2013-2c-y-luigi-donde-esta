@@ -45,7 +45,7 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 
 		if((select(max_desc+1, &read_fds, NULL, NULL, NULL/*&tvDemora*/)) == -1)
 		{
-			puts("a");
+			log_error(LOGGER, "ORQUESTADOR: error en el select()");
 		}
 
 		for(i = 0; i <= max_desc; i++)
@@ -82,6 +82,7 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 				} else if (i == hiloOrquestador->fdPipe[0]) {
 
 					log_info(LOGGER, "ORQUESTADOR: Recibo mensaje desde Plataforma por Pipe");
+					initHeader(&header);
 					read (hiloOrquestador->fdPipe[0], &header, sizeof(header_t));
 
 					log_debug(LOGGER, "ORQUESTADOR: mensaje recibido '%d'", header.tipo);

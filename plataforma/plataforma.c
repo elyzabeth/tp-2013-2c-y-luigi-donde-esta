@@ -97,6 +97,7 @@ int enviarMsjAOrquestador (char msj) {
 	log_info(LOGGER, "Enviando mensaje al orquestador.");
 
 	ret =  write(hiloOrquestador.fdPipe[1], buffer_header, sizeof(header_t));
+	pthread_join(hiloOrquestador.tid, NULL);
 
 	free(buffer_header);
 
@@ -282,21 +283,23 @@ void finalizarPlataforma() {
 	// Libero logger
 	log_destroy(LOGGER);
 
+
 	// Libero a Willy!
 	// free (Willy);
 }
 
 void matarHilos() {
 
+	// Finalizo hilo orquetador
 	enviarMsjAOrquestador(FINALIZAR);
-	pthread_join(hiloOrquestador.tid, NULL);
+	sleep(1);
 
+	// Finalizo hilos planificadores
 	void _finalizar_hilo(char* key, t_planificador *planner){
 		enviarMsjAPlanificador(planner, FINALIZAR );
 		pthread_join(planner->tid, NULL);
 	}
 	dictionary_iterator(listaNiveles, (void*)_finalizar_hilo);
-
 
 }
 
