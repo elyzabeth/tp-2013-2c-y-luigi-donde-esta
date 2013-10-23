@@ -19,6 +19,8 @@
 #include <netinet/tcp.h>
 
 #include "../tads/tad_personaje.h"
+#include "../tads/tad_caja.h"
+#include "../tads/tad_nivel.h"
 
 #define ERROR		    0
 #define EXITO		    1
@@ -34,7 +36,13 @@
 #define SOLICITUD_RECURSO		0x16
 #define RECURSO_CONCEDIDO		0x17
 #define RECURSO_DENEGADO		0x18
+#define TURNO_CONCEDIDO			0x19
 #define FINALIZAR				0x20
+#define CAMBIOS_CONFIGURACION	0x21
+#define UBICACION_RECURSO		0x22
+#define MOVIMIENTO_REALIZADO	0x23
+
+
 
 
 #pragma pack(1)
@@ -53,10 +61,18 @@ int enviar(int sock, char *buffer, int tamano);
 int recibir(int sock, char *buffer, int tamano);
 int conectar(char ip[15+1], int puerto, int *sock);
 int aceptar_conexion(int *listener, int *nuevo_sock);
+
+int enviar_header (int sock, header_t *header);
 int recibir_header(int sock, header_t *header, fd_set *master/*por si se desconecta*/, int *seDesconecto);
+int enviar_nivel(int sock, t_nivel *nivel);
+int recibir_nivel(int sock, t_nivel *nivel, fd_set *master, int *seDesconecto);
+int enviar_personaje(int sock, t_personaje *personaje);
 int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seDesconecto);
+int enviar_caja(int sock, t_caja *caja);
+int recibir_caja(int sock, t_caja *caja, fd_set *master, int *seDesconecto);
 int aceptar_conexion(int *listener, int *nuevoSock);
 int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
+int quitar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int crear_listener(int puerto, int *listener);
 void genId(char idMsg[]);
 

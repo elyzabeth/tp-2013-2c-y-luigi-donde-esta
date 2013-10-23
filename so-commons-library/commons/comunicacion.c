@@ -28,6 +28,7 @@ int enviar(int sock, char *buffer, int tamano)
 	return EXITO;
 }
 
+
 int recibir(int sock, char *buffer, int tamano)
 {
 	int val;
@@ -95,6 +96,23 @@ int aceptar_conexion(int *listener, int *nuevo_sock)
   return EXITO;
 }
 
+int enviar_header (int sock, header_t *header) {
+	int ret;
+	char *buffer = calloc(1,sizeof(header_t));
+	memcpy(buffer, header, sizeof(header_t));
+
+	if ((ret = enviar(sock, buffer, sizeof(header_t))) != EXITO)
+	{
+		printf("enviar_header: ERROR al enviar header_t al fd %d\n\n", sock);
+		free(buffer);
+		return WARNING;
+	}
+
+	free(buffer);
+
+	return ret;
+}
+
 int recibir_header(int sock, header_t *header, fd_set *master/*por si se desconecta*/, int *seDesconecto)
 {
 	int ret;
@@ -134,20 +152,35 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 
 }
 
-int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seDesconecto)
+int enviar_nivel(int sock, t_nivel *nivel) {
+	int ret;
+	char *buffer_payload = calloc(1,sizeof(t_nivel));
+	memcpy(buffer_payload, nivel, sizeof(t_nivel));
+
+	if ((ret = enviar(sock, buffer_payload, sizeof(t_nivel))) != EXITO)
+	{
+		printf("enviar_nivel: ERROR al enviar t_nivel al fd %d\n\n", sock);
+		free(buffer_payload);
+		return WARNING;
+	}
+
+	free(buffer_payload);
+
+	return ret;
+}
+
+int recibir_nivel(int sock, t_nivel *nivel, fd_set *master, int *seDesconecto)
 {
 	int ret;
 	char *buffer = NULL;
-	//char strAux[50];
 
-	buffer = malloc(sizeof(t_personaje));
+	buffer = calloc(1, sizeof(t_nivel));
 	*seDesconecto = FALSE; /*False =0 define*/
 
-	printf("Espero recibir t_personaje (%lu)", sizeof(t_personaje));
-	ret = recibir(sock, buffer, sizeof(t_personaje));
+	printf("Espero recibir t_nivel (%u)", sizeof(t_nivel));
+	ret = recibir(sock, buffer, sizeof(t_nivel));
 
 	if (ret == WARNING) {
-	//	sprintf(strAux, "Se desconecto el socket: %d\n", sock);
 		FD_CLR(sock, master);
 		close(sock);
 		*seDesconecto = TRUE;
@@ -157,18 +190,126 @@ int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seD
 
 	if (ret == ERROR) {
 		free(buffer);
-		//return trazarError(errorTrace, "Error al recibir datos :S", ERROR,"comunicacion.h", "recibirHeader()");
 		return ERROR;
 	}
 
-	memcpy(personaje, buffer, sizeof(t_personaje)); /*ojo que el memcopy si lo haces afuera el primer parametro tiene que tener &*/
-	/* Por ejemplo si la estructua no fuera por referencia y fuera local, debes hacer asi:
-	memcpy(&header, buffer, sizeof(header_t));*/
+	memcpy(nivel, buffer, sizeof(t_nivel));
 
 	free(buffer);
 
 	return EXITO;
 
+}
+
+int enviar_personaje(int sock, t_personaje *personaje) {
+	int ret;
+	char *buffer_payload = calloc(1,sizeof(t_personaje));
+	memcpy(buffer_payload, personaje, sizeof(t_personaje));
+
+	if ((ret = enviar(sock, buffer_payload, sizeof(t_personaje))) != EXITO)
+	{
+		printf("enviar_nivel: ERROR al enviar t_personaje al fd %d\n\n", sock);
+		free(buffer_payload);
+		return WARNING;
+	}
+
+	free(buffer_payload);
+
+	return ret;
+}
+
+int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seDesconecto)
+{
+	int ret;
+	char *buffer = NULL;
+
+	buffer = calloc(1, sizeof(t_personaje));
+	*seDesconecto = FALSE; /*False =0 define*/
+
+	printf("Espero recibir t_personaje (%u)", sizeof(t_personaje));
+	ret = recibir(sock, buffer, sizeof(t_personaje));
+
+	if (ret == WARNING) {
+		FD_CLR(sock, master);
+		close(sock);
+		*seDesconecto = TRUE;
+		free(buffer);
+		return WARNING;
+	}
+
+	if (ret == ERROR) {
+		free(buffer);
+		return ERROR;
+	}
+
+	memcpy(personaje, buffer, sizeof(t_personaje));
+
+	free(buffer);
+
+	return EXITO;
+
+}
+
+int enviar_caja(int sock, t_caja *caja) {
+	int ret;
+	char *buffer_payload = calloc(1,sizeof(t_caja));
+	memcpy(buffer_payload, caja, sizeof(t_caja));
+
+	if ((ret = enviar(sock, buffer_payload, sizeof(t_caja))) != EXITO)
+	{
+		printf("enviar_nivel: ERROR al enviar t_caja al fd %d\n\n", sock);
+		free(buffer_payload);
+		return WARNING;
+	}
+
+	free(buffer_payload);
+
+	return ret;
+}
+
+
+int recibir_caja(int sock, t_caja *caja, fd_set *master, int *seDesconecto)
+{
+	int ret;
+	char *buffer = NULL;
+
+	buffer = calloc(1, sizeof(t_caja));
+	*seDesconecto = FALSE; /*False =0 define*/
+
+	printf("Espero recibir t_caja (%u)", sizeof(t_caja));
+	ret = recibir(sock, buffer, sizeof(t_caja));
+
+	if (ret == WARNING) {
+		FD_CLR(sock, master);
+		close(sock);
+		*seDesconecto = TRUE;
+		free(buffer);
+		return WARNING;
+	}
+
+	if (ret == ERROR) {
+		free(buffer);
+		return ERROR;
+	}
+
+	memcpy(caja, buffer, sizeof(t_caja));
+
+	free(buffer);
+
+	return EXITO;
+
+}
+
+int quitar_descriptor(int desc, fd_set *listaDesc, int *maxDesc)
+{
+	close(desc);
+	FD_CLR(desc, listaDesc);
+
+	if (desc == *maxDesc)
+	{
+		*maxDesc = *maxDesc-1;
+	}
+	return EXITO;
 }
 
 int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc)
