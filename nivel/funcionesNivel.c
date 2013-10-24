@@ -112,7 +112,36 @@ void agregarEnemigos() {
 
 }
 
-
+//SECCION de FUNCIONES PARA EL MOVIIENTO DE LOS ENEMIGOS
+void moverEnemigo(t_personaje* listaPJS, id, x, y) {
+    int32_t newx, newy =0;
+    moverPorX= id;
+    // hay personajes en el nivel?
+	if (count(listaPJS)) {
+		if (moverPorX){
+		// moverEnemigoEnX(listaPJS, id, x, y);
+		}
+		else{
+		// moverEnemigoEnY(listaPJS, id, x, y);
+		}
+	else //No hay personajes en el nivel
+		{
+			posValida=0;
+			while (!posValida){
+			movimientoL(x, y,newx,newy);
+			validarPosicionEnemigo(newx,newy);
+			}
+		}
+}
+/*
+void movimientoL(int32_t x,int32_t y, int32_t newx,int32_t newy);
+switch
+case (1)
+	randomizar
+	if(randomizar)posY++; posX=posX+2
+}
+*/
+//-----------------------------------------------------------------
 void inicializarNivelGui() {
 
 	GUIITEMS = list_create();

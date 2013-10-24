@@ -23,5 +23,20 @@ typedef struct enemy {
 t_hiloEnemigo* crearEnemigo(int32_t idEnemigo);
 void destruirEnemigo (t_hiloEnemigo* enemigo);
 
+//Esctructura enemigo para la logica
+ typedef struct {
+	 int32_t posx;
+	 int32_t posy;
+	 t_hiloEnemigo* ptr_hilo;
+	 int32_t moverPorX;//flag para q no se muevan por el mismo eje
+
+ } t_unEnemigo
+
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
+void moverEnemigoEnX(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
+void moverEnemigoEnY(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
+
+void moviemientoL(int32_t x,int32_t y, int32_t newx,int32_t newy);
+
 
 #endif /* TAD_ENEMIGO_H_ */
