@@ -7,6 +7,12 @@
 
 #include "funcionesNivel.h"
 
+t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo);//,int32_t x,int32_t y);
+void moverEnemigoPorEje(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
+
+void movimientoL(int32_t x,int32_t y,int32_t newx,int32_t newy);
+int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
 
 void* enemigo (t_hiloEnemigo *enemy) {
 
@@ -39,8 +45,8 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 		FD_ZERO (&read_fds);
 		read_fds = master;
-		timeout.tv_sec = 0; /// retardo en segundos timeout
-		timeout.tv_usec = sleepEnemigos; //retardo en microsegundos timeout
+		timeout.tv_sec = sleepEnemigos * 0.001; /// retardo en segundos timeout
+		timeout.tv_usec = 0; //retardo en microsegundos timeout
 
 		ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout);
 		if(ret == -1) {
@@ -87,4 +93,65 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	gui_borrarItem(id);
 
 	pthread_exit(NULL);
+}
+
+
+
+//SECCION de FUNCIONES PARA EL MOVIIENTO DE LOS ENEMIGOS
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo)//, x, y)
+{
+	int32_t x=0, y=0, newx=0, newy =0;
+	t_posicion posicionPJ;
+
+	// hay personajes en el nivel?
+	if (listaPJS != NULL) {
+		posicionPJ = buscarPJcercano(listaPJS, hiloEnemigo);
+		x = posicionPJ.x;
+		y = posicionPJ.y;
+		moverEnemigoPorEje(listaPJS,hiloEnemigo, x, y);
+	}
+
+	else{ //No hay personajes en el nivel
+		int posValida=0;
+		while (!posValida){
+			movimientoL(x, y,newx,newy);
+			validarPosicionEnemigo(newx,newy);
+		}
+	}
+}
+void moverEnemigoPorEje (t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo,int32_t x,int32_t y)
+{
+	int32_t newx=0, newy=0;
+	if (hiloEnemigo->enemigo.moverPorX){
+		// moverEnemigoEnX(listaPJS, id, x, y);
+		validarPosicionEnemigo(newx,newy);
+	}
+	else{
+		// moverEnemigoEnY(listaPJS, id, x, y);
+		validarPosicionEnemigo(newx,newy);
+	}
+}
+
+t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo) {
+	t_posicion pos;
+	//whlie (listaPJS!NULL)
+	//CALCULAR EN LA LISTA TODAS LAS DISTANCIAS para encontrar al mas cercano
+	return pos;
+}
+
+int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy) {
+	//FALTA desarrollar
+	//  que no pase por cajas ni por PJbloqueados ?? no estan sobre las cajas?
+	//MAXROWS MAXCOLS
+	return 0;
+}
+
+void movimientoL(int32_t x,int32_t y, int32_t newx,int32_t newy) {
+	/*
+	switch
+	case (1)
+		randomizar
+		if(randomizar)posY++; posX=posX+2
+	}
+	 */
 }

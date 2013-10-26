@@ -12,14 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "tad_posicion.h"
+
 #define MAXLENNOMBRE 50
 
-#pragma pack(1)
-typedef struct coord {
-	int32_t x;
-	int32_t y;
-} t_posicion;
-#pragma pack(0)
 
 #pragma pack(1)
 typedef struct personaje {

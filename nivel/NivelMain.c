@@ -75,66 +75,71 @@ void principal () {
 
 			for(i = 0; i <= max_desc; i++)
 			{
-				if (FD_ISSET(i, &read_fds) && (i == sock))
+				if (FD_ISSET(i, &read_fds))
 				{
-					log_debug(LOGGER, "1) recibo mensaje socket %d", i);
-					initHeader(&header);
-					recibir_header(i, &header, &master, &se_desconecto);
-
-					if(se_desconecto)
+					if (i == sock)
 					{
-						log_info(LOGGER, "Se desconecto el socket %d", i);
-						FD_CLR(i, &master);
-					} else {
+						log_debug(LOGGER, "1) recibo mensaje socket %d", i);
+						initHeader(&header);
+						recibir_header(i, &header, &master, &se_desconecto);
 
-						log_debug(LOGGER, "Llego mensaje %d (fd:%d)", header.tipo, i);
+						if(se_desconecto)
+						{
+							log_info(LOGGER, "Se desconecto el socket %d ", i);
+							quitar_descriptor(i, &master, &max_desc);
 
-						switch(header.tipo) {
-							case NIVEL_CONECTADO:
-								log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
-								break;
+						} else {
 
-							case SOLICITUD_UBICACION:
-								log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
-								tratarSolicitudUbicacion(i, header);
-								break;
+							log_debug(LOGGER, "Llego mensaje %d (fd:%d)", header.tipo, i);
 
-							case SOLICITUD_RECURSO:
-								log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
-								break;
-							default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
-								break;
+							switch(header.tipo) {
+								case NIVEL_CONECTADO:
+									log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
+									break;
+
+								case SOLICITUD_UBICACION:
+									log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
+									tratarSolicitudUbicacion(i, header, &master);
+									break;
+
+								case SOLICITUD_RECURSO:
+									log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
+									break;
+
+								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
+									break;
+							}
 						}
-					}
-				}
+					} else if (i == notifyFD) {
 
-				if (FD_ISSET(i, &read_fds) && (i == notifyFD))
-				{
-					log_info(LOGGER, "Hubo un cambio en el archivo de configuracion (fd:%d)", i);
-					read(notifyFD, buffer, BUF_LEN);
-					levantarCambiosArchivoConfiguracionNivel();
-					log_info(LOGGER, "Nuevos Valores: algoritmo=%s - quantum=%d - retardo=%d", configNivelAlgoritmo(), configNivelQuantum(), configNivelRetardo());
-				}
+						log_info(LOGGER, "Hubo un cambio en el archivo de configuracion (fd:%d)", i);
+						read(notifyFD, buffer, BUF_LEN);
+						levantarCambiosArchivoConfiguracionNivel();
+						log_info(LOGGER, "Nuevos Valores: algoritmo=%s - quantum=%d - retardo=%d", configNivelAlgoritmo(), configNivelQuantum(), configNivelRetardo());
 
-				if (FD_ISSET(i, &read_fds) && (i != sock) && (i != notifyFD))
-				{
-					log_debug(LOGGER, "2) actividad en el socket %d", i);
-					recibir_header(i, &header, &master, &se_desconecto);
+						enviarMsjCambiosConfiguracion(sock);
 
-					if(se_desconecto)
-					{
-						log_info(LOGGER, "Se desconecto el socket %d", i);
-						FD_CLR(i, &master);
 					} else {
-						log_debug(LOGGER, "2) Llego mensaje del socket %d: %d NO RECONOCIDO", i, header.tipo);
+
+						// NO ES NI notifyFD NI mi Planificador?? WTF ??
+						log_debug(LOGGER, "2) actividad en el socket %d", i);
+						initHeader(&header);
+						recibir_header(i, &header, &master, &se_desconecto);
+
+						if(se_desconecto)
+						{
+							log_info(LOGGER, "Se desconecto el socket %d", i);
+							//FD_CLR(i, &master);
+							quitar_descriptor(i, &master, &max_desc);
+						} else {
+							log_debug(LOGGER, "2) Llego mensaje del socket %d: %d NO RECONOCIDO", i, header.tipo);
+						}
+
 					}
-
 				}
-
 			}
-
 		}
-	}
+	} // Cierro while
 
 	pthread_join (hiloInterbloqueo.tid, NULL); //espera que finalice el hilo de interbloqueo para continuar
 
