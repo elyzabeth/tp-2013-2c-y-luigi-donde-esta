@@ -113,34 +113,59 @@ void agregarEnemigos() {
 }
 
 //SECCION de FUNCIONES PARA EL MOVIIENTO DE LOS ENEMIGOS
-void moverEnemigo(t_personaje* listaPJS, id, x, y) {
-    int32_t newx, newy =0;
-    moverPorX= id;
-    // hay personajes en el nivel?
-	if (count(listaPJS)) {
-		if (moverPorX){
-		// moverEnemigoEnX(listaPJS, id, x, y);
-		}
-		else{
-		// moverEnemigoEnY(listaPJS, id, x, y);
-		}
-	else //No hay personajes en el nivel
-		{
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo)//, x, y)
+{
+    int32_t x, y, newx, newy =0;
+	t_posicion posicionPJ;
+
+	// hay personajes en el nivel?
+	if (*listaPJS != NULL) {
+		posicionPJ = buscarPJcercano(listaPJS, hiloEnemigo);
+		x = posicionPJ->posx;
+		y = posicionPJ->posy;
+		moverEnemigoPorEje(listaPJS,hiloEnemigo, x, y);
+	}
+
+	else{ //No hay personajes en el nivel
 			posValida=0;
 			while (!posValida){
 			movimientoL(x, y,newx,newy);
 			validarPosicionEnemigo(newx,newy);
 			}
-		}
+	}
 }
-/*
+void moverEnemigoPorEje (t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y)
+{
+	if (hiloEnemigo->enemigo->moverPorX){
+			// moverEnemigoEnX(listaPJS, id, x, y);
+			validarPosicionEnemigo(newx,newy);
+			}
+			else{
+			// moverEnemigoEnY(listaPJS, id, x, y);
+				validarPosicionEnemigo(newx,newy);
+			}
+}
+
+t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo){
+	//whlie (listaPJS!NULL)
+		//CALCULAR EN LA LISTA TODAS LAS DISTANCIAS para encontrar al mas cercano
+}
+
+int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
+//FALTA desarrollar
+//  que no pase por cajas ni por PJbloqueados ?? no estan sobre las cajas?
+//MAXROWS MAXCOLS
+
 void movimientoL(int32_t x,int32_t y, int32_t newx,int32_t newy);
+/*
 switch
 case (1)
 	randomizar
 	if(randomizar)posY++; posX=posX+2
 }
 */
+
+
 //-----------------------------------------------------------------
 void inicializarNivelGui() {
 

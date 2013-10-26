@@ -16,6 +16,7 @@
 typedef struct enemy {
 	int32_t id;
 	pthread_t tid;
+	t_enemigo enemigo;
 	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura
 } t_hiloEnemigo;
 #pragma pack(0)
@@ -24,19 +25,22 @@ t_hiloEnemigo* crearEnemigo(int32_t idEnemigo);
 void destruirEnemigo (t_hiloEnemigo* enemigo);
 
 //Esctructura enemigo para la logica
- typedef struct {
+typedef struct {
 	 int32_t posx;
 	 int32_t posy;
-	 t_hiloEnemigo* ptr_hilo;
+} t_posicion;
+
+typedef struct {
+	 t_posicion posicionActual;
+	 t_posicion posicionAnterior;
 	 int32_t moverPorX;//flag para q no se muevan por el mismo eje
+ } t_enemigo;
 
- } t_unEnemigo
+t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo,int32_t x,int32_t y);
+void moverEnemigoPorEje(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
 
-void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
-void moverEnemigoEnX(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
-void moverEnemigoEnY(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
-
-void moviemientoL(int32_t x,int32_t y, int32_t newx,int32_t newy);
-
+void movimientoL(int32_t x,int32_t y,int32_t newx,int32_t newy);
+int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
 
 #endif /* TAD_ENEMIGO_H_ */
