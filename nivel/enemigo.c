@@ -50,7 +50,7 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 		ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout);
 		if(ret == -1) {
-			printf("Enemigo '%c': ERROR en select.", enemy->id);
+			printf("Enemigo '%c': ERROR en select.", id);
 			sleep(1);
 			continue;
 		}
@@ -73,12 +73,12 @@ void* enemigo (t_hiloEnemigo *enemy) {
 				if (FD_ISSET(i, &read_fds) && (i == enemy->fdPipe[0]))
 				{
 					header_t header;
-					log_info(LOGGER, "Enemigo '%c': Recibo mensaje desde Nivel por Pipe", enemy->id);
+					log_info(LOGGER, "Enemigo '%c': Recibo mensaje desde Nivel por Pipe", id);
 					read (enemy->fdPipe[0], &header, sizeof(header_t));
 
-					log_debug(LOGGER, "Enemigo '%c': mensaje recibido '%d'", enemy->id, header.tipo);
+					log_debug(LOGGER, "Enemigo '%c': mensaje recibido '%d'", id, header.tipo);
 					if (header.tipo == FINALIZAR) {
-						log_debug(LOGGER, "Enemigo '%c': '%d' ES FINALIZAR", enemy->id, header.tipo);
+						log_debug(LOGGER, "Enemigo '%c': '%d' ES FINALIZAR", id, header.tipo);
 						fin = true;
 						break;
 					}

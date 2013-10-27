@@ -14,7 +14,7 @@ int correrTest() {
 }
 
 // FUNCIONES de la interfaz grafica sincronizadas con semaforo mutex.
-// Porque se acceden consurrentemente desde varios hilos.
+// Porque se acceden concurrentemente desde varios hilos.
 void gui_borrarItem(char id) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
     bool _search_by_id(ITEM_NIVEL* item) {
@@ -52,6 +52,17 @@ void gui_dibujar() {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
 	nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
+
+// Funciones sincronizadas para acceder a listas compartidas
+
+int32_t obternerCantPersonajesEnJuego() {
+	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
+	int cant=0;
+	cant = list_size(listaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	return cant;
 }
 
 
@@ -101,7 +112,7 @@ void agregarEnemigos() {
 	t_hiloEnemigo *enemy;
 
 	for(i=0; i < cantEnemigos; i++) {
-		enemy = crearEnemigo(idEnemigo);
+		enemy = crearHiloEnemigo(idEnemigo);
 
 		// Creo el hilo para el enemigo
 		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_hiloEnemigo*)enemy);
@@ -140,9 +151,13 @@ void inicializarNivel () {
 	pipe(hiloInterbloqueo.fdPipe);
 
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
+	pthread_mutex_init (&mutexListaPersonajesEnJuego, NULL);
+	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
 
 	// inicializo listas
 	listaEnemigos = list_create();
+	listaPersonajesEnJuego = list_create();
+	listaPersonajesBloqueados = list_create();
 	listaRecursos = configNivelRecursos();
 
 	// inicializo inotify
@@ -202,7 +217,9 @@ void finalizarNivel () {
 
 	// Libero listas dinamicas
 	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
-	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirEnemigo);
+	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirHiloEnemigo);
+	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
+	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 
 	// Finalizo inotify
@@ -211,6 +228,8 @@ void finalizarNivel () {
 
 	// libero semaforos
 	pthread_mutex_destroy(&mutexLockGlobalGUI);
+	pthread_mutex_destroy(&mutexListaPersonajesEnJuego);
+	pthread_mutex_destroy(&mutexListaPersonajesBloqueados);
 
 	// Libero estructuras de configuracion
 	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE CONFIG-NIVEL '%s'", NOMBRENIVEL);

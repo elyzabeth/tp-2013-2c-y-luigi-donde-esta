@@ -41,12 +41,16 @@ char NOMBRENIVEL[20+1];
 
 int MAXROWS, MAXCOLS;
 t_list* GUIITEMS;
+t_list *listaPersonajesEnJuego;
+t_list *listaPersonajesBloqueados;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
 t_dictionary *listaRecursos;
 t_list *listaEnemigos;
 
 pthread_mutex_t mutexLockGlobalGUI;
+pthread_mutex_t mutexListaPersonajesEnJuego;
+pthread_mutex_t mutexListaPersonajesBloqueados;
 
 typedef struct {
 	pthread_t tid;
@@ -73,6 +77,9 @@ void gui_crearEnemigo(char id, int x, int y);
 void gui_crearCaja(char id, int x, int y, int instancias);
 void gui_crearPersonaje(char id, int x, int y);
 void gui_borrarItem(char id);
+
+// funciones listas compartidas
+int32_t obternerCantPersonajesEnJuego();
 
 //hilos
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo);

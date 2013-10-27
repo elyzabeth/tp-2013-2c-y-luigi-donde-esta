@@ -31,8 +31,8 @@ typedef struct enemy {
 } t_hiloEnemigo;
 #pragma pack(0)
 
-t_hiloEnemigo* crearEnemigo(int32_t idEnemigo);
-void destruirEnemigo (t_hiloEnemigo* enemigo);
+t_hiloEnemigo* crearHiloEnemigo(int32_t idEnemigo);
+void destruirHiloEnemigo (t_hiloEnemigo* enemigo);
 
 
 #endif /* TAD_ENEMIGO_H_ */
