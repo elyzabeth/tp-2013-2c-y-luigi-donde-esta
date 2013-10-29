@@ -104,6 +104,12 @@ void principal () {
 
 								case SOLICITUD_RECURSO:
 									log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
+									tratarSolicitudRecurso(i, header, &master);
+									break;
+
+								case MOVIMIENTO_REALIZADO:
+									log_info(LOGGER, "Llego mensaje MOVIMIENTO_REALIZADO (fd:%d)", i);
+									tratarMovimientoRealizado(i, header, &master);
 									break;
 
 								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);

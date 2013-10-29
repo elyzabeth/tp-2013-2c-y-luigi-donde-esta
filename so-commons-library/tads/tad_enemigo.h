@@ -16,17 +16,17 @@
 
 #pragma pack(1)
 typedef struct {
-	 t_posicion posicionActual;
-	 t_posicion posicionAnterior;
-	 int32_t moverPorX;//flag para q no se muevan por el mismo eje
- } t_enemigo;
+	int32_t id;
+	t_posicion posicionActual;
+	t_posicion posicionAnterior;
+	int32_t moverPorX;//flag para q no se muevan por el mismo eje
+} t_enemigo;
 #pragma pack(0)
 
 #pragma pack(1)
 typedef struct enemy {
-	int32_t id;
-	pthread_t tid;
 	t_enemigo enemigo;
+	pthread_t tid;
 	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura
 } t_hiloEnemigo;
 #pragma pack(0)

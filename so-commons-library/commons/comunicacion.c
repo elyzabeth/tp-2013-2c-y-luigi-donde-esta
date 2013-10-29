@@ -119,7 +119,7 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 	char *buffer = NULL;
 	//char strAux[50];
 
-	buffer = malloc(sizeof(header_t));
+	buffer = calloc(1, sizeof(header_t));
 	*seDesconecto = FALSE; /*False =0 define*/
 
 	ret = recibir(sock, buffer, sizeof(header_t));
@@ -144,8 +144,8 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 	/* Por ejemplo si la estructua no fuera por referencia y fuera local, debes hacer asi:
 	memcpy(&header, buffer, sizeof(header_t));*/
 
-	printf("sock: %d --- largo: %d ---- ", sock, header->largo_mensaje);
-	printf("tipo: %d\n", header->tipo);
+//	printf("sock: %d --- largo: %d ---- ", sock, header->largo_mensaje);
+//	printf("tipo: %d\n", header->tipo);
 	free(buffer);
 
 	return EXITO;
@@ -226,7 +226,7 @@ int recibir_personaje(int sock, t_personaje *personaje, fd_set *master, int *seD
 	buffer = calloc(1, sizeof(t_personaje));
 	*seDesconecto = FALSE; /*False =0 define*/
 
-	printf("Espero recibir t_personaje (%u)", sizeof(t_personaje));
+	//printf("Espero recibir t_personaje (%u)", sizeof(t_personaje));
 	ret = recibir(sock, buffer, sizeof(t_personaje));
 
 	if (ret == WARNING) {
@@ -276,7 +276,7 @@ int recibir_caja(int sock, t_caja *caja, fd_set *master, int *seDesconecto)
 	buffer = calloc(1, sizeof(t_caja));
 	*seDesconecto = FALSE; /*False =0 define*/
 
-	printf("Espero recibir t_caja (%u)", sizeof(t_caja));
+	//printf("Espero recibir t_caja (%u)", sizeof(t_caja));
 	ret = recibir(sock, buffer, sizeof(t_caja));
 
 	if (ret == WARNING) {

@@ -16,7 +16,7 @@ int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
 
 void* enemigo (t_hiloEnemigo *enemy) {
 
-	int32_t id = (int32_t) enemy->id;
+	int32_t id = (int32_t) enemy->enemigo.id;
 	int32_t sleepEnemigos;
 	fd_set master;
 	fd_set read_fds;
@@ -45,8 +45,9 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 		FD_ZERO (&read_fds);
 		read_fds = master;
-		timeout.tv_sec = sleepEnemigos * 0.001; /// retardo en segundos timeout
-		timeout.tv_usec = 0; //retardo en microsegundos timeout
+		//timeout.tv_sec = sleepEnemigos * 0.001; /// retardo en segundos timeout
+		timeout.tv_sec = 0; /// retardo en segundos timeout
+		timeout.tv_usec = sleepEnemigos * 1000; //retardo en microsegundos timeout
 
 		ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout);
 		if(ret == -1) {
