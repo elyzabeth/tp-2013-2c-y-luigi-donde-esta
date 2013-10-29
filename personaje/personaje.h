@@ -17,6 +17,7 @@
 #include "commons/comunicacion.h"
 #include "commons/funciones_comunes.h"
 #include "tads/tad_personaje.h"
+#include "tads/tad_caja.h"
 
 t_log* LOGGER;
 int32_t VIDAS;
@@ -48,9 +49,16 @@ typedef struct personaje_s
 typedef struct hilo {
 	t_personaje personaje;
 	t_objetivosxNivel objetivos;
+	t_posicion posicionActual;
+	int32_t objetivosConseguidos;
 	int32_t tid;
 	int32_t fdPipe[2];
 } t_hilo_personaje;
+
+typedef struct {
+	char simbolo;
+	t_posicion posicion;
+} t_proximoObjetivo;
 
 personaje_t personaje;
 
@@ -73,8 +81,13 @@ void manejoSIGTERM();
 int32_t incrementarVida();
 int32_t decrementarVida();
 
-int recibirHeaderNuevoMsj (int sock, header_t *header) ;
+int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master);
 int enviarMsjNuevoPersonaje( int sock );
-int enviarInfoPersonaje(int sock);
+int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);
+int enviarInfoPersonaje2(int sock);
+int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
+int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN );
+int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
+int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 
 #endif /* PERSONAJE_H_ */

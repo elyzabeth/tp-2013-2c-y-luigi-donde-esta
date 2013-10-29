@@ -100,50 +100,70 @@ void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje) {
 	free(hiloPersonaje);
 }
 
-int recibirHeaderNuevoMsj (int sock, header_t *header) {
+int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master) {
 
 	pthread_mutex_lock (&mutexEnvioMensaje);
-	char *buffer_header;
-	int ret;
+	int ret, se_desconecto;
 
-	buffer_header = calloc(1,sizeof(header_t));
-	memset(&header, '\0', sizeof(header_t));
+	ret = recibir_header(sock, header, master, &se_desconecto);
 
-	ret = recibir (sock, buffer_header, sizeof(header_t));
-	memcpy(&header, buffer_header, sizeof(header_t));
-
-	free(buffer_header);
 	pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
 
 int enviarMsjNuevoPersonaje( int sock ) {
+
 	pthread_mutex_lock (&mutexEnvioMensaje);
 
 	header_t header;
-	char *buffer_header;
 	int ret;
 
-	buffer_header = calloc(1,sizeof(header_t));
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = NUEVO_PERSONAJE;
 	header.largo_mensaje = 0;
 
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
+	log_debug(LOGGER,"enviarMsjNuevoPersonaje: NUEVO_PERSONAJE sizeof(header): %d, largo mensaje: %d \n", sizeof(header), header.largo_mensaje);
 
-	log_debug(LOGGER,"sizeof(header): %d, largo mensaje: %d  buffer_header: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
-
-	ret =  enviar(sock, buffer_header, sizeof(header_t));
-	free(buffer_header);
+	ret =  enviar_header(sock, &header);
 
 	pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
 
-int enviarInfoPersonaje(int sock) {
+int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN) {
+	header_t header;
+	t_personaje yo = hiloPxN->personaje;
+
+	log_debug(LOGGER, "Envio mensaje con info del personaje");
+
+//	log_debug(LOGGER, "Datos: (%s, %d, %c)",  configPersonajeNombre(),configPersonajeSimbolo(), configPersonajeSimbolo());
+	log_debug(LOGGER, "Datos: (%s, %d, %c)",  yo.nombre, yo.id, yo.id);
+
+	initHeader(&header);
+	header.tipo = CONECTAR_NIVEL;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "Envio header CONECTAR_NIVEL %d", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
+	{
+		log_error(LOGGER,"Error al enviar header CONECTAR_NIVEL\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"Error al enviar informacion del personaje\n\n");
+		return WARNING;
+	}
+
+	return EXITO;
+}
+
+
+int enviarInfoPersonaje2(int sock) {
 	// PRUEBA
 	header_t header;
 	t_personaje yo;
@@ -188,6 +208,145 @@ int enviarInfoPersonaje(int sock) {
 	}
 
 	free(buffer);
+
+	return EXITO;
+}
+
+int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	header_t header;
+	t_personaje yo = hiloPxN->personaje;
+
+	yo.recurso = proximoObjetivo->simbolo;
+
+	initHeader(&header);
+	header.tipo = SOLICITUD_UBICACION;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarSolicitudUbicacion: Envio header_t SOLICITUD_UBICACION (size:%d)", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudUbicacion: Error al enviar header SOLICITUD_UBICACION\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarSolicitudUbicacion: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudUbicacion: Error al enviar t_personaje de SOLICITUD_UBICACION\n\n");
+		return WARNING;
+	}
+
+	return EXITO;
+}
+
+int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN ) {
+	int ret, se_desconecto;
+	t_caja caja;
+
+	log_debug(LOGGER, "recibirUbicacionRecursoPlanificador: Espero recibir estructura t_caja (size:%d)...", sizeof(t_caja));
+
+	if ((ret = recibir_caja(sock, &caja, master, &se_desconecto))!=EXITO) {
+		log_error(LOGGER, "recibirUbicacionRecursoPlanificador: ERROR al recibir t_caja con ubicacion del recurso");
+	}
+
+	log_debug(LOGGER, "recibirUbicacionRecursoPlanificador: Llego: %s (%c) posicion (%d, %d).", caja.RECURSO, caja.SIMBOLO, caja.POSX, caja.POSY);
+
+	// TODO hacer algo con la info que llega!
+	proximoObjetivo->posicion.x = caja.POSX;
+	proximoObjetivo->posicion.y = caja.POSY;
+
+	return ret;
+}
+
+int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	header_t header;
+	t_personaje yo = hiloPxN->personaje;
+
+	yo.recurso = proximoObjetivo->simbolo;
+
+	initHeader(&header);
+	header.tipo = SOLICITUD_RECURSO;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarSolicitudRecurso: Envio header_t SOLICITUD_RECURSO (size:%d)", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar header SOLICITUD_RECURSO\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarSolicitudRecurso: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar t_personaje de SOLICITUD_RECURSO\n\n");
+		return WARNING;
+	}
+
+	return EXITO;
+}
+
+int realizarMovimiento(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+	header_t header;
+	int ret;
+
+	log_info(LOGGER, "Debo calcular proximo movimiento...");
+	if(hiloPxN->posicionActual.x+1<= proximoObjetivo->posicion.x ){
+		hiloPxN->posicionActual.x+=1;
+	}
+	if(hiloPxN->posicionActual.y+1<= proximoObjetivo->posicion.y ){
+		hiloPxN->posicionActual.y+=1;
+	}
+
+	hiloPxN->personaje.posActual = hiloPxN->posicionActual;
+
+	// Informar movimiento realizado
+	initHeader(&header);
+	header.tipo = MOVIMIENTO_REALIZADO;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	if (enviar_header(sock, &header) != EXITO){
+		log_error(LOGGER, "Error al enviar header MOVIMIENTO_REALIZADO");
+	}
+
+	ret = enviar_personaje(sock, &hiloPxN->personaje);
+
+	return ret;
+}
+
+int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	log_info(LOGGER, "gestionarTurnoConcedido.");
+
+	// SI no tengo las coordenadas del proximo objetivo las solicito.
+	if(!proximoObjetivo->posicion.x && !proximoObjetivo->posicion.y) {
+		log_debug(LOGGER, "No tengo coordenadas de proximo objetivo debo solicitar ubicacion.");
+		enviarSolicitudUbicacion(sock, proximoObjetivo, hiloPxN);
+
+	} else if (!calcularDistancia(hiloPxN->posicionActual.x, hiloPxN->posicionActual.y, proximoObjetivo->posicion.x, proximoObjetivo->posicion.y)) {
+		// SI mi posicion actual es = a la posicion del objetivo
+		// Solicitar una instancia del recurso al Planificador.
+		log_debug(LOGGER, "Estoy en la caja de recursos, debo solicitar una instancia.");
+		enviarSolicitudRecurso(sock, proximoObjetivo, hiloPxN);
+	} else {
+		// SI tengo coordenadas del objetivo pero no es igual a mi posicion actual.
+		// Calcular proximo movimiento, avanzar y notificar al Planificador con un mensaje.
+		log_debug(LOGGER, "Debo realizar proximo movimiento...");
+		realizarMovimiento(sock, proximoObjetivo, hiloPxN);
+	}
+
+	return EXITO;
+}
+
+int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	log_info(LOGGER, "gestionarRecursoConcedido.");
+	//TODO agregar logica...
+	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
+	//	volverá al punto 3) (esperar TURNO_CONCEDIDO), o, si ya cumplió sus objetivos del Nivel
+	// Notificar a su Planificador que completó los objetivos de ese nivel y desconectarse.
+
 
 	return EXITO;
 }
