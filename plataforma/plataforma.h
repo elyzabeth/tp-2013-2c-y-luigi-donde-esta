@@ -15,6 +15,8 @@
 #include "tads/tad_personaje.h"
 #include "tads/tad_nivel.h"
 #include "tads/tad_planificador.h"
+#include "tads/tad_caja.h"
+
 
 typedef struct config_plataforma_s
 {
@@ -53,7 +55,7 @@ void finalizarPlataforma();
 void principal();
 void matarHilos();
 
-void nuevoPersonaje(int fdPersonaje, fd_set *master);
+void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc);
 void nuevoNivel(int fdNivel, header_t header) ;
 
 // hilos
@@ -66,6 +68,7 @@ void plat_signal_callback_handler(int signum);
 //Listas compartidas
 void agregarPersonajeNuevo(t_personaje* personaje);
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel);
+t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
 void agregarPersonajeEnJuego(t_personaje* personaje);
 void moverPersonajesAFinAnormalxNivel (char *nivel);
 bool existeNivel(char* nivel);

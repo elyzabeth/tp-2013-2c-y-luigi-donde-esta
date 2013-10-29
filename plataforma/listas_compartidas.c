@@ -33,6 +33,26 @@ t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 	return personaje;
 }
 
+t_personaje* quitarPersonajexFD(int32_t fdPersonaje) {
+
+	t_personaje *personaje;
+	bool _buscar_x_fd(t_personaje *p) {
+		return (p->fd == fdPersonaje);
+	}
+	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_fd);
+	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+
+	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
+	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_x_fd);
+	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+
+	pthread_mutex_lock (&mutexListaPersonajesFinAnormal);
+	list_add(listaPersonajesFinAnormal, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
+
+	return personaje;
+}
 /**
  * @NAME: agregarPersonajeEnJuego
  * @DESC: Agrega un personaje a la lista compartida listaPersonajesEnJuego

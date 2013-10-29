@@ -22,6 +22,9 @@ t_planificador* crearPlanificador (t_nivel nivel) {
 		perror ("tad_nivel-crearNivel: No se puede crear Tuberia de comunicacion.");
 		exit (-1);
 	}
+	nuevoPlanificador->personajeEjecutando = NULL;
+	nuevoPlanificador->personajesListos = queue_create();
+	nuevoPlanificador->personajesBloqueados = queue_create();
 
 	return nuevoPlanificador;
 }
@@ -29,5 +32,10 @@ t_planificador* crearPlanificador (t_nivel nivel) {
 void destruirPlanificador (t_planificador* planificador) {
 	close(planificador->fdPipe[0]);
 	close(planificador->fdPipe[1]);
+
+	planificador->personajeEjecutando = NULL;
+	queue_destroy(planificador->personajesListos);
+	queue_destroy(planificador->personajesBloqueados);
+
 	free(planificador);
 }

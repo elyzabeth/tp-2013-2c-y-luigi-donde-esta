@@ -67,7 +67,7 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 					{
 						case NUEVO_PERSONAJE:
 							log_info(LOGGER, "ORQUESTADOR: NUEVO PERSONAJE");
-							nuevoPersonaje(nuevo_sock, &master);
+							nuevoPersonaje(nuevo_sock, &master, &max_desc);
 							break;
 
 						case NUEVO_NIVEL:
@@ -90,7 +90,8 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 					if (header.tipo == FINALIZAR) {
 						log_debug(LOGGER, "ORQUESTADOR: '%d' ES FINALIZAR", header.tipo);
 						fin = true;
-						FD_CLR(hiloOrquestador->fdPipe[0], &master);
+						//FD_CLR(hiloOrquestador->fdPipe[0], &master);
+						quitar_descriptor(i, &master, &max_desc);
 						break;
 					}
 
@@ -108,7 +109,8 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 						// plataforma.personajes_en_juego--;
 
 						// Quito el descriptor del set
-						FD_CLR(i, &master);
+						//FD_CLR(i, &master);
+						quitar_descriptor(i, &master, &max_desc);
 					}
 
 					if ((header.tipo == CONECTAR_NIVEL) && (se_desconecto != 1))

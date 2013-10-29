@@ -125,7 +125,7 @@ int enviarMsjNivelConectado (int fd) {
 	return ret;
 }
 
-void nuevoPersonaje(int fdPersonaje, fd_set *master) {
+void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 	t_planificador *planner;
 	header_t header;
 	t_personaje *personaje;
@@ -139,7 +139,7 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master) {
 		log_error(LOGGER, "Error al enviar header PERSONAJE_CONECTADO\n\n");
 
 	} else {
-		// TODO quitar hardcodeo!!
+
 		// recibir informacion del personaje.
 		// SI existe el nivel solicitado lo agrego si no, enviar mensaje de nivel inexistente??
 
@@ -149,7 +149,8 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master) {
 
 		if (se_desconecto) {
 			log_info(LOGGER, "El personaje se desconecto");
-			FD_CLR(fdPersonaje, master);
+			//FD_CLR(fdPersonaje, master);
+			quitar_descriptor(fdPersonaje, master, max_desc);
 		}
 
 		if (!se_desconecto && header.tipo == CONECTAR_NIVEL) {
@@ -193,7 +194,8 @@ void nuevoNivel(int fdNivel, header_t header) {
 	/************************************************/
 	buffer = calloc(1, header.largo_mensaje);
 	recibir (fdNivel, buffer, header.largo_mensaje);
-	memset(&nivel, '\0', sizeof(t_nivel));
+	//memset(&nivel, '\0', sizeof(t_nivel));
+	initNivel(&nivel);
 	memcpy(&nivel, buffer, sizeof(t_nivel));
 
 	nivel.fdSocket = fdNivel;
@@ -201,7 +203,7 @@ void nuevoNivel(int fdNivel, header_t header) {
 
 	log_info(LOGGER, "Se conecto el Nivel: %s\n", nivel.nombre);
 
-	// TODO PRIMERO LIMPIAR NIVELES EN ESTADO FINALIZADO
+	// PRIMERO QUITO NIVELES EN ESTADO FINALIZADO
 	eliminarNivelesFinalizados();
 	if (!existeNivel(nivel.nombre)) {
 

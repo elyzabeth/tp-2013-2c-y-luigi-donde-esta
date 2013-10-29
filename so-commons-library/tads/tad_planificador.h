@@ -9,7 +9,10 @@
 #define TAD_PLANIFICADOR_H_
 
 #include <unistd.h>
+
+#include "../commons/collections/queue.h"
 #include "tad_nivel.h"
+#include "tad_personaje.h"
 
 typedef enum {
 	NUEVO,
@@ -22,6 +25,9 @@ typedef struct planner {
 	int32_t fdPipe[2]; // fdPipe[0] de lectura/ fdPipe[1] de escritura
 	pthread_t tid;		// Identidicador del hilo
 	t_estado estado;
+	t_personaje *personajeEjecutando;
+	t_queue *personajesListos;
+	t_queue *personajesBloqueados;
 } t_planificador;
 
 t_planificador* crearPlanificador (t_nivel nivel);
