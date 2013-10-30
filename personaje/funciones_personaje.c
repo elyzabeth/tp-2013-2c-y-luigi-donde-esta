@@ -49,8 +49,8 @@ void finalizarPersonaje() {
 
 void esperarHilosxNivel() {
 
-	void _join_thread (t_hilo_personaje hilo){
-		pthread_join(hilo.tid, NULL);
+	void _join_thread (t_hilo_personaje *hilo){
+		pthread_join(hilo->tid, NULL);
 	}
 
 	list_iterate(listaHilosxNivel, (void*)_join_thread);
@@ -71,12 +71,14 @@ void levantarHilosxNivel() {
 		hiloPersonaje->objetivos = *oxn;
 
 		list_add(listaHilosxNivel, hiloPersonaje);
-
+log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
 		// Creo el hilo para el nivel
 		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+		//pthread_create (&hiloPersonaje->tid, NULL, (void*)test, (t_hilo_personaje*)hiloPersonaje);
 
-		pthread_join(hiloPersonaje->tid, NULL);
-		break;
+log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
+		//pthread_join(hiloPersonaje->tid, NULL);
+		//break;
 	}
 
 }
@@ -342,11 +344,17 @@ int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
 
 	log_info(LOGGER, "gestionarRecursoConcedido.");
-	//TODO agregar logica...
+	hiloPxN->objetivosConseguidos++;
+	// TODO agregar logica...
 	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
 	//	volverá al punto 3) (esperar TURNO_CONCEDIDO), o, si ya cumplió sus objetivos del Nivel
 	// Notificar a su Planificador que completó los objetivos de ese nivel y desconectarse.
-
+	if(hiloPxN->objetivosConseguidos == hiloPxN->objetivos.totalObjetivos){
+		// TODO Se completo el nivel
+	} else if (hiloPxN->objetivosConseguidos < hiloPxN->objetivos.totalObjetivos) {
+		// Todavia quedan recursos por conseguir.
+		proximoObjetivo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+	}
 
 	return EXITO;
 }

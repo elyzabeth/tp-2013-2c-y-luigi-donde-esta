@@ -7,8 +7,6 @@
 
 #include "personaje.h"
 
-int test ();
-
 int main (int argc, char *argv[]) {
 
 	signal(SIGINT, per_signal_callback_handler);
@@ -19,8 +17,8 @@ int main (int argc, char *argv[]) {
 	inicializarPersonaje();
 
 	// TODO agregar logica del personaje
-	//principal(argc, argv);
-	test ();
+	principal(argc, argv);
+	//test ();
 
 	finalizarPersonaje();
 
@@ -49,7 +47,7 @@ int principal(int argc, char *argv[]) {
 	return 0;
 }
 
-void* personajexNivel (t_hilo_personaje *hiloPxN) {
+void* test (t_hilo_personaje *hiloPxN) {
 	int sock = -1;
 	header_t header;
 	fd_set master;
@@ -87,7 +85,7 @@ sleep(1);
 		ret = select(max_desc+1, &read_fds, NULL, NULL, NULL);
 
 		if(ret == -1) {
-			printf("Personaje %s '%c': ERROR en select.", hiloPxN->personaje.nombre, hiloPxN->personaje.id);
+			printf("Personaje %s '%c': ERROR en select en %s", hiloPxN->personaje.nombre, hiloPxN->personaje.id, hiloPxN->personaje.nivel);
 			sleep(1);
 		}
 
@@ -152,7 +150,7 @@ sleep(1);
 
 
 
-int test () {
+void* personajexNivel (t_hilo_personaje *hiloPxN) {
 
 	int id_proceso;
 	int sock = -1;
@@ -164,25 +162,22 @@ int test () {
 	int i, ret;
 	int fin = false;
 
-	t_hilo_personaje hiloPxN;
-	memset(&hiloPxN,'\0', sizeof(t_hilo_personaje));
-
 	t_proximoObjetivo proximoObjetivo;
-	memset(&proximoObjetivo,'\0', sizeof(t_proximoObjetivo));
+	memset(&proximoObjetivo, 0, sizeof(t_proximoObjetivo));
 
 
-	t_objetivosxNivel *oxn = (t_objetivosxNivel*)queue_pop(planDeNiveles);
-	hiloPxN.objetivos = *oxn;
-	proximoObjetivo.simbolo = hiloPxN.objetivos.objetivos[hiloPxN.objetivosConseguidos];
-	hiloPxN.personaje.id = configPersonajeSimbolo();
-	strcpy(hiloPxN.personaje.nombre, configPersonajeNombre());
-	strcpy(hiloPxN.personaje.nivel, oxn->nivel);
-	hiloPxN.personaje.posActual.x = 0;
-	hiloPxN.personaje.posActual.y = 0;
-	hiloPxN.personaje.recurso = proximoObjetivo.simbolo;
+	//t_objetivosxNivel *oxn = (t_objetivosxNivel*)queue_pop(planDeNiveles);
+//	hiloPxN.objetivos = *oxn;
+//	hiloPxN.personaje.id = configPersonajeSimbolo();
+//	strcpy(hiloPxN.personaje.nombre, configPersonajeNombre());
+//	strcpy(hiloPxN.personaje.nivel, oxn->nivel);
+//	hiloPxN.personaje.posActual.x = 0;
+//	hiloPxN.personaje.posActual.y = 0;
+//	hiloPxN.personaje.recurso = proximoObjetivo.simbolo;
 
-	//char *buffer_header;
-	//buffer_header = calloc(1,sizeof(header_t));
+	proximoObjetivo.simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+	proximoObjetivo.posicion.x=0;
+	proximoObjetivo.posicion.y=0;
 
 	id_proceso = getpid();
 	system("clear");
@@ -194,12 +189,16 @@ int test () {
 	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
 
 	FD_ZERO(&master);
+
+	// Agrego descriptor del Pipe con Nivel.
+	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
+
 	agregar_descriptor(sock, &master, &max_desc);
 
 	if (enviarMsjNuevoPersonaje(sock) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE\n\n");
-		return WARNING;
+		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE %s \n\n", hiloPxN->personaje.nivel);
+		fin = true;
 	}
 
 	while(!fin)
@@ -210,7 +209,7 @@ int test () {
 		ret = select(max_desc+1, &read_fds, NULL, NULL, NULL);
 
 		if(ret == -1) {
-			printf("Personaje: ERROR en select.");
+			printf("Personaje: ERROR en select en %s", hiloPxN->personaje.nivel);
 			sleep(1);
 		}
 
@@ -220,30 +219,46 @@ int test () {
 
 				if (FD_ISSET(i, &read_fds))
 				{
-					if (i == sock) {
+					// Pregunto si el socket con actividad es el del Pipe
+					if( i == hiloPxN->fdPipe[0])
+					{
+						initHeader(&header);
+						log_info(LOGGER, "Personaje '%c': Recibo mensaje desde Main por Pipe", hiloPxN->personaje.id);
+						read (hiloPxN->fdPipe[0], &header, sizeof(header_t));
+
+						log_debug(LOGGER, "Personaje '%c': mensaje recibido '%d'", hiloPxN->personaje.id, header.tipo);
+						if (header.tipo == FINALIZAR) {
+							log_debug(LOGGER, "Personaje '%c': '%d' ES FINALIZAR", hiloPxN->personaje.id, header.tipo);
+							fin = true;
+							break;
+						}
+
+					} else if (i == sock) {
+
+						// Si NO es un mensaje del hilo principal por Pipe es un mensaje del proceso Plataforma.
 
 						initHeader(&header);
 						recibirHeaderNuevoMsj(sock, &header, &master);
 
-						switch (header.tipo) /*recibo estado */
+						switch (header.tipo)
 						{
-							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO");
-							enviarInfoPersonaje(sock, &hiloPxN);
+							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO en %s", hiloPxN->personaje.nivel);
+							enviarInfoPersonaje(sock, hiloPxN);
 							break;
 
-							case TURNO_CONCEDIDO: log_info(LOGGER,"TURNO_CONCEDIDO");
-							gestionarTurnoConcedido(sock, &proximoObjetivo, &hiloPxN);
+							case TURNO_CONCEDIDO: log_info(LOGGER,"TURNO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarTurnoConcedido(sock, &proximoObjetivo, hiloPxN);
 							break;
 
-							case UBICACION_RECURSO: log_info(LOGGER, "UBICACION_RECURSO");
-							recibirUbicacionRecursoPlanificador( sock, &master, &proximoObjetivo, &hiloPxN);
+							case UBICACION_RECURSO: log_info(LOGGER, "UBICACION_RECURSO en %s", hiloPxN->personaje.nivel);
+							recibirUbicacionRecursoPlanificador( sock, &master, &proximoObjetivo, hiloPxN);
 							break;
 
-							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO");
-							gestionarRecursoConcedido(sock, &proximoObjetivo, &hiloPxN);
+							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarRecursoConcedido(sock, &proximoObjetivo, hiloPxN);
 							break;
 
-							case OTRO: log_info(LOGGER, "que otro??");
+							case OTRO: log_info(LOGGER, "que otro?? %s", hiloPxN->personaje.nivel);
 							break;
 
 						}
@@ -258,5 +273,7 @@ int test () {
 
 	}
 
-	return 0;
+	log_info(LOGGER, "FINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
+
+	pthread_exit(NULL);
 }

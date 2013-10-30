@@ -86,9 +86,15 @@ void moverPersonajeABloqueados(char simboloPersonaje) {
 
 }
 
+void agregarPersonajeEnJuego(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	list_add(listaPersonajesEnJuego, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+}
+
 t_caja* obtenerRecurso(char simboloRecurso) {
 	pthread_mutex_lock (&mutexListaRecursos);
-	t_caja* caja;
+	t_caja* caja = NULL;
 	char simbolo[2] = {0};
 	simbolo[0] = simboloRecurso;
 	caja = dictionary_get(listaRecursos, simbolo);
@@ -445,7 +451,13 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	}
 
 	log_debug(LOGGER,"tratarSolicitudUbicacion: Llego: %s, %c, recurso '%c' \n\n", personaje.nombre, personaje.id, personaje.recurso);
-	recurso = configNivelRecurso(personaje.recurso);
+	recurso = obtenerRecurso(personaje.recurso);
+
+	if (recurso == NULL)
+		log_error(LOGGER, "tratarSolicitudUbicacion: obtenerRecurso('%c') devuelve NULL!! ", personaje.recurso);
+	log_debug(LOGGER, "Recurso: %s %s '%c' (%d,%d) = %d", recurso->NOMBRE, recurso->RECURSO, recurso->SIMBOLO, recurso->POSX, recurso->POSY, recurso->INSTANCIAS);
+
+	initCaja(&caja);
 	caja = *recurso;
 
 	// Envio caja con ubicacion al planificador
@@ -463,8 +475,9 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 		return ret;
 	}
 
-	// TODO agegar personaje a lista de personajes en juego
+	// TODO agregar personaje a lista de personajes en juego
 	// y a la lista GUIITEMS para graficarlo.
+	agregarPersonajeEnJuego(crearPersonajeDesdePersonaje(personaje));
 	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;

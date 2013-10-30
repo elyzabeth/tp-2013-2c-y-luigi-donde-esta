@@ -83,6 +83,7 @@ void gui_borrarItem(char id);
 // funciones listas compartidas
 int32_t obternerCantPersonajesEnJuego();
 void moverPersonajeABloqueados(char simboloPersonaje);
+void agregarPersonajeEnJuego(t_personaje *personaje);
 
 //hilos
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo);

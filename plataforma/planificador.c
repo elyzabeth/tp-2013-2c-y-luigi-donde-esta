@@ -162,9 +162,11 @@ void* planificador(t_planificador *planner) {
 								break;
 
 							case RECURSO_CONCEDIDO: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_CONCEDIDO", planner->nivel.nombre);
+								recibirRecursoConcedido(i, header, &master, planner);
 								break;
 
 							case RECURSO_DENEGADO: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_DENEGADO", planner->nivel.nombre);
+								recibirRecursoDenegado(i, header, &master, planner);
 								break;
 
 							case OTRO: log_info(LOGGER, "PLANIFICADOR %s: OTRO", planner->nivel.nombre);
@@ -433,6 +435,26 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 
 	return ret;
 
+}
+
+int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
+	int ret;
+
+	// Envio mensaje de recurso concedido al personaje
+	log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", planner->personajeEjecutando->recurso, planner->personajeEjecutando->nombre, planner->personajeEjecutando->nivel);
+	ret = enviar_header(planner->personajeEjecutando->fd, &header);
+
+	return ret;
+}
+
+int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
+	int ret = 0;
+
+	planner->personajeEjecutando->criterio = 0;
+	moverPersonajeListoABloqueado(planner, planner->personajeEjecutando->id);
+	planner->personajeEjecutando = NULL;
+
+	return ret;
 }
 
 int enviarMsjTurnoConcedido(t_personaje *personaje, char* nivel) {

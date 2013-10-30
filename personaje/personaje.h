@@ -72,6 +72,8 @@ void finalizarPersonaje();
 void levantarHilosxNivel() ;
 void esperarHilosxNivel();
 void* personajexNivel (t_hilo_personaje *hiloPxN);
+void* test (t_hilo_personaje *hiloPxN);
+
 t_hilo_personaje* crearHiloPersonaje();
 void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje);
 
