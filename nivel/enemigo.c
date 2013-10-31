@@ -4,7 +4,7 @@
  *  Created on: Oct 11, 2013
  *      Author: elizabeth
  */
-
+#include <stdlib.h>
 #include "funcionesNivel.h"
 
 t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
@@ -97,7 +97,7 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 
 
-//SECCION de FUNCIONES PARA EL MOVIIENTO DE LOS ENEMIGOS
+//SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
 void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo)//, x, y)
 {
 	int32_t x=0, y=0, newx=0, newy =0;
@@ -134,24 +134,46 @@ void moverEnemigoPorEje (t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo,int32_
 
 t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo) {
 	t_posicion pos;
-	//whlie (listaPJS!NULL)
+	//while (listaPJS!NULL)
 	//CALCULAR EN LA LISTA TODAS LAS DISTANCIAS para encontrar al mas cercano
 	return pos;
 }
 
 int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy) {
 	//FALTA desarrollar
-	//  que no pase por cajas ni por PJbloqueados ?? no estan sobre las cajas?
+	//  que no pase por cajas
 	//MAXROWS MAXCOLS
 	return 0;
 }
 
-void movimientoL(int32_t x,int32_t y, int32_t newx,int32_t newy) {
-	/*
-	switch
-	case (1)
-		randomizar
-		if(randomizar)posY++; posX=posX+2
+void movimientoL(int32_t posX,int32_t posY, int32_t* newx,int32_t* newy) {
+	int r = rand() % 8;
+	switch(r) {
+		case 1:
+			posY++; posX=posX+2;
+		break;
+		case 2:
+			posY++; posX=posX-2;
+		break;
+		case 3:
+			posY--; posX=posX+2;
+		break;
+		case 4:
+			posY--; posX=posX-2;
+		break;
+		case 5:
+			posY=posY+2; posX++;
+		break;
+		case 6:
+			posY=posY-2; posX++;
+		break;
+		case 7:
+			posY=posY+2; posX--;
+		break;
+		case 0:
+			posY=posY-2; posX--;
+		break;
 	}
-	 */
+	*newy=posY;
+	*newx=posX;
 }
