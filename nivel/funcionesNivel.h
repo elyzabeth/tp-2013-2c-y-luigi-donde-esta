@@ -21,6 +21,7 @@
 #include "commons/log.h"
 //#include "commons/collections/list.h"
 #include "commons/comunicacion.h"
+#include "commons/funciones_comunes.h"
 
 #include "config/configNivel.h"
 #include "tads/tad_nivel.h"
