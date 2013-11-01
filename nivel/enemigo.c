@@ -156,3 +156,26 @@ void movimientoL(int32_t x,int32_t y, int32_t newx,int32_t newy) {
 	}
 	 */
 }
+
+t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion) {
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	int cant=0;
+	cant = list_size(listaPersonajesEnJuego);
+	t_posicion posMasCercana;
+	posMasCercana.x = 1000;
+	posMasCercana.y = 1000;
+	int32_t distanciaMasCercana = calcularDistanciaCoord(miPosicion, posMasCercana);
+
+	void _search_nearest(t_personaje *p) {
+		int32_t distancia = calcularDistanciaCoord(miPosicion, p->posActual);
+		if (distanciaMasCercana > distancia) {
+			posMasCercana = p->posActual;
+			distanciaMasCercana = distancia;
+		}
+	}
+	if(cant > 0)
+		list_iterate(listaPersonajesEnJuego, (void*)_search_nearest);
+
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+	return posMasCercana;
+}

@@ -86,7 +86,7 @@ void moverPersonajeABloqueados(char simboloPersonaje) {
 
 }
 
-void agregarPersonajeEnJuego(t_personaje *personaje) {
+void agregarPersonajeAEnJuego(t_personaje *personaje) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	list_add(listaPersonajesEnJuego, personaje);
 	pthread_mutex_unlock (&mutexListaPersonajesJugando);
@@ -436,6 +436,25 @@ int enviarMsjCambiosConfiguracion(int sock) {
 	return ret;
 }
 
+int enviarMsjRecursoInexistente (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = RECURSO_INEXISTENTE;
+	header.largo_mensaje = 0;
+
+	log_info(LOGGER, "enviarMsjRecursoInexistente: fd:%d, sizeof(header): %d, largo mensaje: %d \n", sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjRecursoInexistente: Error al enviar header RECURSO_INEXISTENTE\n\n");
+		return WARNING;
+	}
+
+	return ret;
+}
+
 int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
@@ -453,8 +472,12 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	log_debug(LOGGER,"tratarSolicitudUbicacion: Llego: %s, %c, recurso '%c' \n\n", personaje.nombre, personaje.id, personaje.recurso);
 	recurso = obtenerRecurso(personaje.recurso);
 
-	if (recurso == NULL)
+	if (recurso == NULL) {
 		log_error(LOGGER, "tratarSolicitudUbicacion: obtenerRecurso('%c') devuelve NULL!! ", personaje.recurso);
+		enviarMsjRecursoInexistente(sock);
+		return WARNING;
+	}
+
 	log_debug(LOGGER, "Recurso: %s %s '%c' (%d,%d) = %d", recurso->NOMBRE, recurso->RECURSO, recurso->SIMBOLO, recurso->POSX, recurso->POSY, recurso->INSTANCIAS);
 
 	initCaja(&caja);
@@ -477,7 +500,7 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 
 	// TODO agregar personaje a lista de personajes en juego
 	// y a la lista GUIITEMS para graficarlo.
-	agregarPersonajeEnJuego(crearPersonajeDesdePersonaje(personaje));
+	agregarPersonajeAEnJuego(crearPersonajeDesdePersonaje(personaje));
 	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;
@@ -487,6 +510,7 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
 	t_caja *recurso;
+	t_caja caja;
 
 	// Si llega un mensaje de SOLICITUD_RECURSO luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
@@ -499,22 +523,36 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	log_debug(LOGGER,"tratarSolicitudRecurso: Llego: %s, %c, recurso '%c' \n\n", personaje.nombre, personaje.id, personaje.recurso);
 	recurso = obtenerRecurso(personaje.recurso);
 
-	// Envio mensaje RECURSO_CONCEDIDO o RECURSO_DENEGADO al planificador
 	initHeader(&header);
 	if (recurso->INSTANCIAS > 0) {
 		header.tipo = RECURSO_CONCEDIDO;
+		header.largo_mensaje = sizeof(t_caja);
+
+		// Resto 1 instancia del recurso
 		recurso->INSTANCIAS--;
 		gui_restarRecurso(recurso->SIMBOLO);
+		gui_dibujar();
 
 	} else {
 		header.tipo = RECURSO_DENEGADO;
+		header.largo_mensaje = 0;
 		moverPersonajeABloqueados(personaje.id);
 	}
-	header.largo_mensaje = 0;
 
+	// Envio mensaje RECURSO_CONCEDIDO o RECURSO_DENEGADO al planificador
 	if ((ret = enviar_header(sock, &header)) != EXITO) {
 		log_error(LOGGER,"tratarSolicitudRecurso: ERROR al enviar header RECURSO_CONCEDIDO/RECURSO_DENEGADO \n\n");
 		return ret;
+	}
+
+	if (header.tipo == RECURSO_CONCEDIDO) {
+		//Envio recurso al planificador
+		initCaja(&caja);
+		caja = *recurso;
+		if ((ret = enviar_caja(sock, &caja)) != EXITO) {
+			log_error(LOGGER,"tratarSolicitudRecurso: ERROR al enviar t_caja de RECURSO_CONCEDIDO\n\n");
+			return ret;
+		}
 	}
 
 	return ret;
