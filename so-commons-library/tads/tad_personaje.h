@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../commons/log.h"
 #include "tad_posicion.h"
 
 #define MAXLENNOMBRE 50
@@ -34,5 +35,7 @@ t_personaje* crearPersonajeDesdePersonaje (t_personaje personaje);
 t_personaje* crearPersonajeVacio ();
 void initPersonje(t_personaje *personaje);
 void destruirPersonaje (t_personaje * personaje);
+
+void imprimirPersonaje (t_personaje* p, t_log *LOGGER);
 
 #endif /* TAD_PERSONAJE_H_ */
