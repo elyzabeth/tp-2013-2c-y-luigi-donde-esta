@@ -24,11 +24,14 @@ endif
 # All Target
 all: fileSystem
 
+dependents:
+	-cd ../../so-commons-library/Debug && $(MAKE) all
+
 # Tool invocations
-fileSystem: $(OBJS) $(USER_OBJS)
+fileSystem: $(OBJS) $(USER_OBJS) ../../so-commons-library/Debug/libso-commons-library.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "fileSystem" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"../../so-commons-library/Debug" -o "fileSystem" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -39,5 +42,6 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
+../../so-commons-library/Debug/libso-commons-library.so:
 
 -include ../makefile.targets

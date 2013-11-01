@@ -11,25 +11,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <stddef.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
 #include <err.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <time.h>
 
+#include "commons/bitarray.h"
+#include "commons/log.h"
+
+#define FUSE_USE_VERSION 26
 
 #define GFILEBYTABLE 1024
 #define GFILEBYBLOCK 1
 #define GFILENAMELENGTH 71
 #define GHEADERBLOCKS 1
 #define BLKINDIRECT 1000
-#define BLKLEN 4096 //Tamaño de bloque fijo en bytes
+#define BLKDIRECT 1024
+#define BLKSIZE 4096 //Tamaño de bloque fijo en bytes
 
 #define TAMANIODISCO 10485760 // TODO tamaño del disco, lo debe tomar por parametro
+
+#define BORRADO 0
+#define ARCHIVO 1
+#define DIRECTORIO 2
 
 typedef uint32_t ptrGBloque;
 
@@ -53,13 +62,13 @@ typedef struct grasa_file_t { // un cuarto de bloque (256 bytes)
 } GFile;
 
 GHeader HEADER;
-GFile ARCHIVO;
-
 char *BITMAP;
-void *TABLANODOS;
+t_bitarray 	*bitvector;
 GFile *FNodo;
 GFile *NODOS[GFILEBYTABLE]; // un array de 1024 posiciones de estructuras de tipo GFile
-
 char *DATOS;
+ptrGBloque blk_direct[BLKDIRECT];
+
+t_log* LOGGER;
 
 #endif /* FILESYSTEM_H_ */

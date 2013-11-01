@@ -25,13 +25,14 @@ void levantarHeader(int fd, char *HDR ) {
 
 }
 
-void mapearBitMap (int fd, char *TN) {
-	BITMAP = mmap(NULL, BLKLEN*HEADER.size_bitmap, PROT_READ|PROT_WRITE, MAP_FILE|MAP_SHARED, fd, BLKLEN * GHEADERBLOCKS);
+void mapearBitMap (int fd) {
+	BITMAP = mmap(NULL, BLKSIZE*HEADER.size_bitmap, PROT_READ|PROT_WRITE, MAP_FILE|MAP_SHARED, fd, BLKSIZE * GHEADERBLOCKS);
+	bitvector = bitarray_create(BITMAP, TAMANIODISCO);
 }
 
 void mapearTablaNodos(int fd) {
 	int i;
-	FNodo = mmap(NULL, BLKLEN*GFILEBYTABLE, PROT_READ|PROT_WRITE, MAP_FILE|MAP_SHARED, fd, BLKLEN*(GHEADERBLOCKS+HEADER.size_bitmap));
+	FNodo = mmap(NULL, BLKSIZE*GFILEBYTABLE, PROT_READ|PROT_WRITE, MAP_FILE|MAP_SHARED, fd, BLKSIZE*(GHEADERBLOCKS+HEADER.size_bitmap));
 	for (i=0; i < GFILEBYTABLE; i++) {
 		NODOS[i] = (GFile*)(FNodo + i);
 	}
@@ -42,17 +43,52 @@ void mapearDatos (int fd) {
 	DATOS = mmap(NULL, TAMANIODISCO, PROT_READ|PROT_WRITE, MAP_FILE|MAP_SHARED, fd, 0);
 }
 
+
+GFile* getGrasaNode (const char *path, uint8_t tipo, int *posicion) {
+	int i, encontrado=-1;
+	char *subpath = strrchr(path, '/');
+
+	for(i=0; i < 1024 && encontrado < 0; i++) {
+		if (strcmp(subpath+1, NODOS[i]->fname) == 0 && NODOS[i]->state == tipo) {
+			encontrado = i;
+		}
+	}
+
+	*posicion = encontrado;
+
+	if (encontrado == -1)
+		return NULL;
+
+	return NODOS[encontrado];
+}
+
+GFile* getGrasaDirNode (const char *path, int *posicion) {
+	return getGrasaNode(path, DIRECTORIO, posicion);
+}
+
+GFile* getGrasaFileNode (const char *path, int *posicion) {
+	return getGrasaNode(path, ARCHIVO, posicion);
+}
+
 void leerArchivo(int inodo, char *buf) {
-	int i=0, cantAcopiar= BLKLEN;
+	int i=0, cantAcopiar= BLKSIZE;
 	uint32_t tamanioArchivo = NODOS[inodo]->file_size;
 	char*aux = buf;
 
 	while (i < 1024 && NODOS[inodo]->blk_indirect[i] != 0 ) {
-		cantAcopiar = tamanioArchivo<BLKLEN?tamanioArchivo:BLKLEN;
-		memcpy(aux, DATOS+(NODOS[inodo]->blk_indirect[i] * BLKLEN), cantAcopiar );
+		cantAcopiar = tamanioArchivo<BLKSIZE?tamanioArchivo:BLKSIZE;
+		memcpy(aux, DATOS+(NODOS[inodo]->blk_indirect[i] * BLKSIZE), cantAcopiar );
 		aux += cantAcopiar;
-		tamanioArchivo-=BLKLEN;
+		tamanioArchivo-=BLKSIZE;
 	}
+}
+
+void copiarBloque (char *buf, int posicion, int nroBloque, size_t size) {
+	// TODO quitar hardcodeo de blk_indirect[0]
+	memcpy(blk_direct, DATOS+(NODOS[posicion]->blk_indirect[0]*BLKSIZE), BLKSIZE);
+	log_debug(LOGGER, "3) blk_direct[%d]: %d", 0 , blk_direct[0]);
+
+	memcpy(buf, DATOS+(blk_direct[nroBloque] * BLKSIZE), size);
 }
 
 /*
@@ -181,7 +217,6 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 			}
 
 			filler(buf, NODOS[i]->fname, stbuf, 0);
-
 		}
 	}
 
@@ -216,6 +251,75 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
     return 0;
 }
 
+
+static int grasita_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+	int posicion;
+	size_t len;
+	(void) fi;
+
+	long long int block_number = offset / BLKSIZE;
+
+	log_info(LOGGER, "grasita_read: LLega: offset %ld - size: %d ", offset, size);
+	log_info(LOGGER, "grasita_read:  block_number(%d) = offset(%ld) / BLKSIZE(%d) ", block_number, offset, 4096);
+
+	GFile *fileNode = getGrasaFileNode(path, &posicion);
+
+	if (posicion<0){
+		return -ENOENT;
+	}
+
+	len = fileNode->file_size;
+
+	log_info(LOGGER, "grasita_read: path: %s - len: %d - posicion %d - bloque: %d - memoria: %d", path, len, posicion, NODOS[posicion]->blk_indirect[block_number], DATOS+(2109*4096));
+
+	int i;
+	for (i = 0; i < BLKINDIRECT ; i++)
+		if (NODOS[posicion]->blk_indirect[i]!=0)
+			log_debug(LOGGER, "NODOS[%d]->blk_indirect[%d]: %d", posicion, i , NODOS[posicion]->blk_indirect[i]);
+
+	if (offset < len) {
+		if (offset + size > len)
+			size = len - offset;
+
+		copiarBloque(buf, posicion, block_number, size);
+
+	} else
+		size = 0;
+
+	return size;
+
+//	if(offset + size > (block_number+1)*BLKSIZE) {
+//		size = (block_number+1)*BLKSIZE - offset; // read only one block
+//	}
+//
+//	res=pread64(DATOS, buf, size, offset);
+//
+//
+//	if (res == -1)
+//		res = -errno;
+//
+//	return res;
+
+}
+
+//static int hello_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+//        size_t len;
+//        (void) fi;
+//        if (strcmp(path, DEFAULT_FILE_PATH) != 0)
+//                return -ENOENT;
+//
+//        len = strlen(DEFAULT_FILE_CONTENT);
+//        if (offset < len) {
+//                if (offset + size > len)
+//                        size = len - offset;
+//                memcpy(buf, DEFAULT_FILE_CONTENT + offset, size);
+//        } else
+//                size = 0;
+//
+//        return size;
+//}
+
 /*
  * Esta es la estructura principal de FUSE con la cual nosotros le decimos a
  * biblioteca que funciones tiene que invocar segun que se le pida a FUSE.
@@ -230,37 +334,51 @@ static struct fuse_operations grasa_oper = {
 
 		.getattr = grasa_getattr,
 		.readdir = grasa_readdir,
-		.read = grasa_read,
+		.read = grasita_read,
 		.mkdir = grasa_mkdir
 		//.destroy = grasa_destroy
 };
 
 int main (int argc, char**argv) {
 
-	int fd = -1;
+	int ret, fd = -1;
 	char *HDR=NULL;
 
-	if ((fd = open("./disk.bin", O_RDWR, 0)) == -1)
+	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 1, LOG_LEVEL_DEBUG);
+	log_info(LOGGER, "INICIALIZANDO FILESYSTEM ");
+
+	if ((fd = open("./disk.bin", O_RDWR, 0777)) == -1)
 		err(1, "open");
 
 	levantarHeader(fd, HDR);
 	mapearTablaNodos(fd);
 	mapearDatos(fd);
+	mapearBitMap(fd);
+
+	printf("bitarray_test_bit %d: %d\n", 1027, bitarray_test_bit(bitvector, 1027));
 
 
 	//printf("FNodo: %s", FNodo->fname);
 
 	puts("-----Tabla Nodos-------");
-	int i;
+	int i, j;
 	for(i=0; i < 1024; i++) {
-		if (NODOS[i]->state)
+		if (NODOS[i]->state) {
 			printf("%d) bloque: %d - nombre: %s - state: %d - padre: %d\n", i, i+1, NODOS[i]->fname, NODOS[i]->state, NODOS[i]->parent_dir_block);
+		}
+		if (NODOS[i]->state == 1) {
+			printf("\tArchivo: %s - tamanio: %d\n", NODOS[i]->fname, NODOS[i]->file_size);
+			printf("\t\tPuntero 0 (bloque %d)\n", NODOS[i]->blk_indirect[0]);
+		}
 	}
 
 	 struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	// Esta es la funcion principal de FUSE, es la que se encarga
 	// de realizar el montaje, comuniscarse con el kernel, delegar todo
 	// en varios threads
-	return fuse_main(args.argc, args.argv, &grasa_oper, NULL);
-	// close(fd);
+	ret = fuse_main(args.argc, args.argv, &grasa_oper, NULL);
+	close(fd);
+	munmap(BITMAP, BLKSIZE*HEADER.size_bitmap);
+	munmap(FNodo, BLKSIZE*GFILEBYTABLE);
+	munmap(DATOS, TAMANIODISCO);
 }
