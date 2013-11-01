@@ -47,107 +47,6 @@ int principal(int argc, char *argv[]) {
 	return 0;
 }
 
-void* test (t_hilo_personaje *hiloPxN) {
-	int sock = -1;
-	header_t header;
-	fd_set master;
-	fd_set read_fds;
-	int max_desc = 0;
-	int i, ret;
-	int fin = false;
-
-	log_info(LOGGER, "Hilo Personaje para objetivos del nivel %s Iniciado", hiloPxN->personaje.nivel);
-sleep(1);
-
-	/***************** ME CONECTO Y ARMO MENSAJE DE PRESENTACION *******/
-	log_info(LOGGER,"************** CONECTANDOSE  ***************\n");
-	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
-
-	FD_ZERO(&master);
-	// Agrego descriptor del Pipe con Nivel.
-	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
-
-	agregar_descriptor(sock, &master, &max_desc);
-
-	if (enviarMsjNuevoPersonaje(sock) != EXITO)
-	{
-		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE\n\n");
-		fin = true;
-		//return WARNING;
-	}
-
-
-	while(!fin)
-	{
-		FD_ZERO (&read_fds);
-		read_fds = master;
-
-		ret = select(max_desc+1, &read_fds, NULL, NULL, NULL);
-
-		if(ret == -1) {
-			printf("Personaje %s '%c': ERROR en select en %s", hiloPxN->personaje.nombre, hiloPxN->personaje.id, hiloPxN->personaje.nivel);
-			sleep(1);
-		}
-
-		if (ret > 0) {
-			for(i = 0; i <= max_desc; i++)
-			{
-
-				if (FD_ISSET(i, &read_fds))
-				{
-					// Pregunto si el socket con actividad es el del Pipe
-					if( i == hiloPxN->fdPipe[0])
-					{
-						header_t header;
-						log_info(LOGGER, "Personaje '%c': Recibo mensaje desde Main por Pipe", hiloPxN->personaje.id);
-						read (hiloPxN->fdPipe[0], &header, sizeof(header_t));
-
-						log_debug(LOGGER, "Personaje '%c': mensaje recibido '%d'", hiloPxN->personaje.id, header.tipo);
-						if (header.tipo == FINALIZAR) {
-							log_debug(LOGGER, "Personaje '%c': '%d' ES FINALIZAR", hiloPxN->personaje.id, header.tipo);
-							fin = true;
-							break;
-						}
-
-					} else {
-						// Si NO es un mensaje del hilo principal por Pipe es un mensaje del proceso Plataforma.
-
-						initHeader(&header);
-						recibirHeaderNuevoMsj(sock, &header, &master);
-
-						// Recibo el header con el tipo de mensaje
-						switch (header.tipo)
-						{
-							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO");
-								enviarInfoPersonaje2(sock);
-								break;
-
-							case TURNO_CONCEDIDO: log_info(LOGGER,"TURNO_CONCEDIDO");
-								//enviarSolicitudUbicacion(sock);
-								break;
-
-							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO");
-								//enviarSolicitudUbicacion(sock);
-								break;
-
-							case OTRO: log_info(LOGGER, "otro");
-								break;
-
-						}
-
-
-					}
-				}
-			}
-
-		}
-	}
-
-	log_info(LOGGER, "FINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
-
-	pthread_exit(NULL);
-}
-
 
 
 void* personajexNivel (t_hilo_personaje *hiloPxN) {
@@ -243,6 +142,7 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 						switch (header.tipo)
 						{
 							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO en %s", hiloPxN->personaje.nivel);
+							//hiloPxN.estado = PERSONAJE_CONECTADO;
 							enviarInfoPersonaje(sock, hiloPxN);
 							break;
 
@@ -255,7 +155,12 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 							break;
 
 							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
-							gestionarRecursoConcedido(sock, &proximoObjetivo, hiloPxN);
+							gestionarRecursoConcedido(sock, &proximoObjetivo, hiloPxN, &fin);
+							break;
+
+							case RECURSO_INEXISTENTE: log_info(LOGGER,"RECURSO_INEXISTENTE en %s", hiloPxN->personaje.nivel);
+							log_error(LOGGER, "ERROR!! \n\nERROR en configuración '%c' RECURSO_INEXISTENTE en %s!!!\n\n", hiloPxN->personaje.recurso, hiloPxN->personaje.nivel);
+							fin=true;
 							break;
 
 							case OTRO: log_info(LOGGER, "que otro?? %s", hiloPxN->personaje.nivel);

@@ -65,6 +65,7 @@ void levantarHilosxNivel() {
 	for (i = 0; i < cant; i++) {
 		hiloPersonaje = crearHiloPersonaje(personaje);
 		oxn = queue_pop(planDeNiveles);
+
 		strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
 		strcpy(hiloPersonaje->personaje.nombre, configPersonajeNombre());
 		hiloPersonaje->personaje.id = configPersonajeSimbolo();
@@ -86,9 +87,11 @@ log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
 t_hilo_personaje* crearHiloPersonaje() {
 	t_hilo_personaje *hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
 
-	memset(hiloPersonaje, '\0', sizeof(t_hilo_personaje));
+	//memset(hiloPersonaje, '\0', sizeof(t_hilo_personaje));
+	hiloPersonaje->personaje.recurso = '-';
 	hiloPersonaje->personaje.posActual.x = 0;
 	hiloPersonaje->personaje.posActual.y = 0;
+	hiloPersonaje->moverPorX=true;
 	pipe(hiloPersonaje->fdPipe);
 
 	return hiloPersonaje;
@@ -154,6 +157,7 @@ int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN) {
 		return WARNING;
 	}
 
+	hiloPxN->estado = CONECTAR_NIVEL;
 	log_debug(LOGGER, "Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
 	if (enviar_personaje(sock, &yo) != EXITO)
 	{
@@ -164,62 +168,14 @@ int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN) {
 	return EXITO;
 }
 
-
-int enviarInfoPersonaje2(int sock) {
-	// PRUEBA
-	header_t header;
-	t_personaje yo;
-	char* buffer;
-	log_debug(LOGGER, "Envio mensaje de prueba con info del personaje");
-
-	log_debug(LOGGER, "Datos: (%s, %d, %c)",  configPersonajeNombre(),configPersonajeSimbolo(), configPersonajeSimbolo());
-	buffer = calloc(1, sizeof(header_t));
-
-	memset(&yo, '\0', sizeof(t_personaje));
-	strcpy(yo.nombre, configPersonajeNombre());
-	yo.id = configPersonajeSimbolo();
-	yo.posActual.x = 0;
-	yo.posActual.y = 0;
-	yo.fd = 0;
-	strcpy( yo.nivel, "Nivel1");
-
-	memset(&header, '\0', sizeof(header_t));
-	header.tipo = CONECTAR_NIVEL;
-	header.largo_mensaje = sizeof(t_personaje);
-
-	memcpy(buffer, &header, sizeof(header_t));
-
-	log_debug(LOGGER, "Envio header CONECTAR_NIVEL %d", sizeof(header_t));
-	if (enviar(sock, buffer, sizeof(header_t)) != EXITO)
-	{
-		log_error(LOGGER,"Error al enviar header CONECTAR_NIVEL\n\n");
-		free(buffer);
-		return WARNING;
-	}
-
-	free(buffer);
-	buffer = calloc(1, sizeof(t_personaje));
-	memcpy(buffer, &yo, sizeof(t_personaje));
-
-	log_debug(LOGGER, "Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
-	if (enviar(sock, buffer, sizeof(t_personaje)) != EXITO)
-	{
-		log_error(LOGGER,"Error al enviar informacion del personaje\n\n");
-		free(buffer);
-		return WARNING;
-	}
-
-	free(buffer);
-
-	return EXITO;
-}
-
 int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
 
 	header_t header;
-	t_personaje yo = hiloPxN->personaje;
+	t_personaje yo;
 
-	yo.recurso = proximoObjetivo->simbolo;
+	hiloPxN->personaje.recurso = proximoObjetivo->simbolo;
+
+	yo = hiloPxN->personaje;
 
 	initHeader(&header);
 	header.tipo = SOLICITUD_UBICACION;
@@ -264,9 +220,11 @@ int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObje
 int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
 
 	header_t header;
-	t_personaje yo = hiloPxN->personaje;
+	t_personaje yo;
 
-	yo.recurso = proximoObjetivo->simbolo;
+	hiloPxN->personaje.recurso = proximoObjetivo->simbolo;
+	yo = hiloPxN->personaje;
+
 
 	initHeader(&header);
 	header.tipo = SOLICITUD_RECURSO;
@@ -286,23 +244,61 @@ int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 		return WARNING;
 	}
 
+	hiloPxN->estado = SOLICITUD_RECURSO;
 	return EXITO;
 }
+
+int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
+
+	pthread_mutex_lock (&mutexEnvioMensaje);
+
+	header_t header;
+	int ret;
+
+	initHeader(&header);
+	header.tipo = PLAN_NIVEL_FINALIZADO;
+	header.largo_mensaje = 0;
+
+	log_debug(LOGGER,"enviarMsjPlanDeNivelFinalizado: PLAN_NIVEL_FINALIZADO %s sizeof(header): %d, largo mensaje: %d \n", hiloPxN->personaje.nivel, sizeof(header), header.largo_mensaje);
+
+	ret =  enviar_header(sock, &header);
+
+	pthread_mutex_unlock (&mutexEnvioMensaje);
+
+	return ret;
+}
+
+
+
 
 int realizarMovimiento(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
 	header_t header;
 	int ret;
+	int flag = false;
 
-	log_info(LOGGER, "Debo calcular proximo movimiento...");
-	if(hiloPxN->posicionActual.x+1<= proximoObjetivo->posicion.x ){
-		hiloPxN->posicionActual.x+=1;
+	if (hiloPxN->moverPorX || hiloPxN->personaje.posActual.y == proximoObjetivo->posicion.y) {
+		if(hiloPxN->personaje.posActual.x < proximoObjetivo->posicion.x ) {
+			hiloPxN->personaje.posActual.x++;
+			flag = true;
+		} else if(hiloPxN->personaje.posActual.x > proximoObjetivo->posicion.x ) {
+			hiloPxN->personaje.posActual.x--;
+			flag = true;
+		}
+
 	}
-	if(hiloPxN->posicionActual.y+1<= proximoObjetivo->posicion.y ){
-		hiloPxN->posicionActual.y+=1;
+	if (!flag) {
+		if ((!hiloPxN->moverPorX || hiloPxN->personaje.posActual.x == proximoObjetivo->posicion.x)) {
+			if(hiloPxN->personaje.posActual.y < proximoObjetivo->posicion.y ){
+				hiloPxN->personaje.posActual.y++;
+			} else if(hiloPxN->personaje.posActual.y > proximoObjetivo->posicion.y ){
+				hiloPxN->personaje.posActual.y--;
+			}
+		}
 	}
 
-	hiloPxN->personaje.posActual = hiloPxN->posicionActual;
+	hiloPxN->moverPorX = !hiloPxN->moverPorX;
 
+	log_debug(LOGGER, "Informar MOVIMIENTO_REALIZADO (%d, %d)", hiloPxN->personaje.posActual.x, hiloPxN->personaje.posActual.y);
 	// Informar movimiento realizado
 	initHeader(&header);
 	header.tipo = MOVIMIENTO_REALIZADO;
@@ -325,13 +321,18 @@ int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 	if(!proximoObjetivo->posicion.x && !proximoObjetivo->posicion.y) {
 		log_debug(LOGGER, "No tengo coordenadas de proximo objetivo debo solicitar ubicacion.");
 		enviarSolicitudUbicacion(sock, proximoObjetivo, hiloPxN);
+		//hiloPxN.estado = SOLICITUD_UBICACION;
 
-	} else if (!calcularDistancia(hiloPxN->posicionActual.x, hiloPxN->posicionActual.y, proximoObjetivo->posicion.x, proximoObjetivo->posicion.y)) {
+	} else if (!calcularDistanciaCoord(hiloPxN->personaje.posActual, proximoObjetivo->posicion) && hiloPxN->estado != SOLICITUD_RECURSO ) {
 		// SI mi posicion actual es = a la posicion del objetivo
 		// Solicitar una instancia del recurso al Planificador.
+
+
 		log_debug(LOGGER, "Estoy en la caja de recursos, debo solicitar una instancia.");
 		enviarSolicitudRecurso(sock, proximoObjetivo, hiloPxN);
+
 	} else {
+		//hiloPxN.estado = TURNO_CONCEDIDO;
 		// SI tengo coordenadas del objetivo pero no es igual a mi posicion actual.
 		// Calcular proximo movimiento, avanzar y notificar al Planificador con un mensaje.
 		log_debug(LOGGER, "Debo realizar proximo movimiento...");
@@ -341,19 +342,30 @@ int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 	return EXITO;
 }
 
-int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin) {
 
-	log_info(LOGGER, "gestionarRecursoConcedido.");
+	log_info(LOGGER, "gestionarRecursoConcedido. objetivosConseguidos: %d/%d", hiloPxN->objetivosConseguidos,hiloPxN->objetivos.totalObjetivos );
 	hiloPxN->objetivosConseguidos++;
+	hiloPxN->estado = RECURSO_CONCEDIDO;
+
 	// TODO agregar logica...
 	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
 	//	volverá al punto 3) (esperar TURNO_CONCEDIDO), o, si ya cumplió sus objetivos del Nivel
 	// Notificar a su Planificador que completó los objetivos de ese nivel y desconectarse.
 	if(hiloPxN->objetivosConseguidos == hiloPxN->objetivos.totalObjetivos){
+
 		// TODO Se completo el nivel
+		log_info(LOGGER, "COMPLETE EL PLAN DEL %s !!!\n", hiloPxN->personaje.nivel);
+		enviarMsjPlanDeNivelFinalizado(sock, hiloPxN);
+		*fin = true;
+
 	} else if (hiloPxN->objetivosConseguidos < hiloPxN->objetivos.totalObjetivos) {
+
 		// Todavia quedan recursos por conseguir.
-		proximoObjetivo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+		proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+		proximoObjetivo->posicion.x = 0;
+		proximoObjetivo->posicion.y = 0;
+
 	}
 
 	return EXITO;

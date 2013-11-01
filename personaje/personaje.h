@@ -49,7 +49,9 @@ typedef struct personaje_s
 typedef struct hilo {
 	t_personaje personaje;
 	t_objetivosxNivel objetivos;
-	t_posicion posicionActual;
+	//t_posicion posicionActual;
+	int32_t moverPorX;
+	int32_t estado;
 	int32_t objetivosConseguidos;
 	int32_t tid;
 	int32_t fdPipe[2];
@@ -72,7 +74,6 @@ void finalizarPersonaje();
 void levantarHilosxNivel() ;
 void esperarHilosxNivel();
 void* personajexNivel (t_hilo_personaje *hiloPxN);
-void* test (t_hilo_personaje *hiloPxN);
 
 t_hilo_personaje* crearHiloPersonaje();
 void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje);
@@ -88,8 +89,9 @@ int enviarMsjNuevoPersonaje( int sock );
 int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);
 int enviarInfoPersonaje2(int sock);
 int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
+int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN);
 int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN );
 int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
-int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
+int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin);
 
 #endif /* PERSONAJE_H_ */
