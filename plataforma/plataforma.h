@@ -70,6 +70,7 @@ void agregarPersonajeNuevo(t_personaje* personaje);
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel);
 t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
 void agregarPersonajeEnJuego(t_personaje* personaje);
+void moverPersonajeAFinAnormal (char idPersonaje, char *nivel);
 void moverPersonajesAFinAnormalxNivel (char *nivel);
 bool existeNivel(char* nivel);
 t_planificador* obtenerNivel(char* nivel);
@@ -79,7 +80,9 @@ int eliminarNivelesFinalizados ();
 t_planificador* quitarDeListaNiveles(char *nivel);
 t_planificador* cambiarEstadoNivelaFinalizado (char* nivel);
 t_planificador* cambiarEstadoNivelaCorriendo (char* nivel);
-
+void imprimirPersonajePlat (t_personaje* personaje);
+void imprimirListaPersonajesNuevos();
+void imprimirListaPersonajesEnJuego();
 
 
 #endif /* plataforma_H_ */

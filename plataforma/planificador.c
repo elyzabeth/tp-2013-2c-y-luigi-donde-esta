@@ -11,6 +11,7 @@ t_personaje* moverPersonajeNuevoAListo(t_planificador *planner);
 t_personaje* quitarPersonajeColaxId(t_queue *personajesListos, char idPersonaje);
 t_personaje* quitarPersonajeColaxFD(t_queue *colaPersonajes, int32_t fdPersonaje);
 t_personaje* moverPersonajeListoABloqueado(t_planificador *planner, char idPersonaje);
+t_personaje* moverPersonajeBloqueadoAListo( t_planificador *planner, char simboloRecurso );
 void planificarPersonaje(t_planificador *planner);
 int enviarMsjTurnoConcedido(t_personaje *personaje, char* nivel);
 int recibirCambiosConfiguracion(int32_t fdNivel, header_t header, t_planificador *planner);
@@ -18,6 +19,9 @@ int recibirSolicitudUbicacion(int fdPersonaje, header_t header, fd_set *master, 
 int recibirUbicacionRecursoNivel( header_t header, fd_set *master, t_planificador *planner );
 int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
+int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
+int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
+int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *planner );
 int enviarMovimientoRealizadoNivel(header_t *header, t_personaje *personaje, t_planificador *planner);
 
 
@@ -149,6 +153,10 @@ void* planificador(t_planificador *planner) {
 								recibirUbicacionRecursoNivel( header, &master, planner);
 								break;
 
+							case RECURSO_INEXISTENTE: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_INEXISTENTE", planner->nivel.nombre);
+								recibirRecursoInexistente( header, &master, planner);
+								break;
+
 							case SOLICITUD_UBICACION: log_info(LOGGER, "PLANIFICADOR %s: SOLICITUD_UBICACION", planner->nivel.nombre);
 								recibirSolicitudUbicacion(i, header, &master, planner);
 								break;
@@ -235,6 +243,30 @@ t_personaje* quitarPersonajeColaxId(t_queue *colaPersonajes, char idPersonaje) {
 }
 
 /**
+ * @NAME: quitarPersonajeColaxId
+ * @DESC: Quita un personaje de la cola de personajes buscandolo por id de recurso (simbolo)
+ * Si lo encuentra devuelve el puntero a la estructura t_personaje.
+ * Si no lo encuentra devuelve NULL.
+ * Se le pasa la cola de personajes y el simbolo del recurso que tiene el personaje buscado.
+ */
+t_personaje* quitarPersonajeColaxRecurso(t_queue *colaPersonajes, char simboloRecurso) {
+	int tamanio = queue_size(colaPersonajes);
+	int i;
+	t_personaje *personaje = NULL;
+
+	for (i = 0; i < tamanio; i++) {
+		personaje = queue_pop(colaPersonajes);
+
+		if(personaje->recurso != simboloRecurso){
+			queue_push(colaPersonajes, personaje);
+			personaje = NULL;
+		}
+	}
+
+	return personaje;
+}
+
+/**
  * @NAME: quitarPersonajeColaxFD
  * @DESC: Quita un personaje de la cola de personajes buscandolo por el file descriptor del personaje (socket)
  * Si lo encuentra devuelve el puntero a la estructura t_personaje.
@@ -272,6 +304,26 @@ t_personaje* moverPersonajeListoABloqueado( t_planificador *planner, char idPers
 
 	return personaje;
 }
+
+t_personaje* moverPersonajeBloqueadoAListo( t_planificador *planner, char simboloRecurso ) {
+	t_personaje *personaje;
+	log_info(LOGGER, "moverPersonajeBloqueadoAListo '%s': '%c'", planner->nivel.nombre, simboloRecurso);
+
+	personaje = quitarPersonajeColaxRecurso(planner->personajesBloqueados, simboloRecurso);
+	if (NULL != personaje) {
+		queue_push(planner->personajesListos, personaje);
+		log_info(LOGGER, "Agrego al personaje '%c' a la cola de listos del nivel '%s'.", personaje->id, planner->nivel.nombre);
+	} else {
+		log_warning(LOGGER, "WARNING! No se encontro ningun personaje bloqueado por el recurso '%c' en la cola de Bloqueado del nivel '%s'!", simboloRecurso, planner->nivel.nombre);
+	}
+
+	return personaje;
+}
+
+
+
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 
 void planificarPersonaje(t_planificador *planner) {
 
@@ -399,9 +451,16 @@ int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_
 	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
 	log_debug(LOGGER, "recibirSolicitudRecurso: Llego: %s (%c) al %s. Solicita recurso: '%c'", personaje.nombre, personaje.id, personaje.nivel, personaje.recurso);
 
-	// TODO hacer algo con la info que llega!
-	if (planner->personajeEjecutando->id == personaje.id)
-		planner->personajeEjecutando->recurso = personaje.recurso;
+	if (planner->personajeEjecutando->id != personaje.id)
+		log_error(LOGGER, "\n\nERROR recibirSolicitudRecurso: recibo mensaje SOLICITUD_RECURSO de personaje que no esta en estado EJECUTANDO!!\n\n ");
+
+	planner->personajeEjecutando->recurso = personaje.recurso;
+
+	//	El Planificador moverá a dicho personaje a la cola de bloqueados para ese nivel
+	//	y notificará al Nivel de la solicitud. Descartará, si quedara, el quantum de tiempo
+	//  restante del Personaje y planificará al siguiente que se encuentre listo.
+	moverPersonajeListoABloqueado(planner, personaje.id);
+	planner->personajeEjecutando = NULL;
 
 	// Solicitar Recurso al NIVEL...
 	ret = enviarSolicitudRecursoNivel(header, personaje, planner);
@@ -420,9 +479,10 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 	int ret, se_desconecto;
 	t_personaje personaje;
 
-	log_debug(LOGGER, "Espero recibir estructura personaje (size:%d)...", header.largo_mensaje);
+	log_debug(LOGGER, "PLANIFICADOR %s: recibirMovimientoRealizado: Espero recibir estructura personaje (size:%d)...", planner->nivel.nombre, header.largo_mensaje);
+	initPersonje(&personaje);
 	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
-	log_debug(LOGGER, "Llego: %s (%c) al %s recurso: '%c' se movio a posicion (%d, %d)", personaje.nombre, personaje.id, personaje.nivel, personaje.recurso, personaje.posActual.x, personaje.posActual.y);
+	log_debug(LOGGER, "PLANIFICADOR %s: recibirMovimientoRealizado: Llego: %s (%c) al %s recurso: '%c' se movio a posicion (%d, %d)", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel, personaje.recurso, personaje.posActual.x, personaje.posActual.y);
 
 	// TODO hacer algo con la info que llega!
 	if (planner->personajeEjecutando->id == personaje.id) {
@@ -438,11 +498,28 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 }
 
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
-	int ret;
+	int ret, se_desconecto;
+	t_personaje *personaje;
+	t_caja caja;
+
+	// espero recibir estructura t_caja del recurso concedido.
+	initCaja(&caja);
+	if ((ret = recibir_caja(planner->nivel.fdSocket, &caja, master, &se_desconecto)) != EXITO) {
+		log_error(LOGGER, "%s ERROR en recibirRecursoConcedido al recibir t_caja", planner->nivel.nombre);
+		return ret;
+	}
+
+	// Buscar en la cola de bloqueados al personaje que pidio el recurso.
+	personaje = moverPersonajeBloqueadoAListo(planner, caja.SIMBOLO);
+
+	if (personaje == NULL){
+		log_error(LOGGER, "%s WARNING recibirRecursoConcedido NO se encontro ningun personaje bloqueado por el recurso '%c'", planner->nivel.nombre, caja.SIMBOLO);
+		return WARNING;
+	}
 
 	// Envio mensaje de recurso concedido al personaje
-	log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", planner->personajeEjecutando->recurso, planner->personajeEjecutando->nombre, planner->personajeEjecutando->nivel);
-	ret = enviar_header(planner->personajeEjecutando->fd, &header);
+	log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", personaje->recurso, personaje->nombre, personaje->nivel);
+	ret = enviar_header(personaje->fd, &header);
 
 	return ret;
 }
@@ -450,9 +527,28 @@ int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t
 int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
 	int ret = 0;
 
-	planner->personajeEjecutando->criterio = 0;
-	moverPersonajeListoABloqueado(planner, planner->personajeEjecutando->id);
+	//planner->personajeEjecutando->criterio = 0;
+	//moverPersonajeListoABloqueado(planner, planner->personajeEjecutando->id);
+	//planner->personajeEjecutando = NULL;
+
+	return ret;
+}
+
+int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *planner ) {
+	int ret;
+	t_personaje *personaje;
+
+	log_debug(LOGGER, "recibirRecursoInexistente: Enviando mensaje de RECURSO_INEXISTENTE '%c' al personaje %s del nivel %s", planner->personajeEjecutando->recurso, planner->personajeEjecutando->nombre, planner->personajeEjecutando->nivel);
+	ret = enviar_header(planner->personajeEjecutando->fd, &header);
+
+	// TODO quitar personaje de listados
+	personaje = quitarPersonajeColaxId(planner->personajesListos, planner->personajeEjecutando->id);
 	planner->personajeEjecutando = NULL;
+
+	moverPersonajeAFinAnormal(personaje->id, planner->nivel.nombre);
+
+	// TODO Liberar recursos del personaje
+
 
 	return ret;
 }

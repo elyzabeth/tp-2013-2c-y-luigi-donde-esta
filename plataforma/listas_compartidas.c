@@ -18,6 +18,7 @@ void agregarPersonajeNuevo(t_personaje* personaje) {
 	list_add(listaPersonajesNuevos, personaje);
 	//plataforma.personajes_en_juego++;
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
 }
 
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
@@ -28,8 +29,8 @@ t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 		return !strcasecmp(p->nivel, nivel);
 	}
 	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_nivel);
-	//plataforma.personajes_en_juego++;
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
 	return personaje;
 }
 
@@ -64,6 +65,7 @@ void agregarPersonajeEnJuego(t_personaje* personaje) {
 	list_add(listaPersonajesEnJuego, personaje);
 	plataforma.personajes_en_juego++;
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	imprimirListaPersonajesEnJuego();
 }
 
 /**
@@ -77,6 +79,30 @@ void agregarPersonajeFinAnormal(t_personaje* personaje) {
 	list_add(listaPersonajesFinAnormal, personaje);
 	//plataforma.personajes_en_juego--; ???
 	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
+}
+
+void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
+	//TODO!!!
+	t_personaje *personaje = NULL;
+	t_personaje *personaje2 = NULL;
+
+	bool _buscar_xnivel_xid(t_personaje *p) {
+			return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
+	}
+
+	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_xnivel_xid);
+	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+
+	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
+	personaje2 = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_xnivel_xid);
+	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+
+	if (personaje != NULL)
+		agregarPersonajeFinAnormal(personaje);
+	else if (personaje2 != NULL)
+		agregarPersonajeFinAnormal(personaje2);
+
 }
 
 /**
@@ -198,19 +224,23 @@ int eliminarNivelesFinalizados () {
 }
 
 
-void imprimirPersonaje (t_personaje* personaje) {
-	log_info(LOGGER, "Personaje: '%s' - simbolo: '%c' - socket: '%d'", personaje->nombre, personaje->id, personaje->fd);
+void imprimirPersonajePlat (t_personaje* personaje) {
+	imprimirPersonaje(personaje, LOGGER);
 }
 
 
 void imprimirListaPersonajesNuevos () {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	list_iterate(listaPersonajesNuevos, (void*)imprimirPersonaje);
+	log_info(LOGGER, "\n\n--- LISTADO Personajes Nuevos en Plataforma: ---\n*************************************************");
+	list_iterate(listaPersonajesNuevos, (void*)imprimirPersonajePlat);
+	log_info(LOGGER, "\r--- FIN Listado Personajes Nuevos en Plataforma (total: %d) ---\n", list_size(listaPersonajesNuevos));
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 }
 
 void imprimirListaPersonajesEnJuego () {
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	list_iterate(listaPersonajesEnJuego, (void*)imprimirPersonaje);
+	log_info(LOGGER, "\n\n --- LISTADO Personajes En Juego en Plataforma: ---\n*************************************************");
+	list_iterate(listaPersonajesEnJuego, (void*)imprimirPersonajePlat);
+	log_info(LOGGER, "\r--- FIN Listado Personajes En Juego en Plataforma (total: %d) ---\n", list_size(listaPersonajesEnJuego));
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
 }
