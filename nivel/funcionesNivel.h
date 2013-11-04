@@ -38,12 +38,15 @@ int32_t watchDescriptor;
 int32_t notifyFD;
 
 t_log* LOGGER;
-char NOMBRENIVEL[20+1];
+//char NOMBRENIVEL[20+1];
+char NOMBRENIVEL[MAXCHARLEN+1];
+
 
 int MAXROWS, MAXCOLS;
-t_list* GUIITEMS;
+t_list *GUIITEMS;
 t_list *listaPersonajesEnJuego;
 t_list *listaPersonajesBloqueados;
+t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
 t_dictionary *listaRecursos;
@@ -53,6 +56,7 @@ pthread_mutex_t mutexLockGlobalGUI;
 pthread_mutex_t mutexListaPersonajesJugando;
 pthread_mutex_t mutexListaPersonajesBloqueados;
 pthread_mutex_t mutexListaRecursos;
+pthread_mutex_t mutexRecursosxPersonajes;
 
 typedef struct {
 	pthread_t tid;
@@ -61,12 +65,20 @@ typedef struct {
 
 t_hiloInterbloqueo hiloInterbloqueo;
 
+typedef struct {
+	int32_t recurso[100];
+	int32_t total;
+} t_vecRecursos;
+
 int correrTest();
 void principal ();
 
 void inicializarNivel ();
 void finalizarNivel ();
 int crearNotifyFD();
+t_vecRecursos* crearVecRecursos();
+void destruirVecRecursos(t_vecRecursos *vecRecursos);
+void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso);
 
 //Pruebas (borrar cuando ya no se use)
 void simulacroJuego ();
@@ -101,6 +113,7 @@ int enviarMsjCambiosConfiguracion(int sock);
 int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master);
 int tratarSolicitudRecurso(int sock, header_t header, fd_set *master);
 int tratarMovimientoRealizado(int sock, header_t header, fd_set *master);
+int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master);
 
 void rnd(int *x, int max);
 

@@ -112,6 +112,11 @@ void principal () {
 									tratarMovimientoRealizado(i, header, &master);
 									break;
 
+								case PLAN_NIVEL_FINALIZADO:
+									log_info(LOGGER, "Llego mensaje PLAN_NIVEL_FINALIZADO (fd:%d)", i);
+									tratarPlanNivelFinalizado (i, header, &master);
+									break;
+
 								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
 									break;
 							}
