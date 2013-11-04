@@ -244,10 +244,13 @@ void inicializarPlataforma () {
 	listaPersonajesNuevos = list_create();
 	listaPersonajesEnJuego = list_create();
 	listaPersonajesFinAnormal = list_create();
+	listaPersonajesFinalizados = list_create();
 	listaNiveles = dictionary_create();
+
 	pthread_mutex_init (&mutexListaPersonajesNuevos, NULL);
 	pthread_mutex_init (&mutexListaPersonajesEnJuego, NULL);
 	pthread_mutex_init (&mutexListaPersonajesFinAnormal, NULL);
+	pthread_mutex_init (&mutexListaPersonajesFinalizados, NULL);
 	pthread_mutex_init (&mutexListaNiveles, NULL);
 
 	pipe(hiloOrquestador.fdPipe);
@@ -268,12 +271,14 @@ void finalizarPlataforma() {
 	list_destroy_and_destroy_elements(listaPersonajesNuevos, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesFinAnormal, (void*)destruirPersonaje);
+	list_destroy_and_destroy_elements(listaPersonajesFinalizados, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaNiveles, (void*)destruirPlanificador);
 
 	// Libero semaforos
 	pthread_mutex_destroy(&mutexListaPersonajesNuevos);
 	pthread_mutex_destroy(&mutexListaPersonajesEnJuego);
 	pthread_mutex_destroy(&mutexListaPersonajesFinAnormal);
+	pthread_mutex_destroy(&mutexListaPersonajesFinalizados);
 	pthread_mutex_destroy(&mutexListaNiveles);
 
 	close(hiloOrquestador.fdPipe[0]);

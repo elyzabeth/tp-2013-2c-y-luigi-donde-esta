@@ -41,11 +41,13 @@ config_plataforma_t plataforma;
 t_list *listaPersonajesNuevos;
 t_list *listaPersonajesEnJuego;
 t_list *listaPersonajesFinAnormal;
+t_list *listaPersonajesFinalizados;
 t_dictionary *listaNiveles;
 
 pthread_mutex_t mutexListaPersonajesNuevos;
 pthread_mutex_t mutexListaPersonajesEnJuego;
 pthread_mutex_t mutexListaPersonajesFinAnormal;
+pthread_mutex_t mutexListaPersonajesFinalizados;
 pthread_mutex_t mutexListaNiveles;
 
 
@@ -72,6 +74,7 @@ t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
 void agregarPersonajeEnJuego(t_personaje* personaje);
 void moverPersonajeAFinAnormal (char idPersonaje, char *nivel);
 void moverPersonajesAFinAnormalxNivel (char *nivel);
+void moverPersonajeAFinalizados(char idPersonaje, char *nivel);
 bool existeNivel(char* nivel);
 t_planificador* obtenerNivel(char* nivel);
 t_estado obtenerEstadoNivel(char* nivel);
@@ -83,6 +86,7 @@ t_planificador* cambiarEstadoNivelaCorriendo (char* nivel);
 void imprimirPersonajePlat (t_personaje* personaje);
 void imprimirListaPersonajesNuevos();
 void imprimirListaPersonajesEnJuego();
+
 
 
 #endif /* plataforma_H_ */

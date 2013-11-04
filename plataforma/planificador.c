@@ -22,6 +22,7 @@ int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *planner );
+int recibirPlanNivelFinalizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int enviarMovimientoRealizadoNivel(header_t *header, t_personaje *personaje, t_planificador *planner);
 
 
@@ -129,13 +130,14 @@ void* planificador(t_planificador *planner) {
 							} else {
 								// TODO chequear si se desconecto personaje y borrarlo de las estructuras
 								// si es personaje informar al nivel para que lo borre?
+
 								log_debug(LOGGER, "PLANIFICADOR %s: socket %d se desconecto", planner->nivel.nombre, i);
 								quitar_descriptor(i, &master, &max_desc);
 								quitarPersonajexFD(i);
 								quitarPersonajeColaxFD(planner->personajesListos, i);
 								quitarPersonajeColaxFD(planner->personajesBloqueados, i);
 
-								if (planner->personajeEjecutando->fd == i)
+								if (planner->personajeEjecutando != NULL && planner->personajeEjecutando->fd == i)
 									planner->personajeEjecutando = NULL;
 
 								continue;
@@ -151,10 +153,6 @@ void* planificador(t_planificador *planner) {
 
 							case UBICACION_RECURSO: log_info(LOGGER, "PLANIFICADOR %s: UBICACION_RECURSO", planner->nivel.nombre);
 								recibirUbicacionRecursoNivel( header, &master, planner);
-								break;
-
-							case RECURSO_INEXISTENTE: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_INEXISTENTE", planner->nivel.nombre);
-								recibirRecursoInexistente( header, &master, planner);
 								break;
 
 							case SOLICITUD_UBICACION: log_info(LOGGER, "PLANIFICADOR %s: SOLICITUD_UBICACION", planner->nivel.nombre);
@@ -175,6 +173,14 @@ void* planificador(t_planificador *planner) {
 
 							case RECURSO_DENEGADO: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_DENEGADO", planner->nivel.nombre);
 								recibirRecursoDenegado(i, header, &master, planner);
+								break;
+
+							case RECURSO_INEXISTENTE: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_INEXISTENTE", planner->nivel.nombre);
+								recibirRecursoInexistente( header, &master, planner);
+								break;
+
+							case PLAN_NIVEL_FINALIZADO: log_info(LOGGER, "PLANIFICADOR %s: PLAN_NIVEL_FINALIZADO", planner->nivel.nombre);
+								recibirPlanNivelFinalizado ( i, header, &master, planner);
 								break;
 
 							case OTRO: log_info(LOGGER, "PLANIFICADOR %s: OTRO", planner->nivel.nombre);
@@ -549,6 +555,37 @@ int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *
 
 	// TODO Liberar recursos del personaje
 
+
+	return ret;
+}
+
+int recibirPlanNivelFinalizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+	//t_personaje *p;
+
+	initPersonje(&personaje);
+	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
+	log_debug(LOGGER, "PLANIFICADOR %s: recibirPlanNivelFinalizado: %s (%c) PLAN_NIVEL_FINALIZADO del %s ", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel);
+
+	log_debug(LOGGER, "recibirPlanNivelFinalizado: Enviando mensaje de PLAN_NIVEL_FINALIZADO del personaje %s ('%c') al %s ", personaje.nombre, personaje.id, personaje.nivel);
+	if ((ret = enviar_header(planner->nivel.fdSocket, &header)) != EXITO){
+		log_error(LOGGER, "ERROR en recibirPlanNivelFinalizado al enviar_header PLAN_NIVEL_FINALIZADO al nivel ");
+		return WARNING;
+	}
+
+	if ((ret = enviar_personaje(planner->nivel.fdSocket, &personaje)) != EXITO){
+		log_error(LOGGER, "ERROR en recibirPlanNivelFinalizado al enviar_personaje PLAN_NIVEL_FINALIZADO al nivel ");
+		return WARNING;
+	}
+
+	// TODO quitar personaje de listados
+	quitarPersonajeColaxId(planner->personajesListos, personaje.id);
+	planner->personajeEjecutando = NULL;
+
+	moverPersonajeAFinalizados(personaje.id, planner->nivel.nombre);
+
+	// TODO Liberar recursos del personaje??
 
 	return ret;
 }

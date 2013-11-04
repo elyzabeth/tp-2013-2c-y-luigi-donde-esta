@@ -177,7 +177,7 @@ int recibir_nivel(int sock, t_nivel *nivel, fd_set *master, int *seDesconecto)
 	buffer = calloc(1, sizeof(t_nivel));
 	*seDesconecto = FALSE; /*False =0 define*/
 
-	printf("Espero recibir t_nivel (%u)", sizeof(t_nivel));
+	//printf("Espero recibir t_nivel (%u)", sizeof(t_nivel));
 	ret = recibir(sock, buffer, sizeof(t_nivel));
 
 	if (ret == WARNING) {
