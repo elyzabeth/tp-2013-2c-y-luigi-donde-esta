@@ -245,12 +245,15 @@ int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 	}
 
 	hiloPxN->estado = SOLICITUD_RECURSO;
+
 	return EXITO;
 }
 
 int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 
 	pthread_mutex_lock (&mutexEnvioMensaje);
+	t_personaje yo;
+	yo = hiloPxN->personaje;
 
 	header_t header;
 	int ret;
@@ -262,6 +265,12 @@ int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 	log_debug(LOGGER,"enviarMsjPlanDeNivelFinalizado: PLAN_NIVEL_FINALIZADO %s sizeof(header): %d, largo mensaje: %d \n", hiloPxN->personaje.nivel, sizeof(header), header.largo_mensaje);
 
 	ret =  enviar_header(sock, &header);
+
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjPlanDeNivelFinalizado: Error al enviar t_personaje de PLAN_NIVEL_FINALIZADO\n\n");
+		return WARNING;
+	}
 
 	pthread_mutex_unlock (&mutexEnvioMensaje);
 

@@ -40,8 +40,9 @@ int principal(int argc, char *argv[]) {
 	esperarHilosxNivel();
 
 	// TODO	Al concluir todos los niveles, se conectará al Orquestador y notificará que concluyó su
-//	plan de niveles. Este lo moverá a una cola de finalizados y lo dejará a la espera de que
-//	los demás Personajes terminen.
+	// plan de niveles. Este lo moverá a una cola de finalizados y lo dejará a la espera de que
+	// los demás Personajes terminen.
+	log_info(LOGGER, "\n\nFINALICE TODO EL PLAN DE NIVELES!!!!!\n\n");
 
 
 	return 0;
