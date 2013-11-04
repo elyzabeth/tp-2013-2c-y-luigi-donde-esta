@@ -83,24 +83,48 @@ int nivel_gui_dibujar(t_list* items, char* nombre_nivel) {
 	printw("Recursos: ");
 
         
-        void _draw_element(ITEM_NIVEL* item) {
-            wmove(secwin, item->posy, item->posx);
-            if(item->item_type == ENEMIGO_ITEM_TYPE) {
-                    waddch(secwin, '*' | COLOR_PAIR(4));
-            } else if (item->item_type == RECURSO_ITEM_TYPE) {
-                    waddch(secwin, item->id | COLOR_PAIR(3));
-            } else if(item->item_type == PERSONAJE_ITEM_TYPE) {
-                    waddch(secwin, item->id | COLOR_PAIR(2));
-            }
-            if (item->item_type == RECURSO_ITEM_TYPE) {
-                move(rows - 2, 7 * i + 3 + 9);
-                printw("%c: %d - ", item->id, item->quantity);
-                i++;
-            }
+//        void _draw_element(ITEM_NIVEL* item) {
+//            wmove(secwin, item->posy, item->posx);
+//            if(item->item_type == ENEMIGO_ITEM_TYPE) {
+//                    waddch(secwin, '*' | COLOR_PAIR(4));
+//            } else if (item->item_type == RECURSO_ITEM_TYPE) {
+//                    waddch(secwin, item->id | COLOR_PAIR(3));
+//            } else if(item->item_type == PERSONAJE_ITEM_TYPE) {
+//                    waddch(secwin, item->id | COLOR_PAIR(2));
+//            }
+//            if (item->item_type == RECURSO_ITEM_TYPE) {
+//                move(rows - 2, 7 * i + 3 + 9);
+//                printw("%c: %d - ", item->id, item->quantity);
+//                i++;
+//            }
+//        }
+//
+//        list_iterate(items, (void*) _draw_element);
+
+    void _draw_element(ITEM_NIVEL* item) {
+        wmove(secwin, item->posy, item->posx);
+        if(item->item_type == ENEMIGO_ITEM_TYPE) {
+                waddch(secwin, '*' | COLOR_PAIR(4));
+        } else if(item->item_type == PERSONAJE_ITEM_TYPE) {
+                waddch(secwin, item->id | COLOR_PAIR(2));
         }
-        
-        list_iterate(items, (void*) _draw_element);
-       
+    }
+
+    void _draw_elementRecurso (ITEM_NIVEL* item) {
+    	wmove(secwin, item->posy, item->posx);
+    	if (item->item_type == RECURSO_ITEM_TYPE) {
+    		waddch(secwin, item->id | COLOR_PAIR(3));
+    	}
+    	if (item->item_type == RECURSO_ITEM_TYPE) {
+    		move(rows - 2, 7 * i + 3 + 9);
+    		printw("%c: %d - ", item->id, item->quantity);
+    		i++;
+    	}
+    }
+
+    list_iterate(items, (void*) _draw_element);
+    list_iterate(items, (void*) _draw_elementRecurso);
+
 	wrefresh(secwin);
 	wrefresh(mainwin);
 
