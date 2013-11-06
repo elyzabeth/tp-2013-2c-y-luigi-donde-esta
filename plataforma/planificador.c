@@ -13,6 +13,7 @@ t_personaje* quitarPersonajeColaxFD(t_queue *colaPersonajes, int32_t fdPersonaje
 t_personaje* moverPersonajeListoABloqueado(t_planificador *planner, char idPersonaje);
 t_personaje* moverPersonajeBloqueadoAListo( t_planificador *planner, char simboloRecurso );
 void planificarPersonaje(t_planificador *planner);
+int enviarNuevoPersonajeANivel (t_personaje personaje, header_t header, t_planificador *planner );
 int enviarMsjTurnoConcedido(t_personaje *personaje, char* nivel);
 int recibirCambiosConfiguracion(int32_t fdNivel, header_t header, t_planificador *planner);
 int recibirSolicitudUbicacion(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
@@ -88,7 +89,8 @@ void* planificador(t_planificador *planner) {
 				{
 					if (i == planner->fdPipe[0])
 					{
-						header_t header;
+						//header_t header;
+						initHeader(&header);
 						log_info(LOGGER, "PLANIFICADOR  %s: Recibo mensaje desde Plataforma por Pipe", planner->nivel.nombre);
 						read (planner->fdPipe[0], &header, sizeof(header_t));
 
@@ -98,6 +100,7 @@ void* planificador(t_planificador *planner) {
 							log_debug(LOGGER, "PLANIFICADOR  %s: mensaje recibido '%d' ES NUEVO_PERSONAJE", planner->nivel.nombre, header.tipo);
 							personaje = moverPersonajeNuevoAListo(planner);
 							agregar_descriptor(personaje->fd, &master, &max_desc);
+							enviarNuevoPersonajeANivel(*personaje, header, planner);
 						}
 
 						if (header.tipo == FINALIZAR) {
@@ -406,6 +409,22 @@ int recibirUbicacionRecursoNivel( header_t header, fd_set *master, t_planificado
 	ret = enviar_caja(planner->personajeEjecutando->fd, &caja);
 
 	free(buffer);
+
+	return ret;
+}
+
+
+int enviarNuevoPersonajeANivel (t_personaje personaje, header_t header, t_planificador *planner ) {
+	int ret;
+
+	log_debug(LOGGER, "%s enviarNuevoPersonajeANivel: Envio estructura personaje (size:%d)...", planner->nivel.nombre, sizeof(t_personaje));
+
+	if ((ret = enviar_header(planner->nivel.fdSocket, &header)) != EXITO) {
+			log_error(LOGGER, "ERROR al enviar header_t NUEVO_PERSONAJE al nivel %s", planner->nivel.nombre);
+	}
+	if ((ret = enviar_personaje(planner->nivel.fdSocket, &personaje)) != EXITO) {
+		log_error(LOGGER, "ERROR al enviar t_personaje al nivel %s", planner->nivel.nombre);
+	}
 
 	return ret;
 }

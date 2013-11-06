@@ -21,39 +21,7 @@ void agregarPersonajeNuevo(t_personaje* personaje) {
 	imprimirListaPersonajesNuevos();
 }
 
-t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 
-	t_personaje *personaje;
-	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	bool _buscar_x_nivel(t_personaje *p) {
-		return !strcasecmp(p->nivel, nivel);
-	}
-	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_nivel);
-	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
-	imprimirListaPersonajesNuevos();
-	return personaje;
-}
-
-t_personaje* quitarPersonajexFD(int32_t fdPersonaje) {
-
-	t_personaje *personaje;
-	bool _buscar_x_fd(t_personaje *p) {
-		return (p->fd == fdPersonaje);
-	}
-	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_fd);
-	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
-
-	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_x_fd);
-	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
-
-	pthread_mutex_lock (&mutexListaPersonajesFinAnormal);
-	list_add(listaPersonajesFinAnormal, personaje);
-	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
-
-	return personaje;
-}
 /**
  * @NAME: agregarPersonajeEnJuego
  * @DESC: Agrega un personaje a la lista compartida listaPersonajesEnJuego
@@ -66,6 +34,20 @@ void agregarPersonajeEnJuego(t_personaje* personaje) {
 	plataforma.personajes_en_juego++;
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
 	imprimirListaPersonajesEnJuego();
+}
+
+
+/**
+ * @NAME: agregarPersonajeFinalizado
+ * @DESC: Agrega un personaje la lista compartida ListaPersonajesFinalizados
+ * usando semaforo mutex.
+ */
+void agregarPersonajeFinalizado(t_personaje* personaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
+	list_add(listaPersonajesFinalizados, personaje);
+	//plataforma.personajes_en_juego--; ???
+	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
 }
 
 /**
@@ -81,59 +63,126 @@ void agregarPersonajeFinAnormal(t_personaje* personaje) {
 	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
 }
 
-/**
- * @NAME: agregarPersonajeFinalizado
- * @DESC: Agrega un personaje la lista compartida ListaPersonajesFinalizados
- * usando semaforo mutex.
- */
-void agregarPersonajeFinalizado(t_personaje* personaje) {
 
-	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
-	list_add(listaPersonajesFinAnormal, personaje);
-	//plataforma.personajes_en_juego--; ???
-	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
-}
-
-void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
-	//TODO!!!
-	t_personaje *personaje = NULL;
-	t_personaje *personaje2 = NULL;
-
-	bool _buscar_xnivel_xid(t_personaje *p) {
-			return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
-	}
+t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	t_personaje *personaje;
+
+	bool _buscar_x_nivel(t_personaje *p) {
+		return !strcasecmp(p->nivel, nivel);
+	}
+	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_nivel);
+	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
+	return personaje;
+}
+
+t_personaje* quitarPersonajeNuevoxFD(int32_t fdPersonaje) {
+	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	t_personaje *personaje;
+
+	bool _buscar_x_fd(t_personaje *p) {
+		return (p->fd == fdPersonaje);
+	}
+	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_fd);
+	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
+
+	return personaje;
+}
+
+
+t_personaje* quitarPersonajeNuevoxNivelxId (char* nivel, char idPersonaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	t_personaje *personaje;
+
+	bool _buscar_xnivel_xid(t_personaje *p) {
+		return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
+	}
 	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_xnivel_xid);
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
+
+	return personaje;
+}
+
+
+t_personaje* quitarPersonajeEnJuegoxFD(int32_t fdPersonaje) {
 
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	personaje2 = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_xnivel_xid);
+	t_personaje *personaje;
+
+	bool _buscar_x_fd(t_personaje *p) {
+		return (p->fd == fdPersonaje);
+	}
+
+	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_x_fd);
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	imprimirListaPersonajesEnJuego();
+
+	return personaje;
+}
+
+t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
+	t_personaje *personaje;
+
+	bool _buscar_xnivel_xid(t_personaje *p) {
+		return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
+	}
+	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_xnivel_xid);
+	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	imprimirListaPersonajesEnJuego();
+
+	return personaje;
+}
+
+t_personaje* quitarPersonajexFD(int32_t fdPersonaje) {
+
+	t_personaje *personaje;
+
+	personaje = quitarPersonajeNuevoxFD(fdPersonaje);
+	if (personaje == NULL)
+		personaje = quitarPersonajeEnJuegoxFD(fdPersonaje);
 
 	if (personaje != NULL)
 		agregarPersonajeFinAnormal(personaje);
-	else if (personaje2 != NULL)
-		agregarPersonajeFinAnormal(personaje2);
 
+	return personaje;
 }
 
 void moverPersonajeAFinalizados(char idPersonaje, char *nivel) {
 	//TODO!!!
 	t_personaje *personaje = NULL;
 
-	bool _buscar_xnivel_xid(t_personaje *p) {
-			return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
+	log_info(LOGGER, "Moviendo al personaje %c del %s a Finalizados", idPersonaje, nivel);
+	personaje = quitarPersonajeEnJuegoxNivelxId(nivel, idPersonaje);
+
+	if (personaje == NULL) {
+		log_error(LOGGER, "ERROR No se encontro al personaje %c del %s en el listado de personajes en Juego!!", idPersonaje, nivel);
 	}
 
-	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_xnivel_xid);
-	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
-
-	if (personaje != NULL)
-		agregarPersonajeFinalizado(personaje);
+	agregarPersonajeFinalizado(personaje);
 
 }
+
+void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
+	//TODO!!!
+	t_personaje *personaje = NULL;
+
+	personaje = quitarPersonajeNuevoxNivelxId(nivel, idPersonaje);
+
+	if (personaje == NULL)
+		personaje = quitarPersonajeEnJuegoxNivelxId(nivel, idPersonaje);
+
+	if (personaje != NULL)
+		agregarPersonajeFinAnormal(personaje);
+
+}
+
 /**
  * @NAME: moverPersonajesAFinAnormalxNivel
  * @DESC: Mueve todos los personajes asociados a un nivel de todas las listas a la lista compartida ListaPersonajesFinAnormal
@@ -157,7 +206,7 @@ void moverPersonajesAFinAnormalxNivel (char *nivel) {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
 	aux2 = list_filter(listaPersonajesNuevos, (void*)_buscar_x_nivel);
 	list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_nivel);
-	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 
 	pthread_mutex_lock (&mutexListaPersonajesFinAnormal);
 	list_add_all(listaPersonajesFinAnormal, aux);
@@ -168,33 +217,34 @@ void moverPersonajesAFinAnormalxNivel (char *nivel) {
 	list_destroy(aux2);
 }
 
+
 bool existeNivel(char* nivel) {
-	bool existe;
 	pthread_mutex_lock (&mutexListaNiveles);
+	bool existe;
 	existe = dictionary_has_key(listaNiveles, nivel);
 	pthread_mutex_unlock (&mutexListaNiveles);
 	return existe;
 }
 
 t_planificador* obtenerNivel(char* nivel) {
-	t_planificador *planner = NULL;
 	pthread_mutex_lock (&mutexListaNiveles);
+	t_planificador *planner = NULL;
 	planner = dictionary_get(listaNiveles, nivel);
 	pthread_mutex_unlock (&mutexListaNiveles);
 	return planner;
 }
 
 t_estado obtenerEstadoNivel(char* nivel) {
-	t_planificador *planner = NULL;
 	pthread_mutex_lock (&mutexListaNiveles);
+	t_planificador *planner = NULL;
 	planner = dictionary_get(listaNiveles, nivel);
 	pthread_mutex_unlock (&mutexListaNiveles);
 	return (planner!=NULL?planner->estado:(t_estado)NULL);
 }
 
 t_planificador* cambiarEstadoNivelaFinalizado (char* nivel) {
-	t_planificador *planner = NULL;
 	pthread_mutex_lock (&mutexListaNiveles);
+	t_planificador *planner = NULL;
 	planner = dictionary_get(listaNiveles, nivel);
 	planner->estado = FINALIZADO;
 	pthread_mutex_unlock (&mutexListaNiveles);
@@ -202,8 +252,8 @@ t_planificador* cambiarEstadoNivelaFinalizado (char* nivel) {
 }
 
 t_planificador* cambiarEstadoNivelaCorriendo (char* nivel) {
-	t_planificador *planner = NULL;
 	pthread_mutex_lock (&mutexListaNiveles);
+	t_planificador *planner = NULL;
 	planner = dictionary_get(listaNiveles, nivel);
 	planner->estado = CORRIENDO;
 	pthread_mutex_unlock (&mutexListaNiveles);
@@ -218,8 +268,8 @@ void agregarAListaNiveles(t_planificador* planner) {
 }
 
 t_planificador* quitarDeListaNiveles(char *nivel) {
-	t_planificador* planner;
 	pthread_mutex_lock (&mutexListaNiveles);
+	t_planificador* planner;
 	planner = dictionary_remove(listaNiveles, nivel);
 	pthread_mutex_unlock (&mutexListaNiveles);
 	return planner;
@@ -228,7 +278,7 @@ t_planificador* quitarDeListaNiveles(char *nivel) {
 int eliminarNivelesFinalizados () {
 
 	pthread_mutex_lock (&mutexListaNiveles);
-
+	int tamanio=0;
 	if (dictionary_size(listaNiveles)>0) {
 		t_dictionary *aux = dictionary_create();
 
@@ -247,9 +297,10 @@ int eliminarNivelesFinalizados () {
 		dictionary_destroy(aux);
 	}
 
+	tamanio = dictionary_size(listaNiveles);
 	pthread_mutex_unlock (&mutexListaNiveles);
 
-	return dictionary_size(listaNiveles);
+	return tamanio;
 }
 
 
@@ -260,25 +311,25 @@ void imprimirPersonajePlat (t_personaje* personaje) {
 
 void imprimirListaPersonajesNuevos () {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	log_info(LOGGER, "\n\n--- LISTADO Personajes Nuevos en Plataforma: ---\n*************************************************");
+	log_info(LOGGER, "\n\n-- LISTADO Personajes Nuevos en Plataforma: ---\n*************************************************");
 	list_iterate(listaPersonajesNuevos, (void*)imprimirPersonajePlat);
-	log_info(LOGGER, "\r--- FIN Listado Personajes Nuevos en Plataforma (total: %d) ---\n", list_size(listaPersonajesNuevos));
+	log_info(LOGGER, "\r-- FIN Listado Personajes Nuevos en Plataforma (total: %d) ---\n", list_size(listaPersonajesNuevos));
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 }
 
 void imprimirListaPersonajesEnJuego () {
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	log_info(LOGGER, "\n\n --- LISTADO Personajes En Juego en Plataforma: ---\n*************************************************");
+	log_info(LOGGER, "\n\n------ LISTADO Personajes En Juego en Plataforma: ---\n*************************************************");
 	list_iterate(listaPersonajesEnJuego, (void*)imprimirPersonajePlat);
-	log_info(LOGGER, "\r--- FIN Listado Personajes En Juego en Plataforma (total: %d) ---\n", list_size(listaPersonajesEnJuego));
+	log_info(LOGGER, "\r------ FIN Listado Personajes En Juego en Plataforma (total: %d) ---\n", list_size(listaPersonajesEnJuego));
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
 }
 
 void imprimirListaPersonajesFinalizados () {
 	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
-	log_info(LOGGER, "\n\n --- LISTADO Personajes Finalizados en Plataforma: ---\n*************************************************");
+	log_info(LOGGER, "\n\n--------- LISTADO Personajes Finalizados en Plataforma: ---\n*************************************************");
 	list_iterate(listaPersonajesFinalizados, (void*)imprimirPersonajePlat);
-	log_info(LOGGER, "\r--- FIN Listado Personajes Finalizados en Plataforma (total: %d) ---\n", list_size(listaPersonajesFinalizados));
+	log_info(LOGGER, "\r--------- FIN Listado Personajes Finalizados en Plataforma (total: %d) ---\n", list_size(listaPersonajesFinalizados));
 	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
 }
 
