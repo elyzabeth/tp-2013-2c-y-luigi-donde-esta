@@ -42,8 +42,24 @@ int principal(int argc, char *argv[]) {
 	// TODO	Al concluir todos los niveles, se conectará al Orquestador y notificará que concluyó su
 	// plan de niveles. Este lo moverá a una cola de finalizados y lo dejará a la espera de que
 	// los demás Personajes terminen.
-	log_info(LOGGER, "\n\nFINALICE TODO EL PLAN DE NIVELES!!!!!\n\n");
 
+	int finPlanNiveles = 1;
+	int _checkEnd(t_hilo_personaje *hilo) {
+		return (finPlanNiveles && (hilo->estado == PLAN_NIVEL_FINALIZADO));
+	}
+	list_iterate(listaHilosxNivel, (void*)_checkEnd);
+
+	if (finPlanNiveles) {
+
+		log_info(LOGGER, "\n\nFINALICE TODO EL PLAN DE NIVELES!!!!!\n\n");
+		imprimirVidasyReintentos();
+
+		// informar al orquestador.
+		enviarMsjPlanDeNivelesConcluido();
+
+	} else {
+		log_info(LOGGER, "\n\nSaliendo del Proceso Personaje sin finalizar todo el plan de niveles.!!!!!\n\n");
+	}
 
 	return 0;
 }

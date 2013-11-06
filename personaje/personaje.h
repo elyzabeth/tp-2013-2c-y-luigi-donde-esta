@@ -80,6 +80,7 @@ void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje);
 
 void per_signal_callback_handler(int signum);
 void manejoSIGTERM();
+void imprimirVidasyReintentos();
 
 int32_t incrementarVida();
 int32_t decrementarVida();

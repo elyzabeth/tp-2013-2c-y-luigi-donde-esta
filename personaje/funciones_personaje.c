@@ -353,9 +353,9 @@ int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 
 int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin) {
 
-	log_info(LOGGER, "gestionarRecursoConcedido. objetivosConseguidos: %d/%d", hiloPxN->objetivosConseguidos,hiloPxN->objetivos.totalObjetivos );
 	hiloPxN->objetivosConseguidos++;
 	hiloPxN->estado = RECURSO_CONCEDIDO;
+	log_info(LOGGER, "gestionarRecursoConcedido. objetivosConseguidos: %d/%d", hiloPxN->objetivosConseguidos,hiloPxN->objetivos.totalObjetivos );
 
 	// TODO agregar logica...
 	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
@@ -365,6 +365,7 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
 
 		// TODO Se completo el nivel
 		log_info(LOGGER, "COMPLETE EL PLAN DEL %s !!!\n", hiloPxN->personaje.nivel);
+		hiloPxN->estado = PLAN_NIVEL_FINALIZADO;
 		enviarMsjPlanDeNivelFinalizado(sock, hiloPxN);
 		*fin = true;
 
@@ -380,6 +381,28 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
 	return EXITO;
 }
 
+
+void enviarMsjPlanDeNivelesConcluido() {
+	int ret, sock = -1;
+	header_t header;
+
+	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
+
+	initHeader(&header);
+	header.tipo = PLAN_NIVELES_CONCLUIDO;
+	header.largo_mensaje = 0;
+	header.id[0] = configPersonajeSimbolo();
+
+	log_info(LOGGER, "\n\nEnviando PLAN_NIVELES_CONCLUIDO al orquestador.");
+	if ((ret = enviar_header(sock, &header)) != EXITO) {
+		log_error(LOGGER, "\n\nERROR AL ENVIAR PLAN_NIVELES_CONCLUIDO al ORQUESTADOR!!!\n\n");
+	}
+}
+
+
+void imprimirVidasyReintentos() {
+	log_info(LOGGER, "\n\nVIDAS Y REINTENTOS de %s\n******************\nVIDAS: %d\nREINTENTOS: %d\n\n", personaje.nombre, VIDAS, REINTENTOS);
+}
 /*
  * En caso de tener vidas disponibles, el Personaje se descontará una vida, volverá a conectarse
  * al hilo Orquestador y le notificará su intención de iniciar nuevamente el Nivel en que estaba jugando.
@@ -448,18 +471,22 @@ void per_signal_callback_handler(int signum)
 
 int32_t incrementarVida() {
 	VIDAS++;
-	log_info(LOGGER, "Personaje incrementa vidas. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
+	log_info(LOGGER, "\n\nEl Personaje incrementa vidas.\n");
+	imprimirVidasyReintentos();
 	//TODO agregar logica luego de incrementar vidas si corresponde
 	return VIDAS;
 }
 
 int32_t decrementarVida() {
+
 	if(VIDAS > 0) {
 		VIDAS--;
-		log_info(LOGGER, "Personaje decrementa 1 vida. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
+		log_info(LOGGER, "Personaje decrementa 1 vida.\n");
+		imprimirVidasyReintentos();
 		return VIDAS;
 	} else {
-		log_info(LOGGER, "Personaje No tiene VIDAS disponibles. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
+		log_info(LOGGER, "\nPersonaje No tiene VIDAS disponibles.\n");
+		imprimirVidasyReintentos();
 		return -1;
 	}
 }
@@ -475,7 +502,7 @@ void manejoSIGTERM() {
 	char respuesta;
 	int vidas_restantes = decrementarVida();
 
-	if (vidas_restantes == -1){
+	if (vidas_restantes == -1) {
 		//TODO interrumpir todos los planes de niveles
 
 		printf("Desea reiniciar el juego? s/n: ");
@@ -487,10 +514,12 @@ void manejoSIGTERM() {
 			REINTENTOS++;
 			log_info(LOGGER, "REINICIANDO EL JUEGO (reintentos: %d)...", REINTENTOS);
 			// TODO llamar funcion que reinicie el juego
+
 		} else {
 			log_info(LOGGER, "CERRANDO PROCESO PERSONAJE");
 			// TODO llamar funcion que baje los hilos
 			finalizarPersonaje();
+
 			exit(0);
 		}
 	}
