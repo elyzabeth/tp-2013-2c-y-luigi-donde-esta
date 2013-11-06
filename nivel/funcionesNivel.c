@@ -101,13 +101,13 @@ t_personaje* quitarPersonajeDeBloqueados(char simboloPersonaje) {
 	return personaje;
 }
 
-void agregarPersonajeAEnJuego(t_personaje *personaje) {
+void agregarPersonajeEnJuegoNivel(t_personaje *personaje) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	list_add(listaPersonajesEnJuego, personaje);
 	pthread_mutex_unlock (&mutexListaPersonajesJugando);
 }
 
-void agregarPersonajeABloqueados(t_personaje *personaje) {
+void agregarPersonajeABloqueadosNivel(t_personaje *personaje) {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	list_add(listaPersonajesBloqueados, personaje);
 	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
@@ -161,12 +161,42 @@ t_caja* obtenerRecurso(char simboloRecurso) {
 	return caja;
 }
 
+t_list* clonarListaPersonajesBloqueados() {
+	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+	t_list *clon = list_create();
+	t_personaje *aux;
+	void _add2Clon(t_personaje *personaje) {
+		aux = crearPersonajeDesdePersonaje(*personaje);
+		list_add(clon, aux);
+	}
+	list_iterate(listaPersonajesEnJuego, (void*)_add2Clon);
+	//list_add_all(clon, listaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+	return clon;
+}
+
+t_dictionary* clonarListaRecursosxPersonaje() {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	t_dictionary *clon = dictionary_create();
+	t_vecRecursos *aux;
+	void _add2Clon(char *key, t_vecRecursos *vec) {
+		aux = crearVecRecursos();
+		memcpy(aux->recurso, vec->recurso, sizeof(vec->recurso));
+		aux->total = vec->total;
+		dictionary_put(clon, key, aux);
+	}
+	dictionary_iterator(recursosxPersonajes, (void*)_add2Clon);
+	//list_add_all(clon, listaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+	return clon;
+}
+
 void moverPersonajeABloqueados(char simboloPersonaje) {
 	t_personaje *personaje;
 
 	personaje = quitarPersonajeDeEnJuego(simboloPersonaje);
 
-	agregarPersonajeABloqueados(personaje);
+	agregarPersonajeABloqueadosNivel(personaje);
 
 }
 
@@ -571,12 +601,38 @@ int enviarMsjRecursoInexistente (int sock) {
 	return ret;
 }
 
+
+int tratarNuevoPersonaje(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+	t_vecRecursos *vec;
+
+	// Si llega un mensaje de NUEVO_PERSONAJE luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarNuevoPersonaje: ERROR al recibir payload t_personaje en NUEVO_PERSONAJE\n\n", NOMBRENIVEL);
+		// TODO cancelo o solo retorno??
+		return ret;
+	}
+
+	log_debug(LOGGER,"%s tratarNuevoPersonaje: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
+
+	// TODO agregar personaje a lista de personajes en juego
+	// y a la lista GUIITEMS para graficarlo.
+	agregarPersonajeEnJuegoNivel(crearPersonajeDesdePersonaje(personaje));
+	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	vec = crearVecRecursos();
+	agregarRecursoxPersonaje(&personaje, vec);
+
+	return ret;
+}
+
 int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
 	t_caja *recurso;
 	t_caja caja;
-	t_vecRecursos *vec;
+	//t_vecRecursos *vec;
 
 	// Si llega un mensaje de SOLICITUD_UBICACION luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
@@ -615,12 +671,13 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 		return ret;
 	}
 
-	// TODO agregar personaje a lista de personajes en juego
-	// y a la lista GUIITEMS para graficarlo.
-	agregarPersonajeAEnJuego(crearPersonajeDesdePersonaje(personaje));
-	vec = crearVecRecursos();
-	agregarRecursoxPersonaje(&personaje, vec);
-	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	// MUEVO ESTO A LA FUNCION tratarNuevoPersonaje
+//	// agregar personaje a lista de personajes en juego
+//	// y a la lista GUIITEMS para graficarlo.
+//	agregarPersonajeEnJuegoNivel(crearPersonajeDesdePersonaje(personaje));
+//	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+//	vec = crearVecRecursos();
+//	agregarRecursoxPersonaje(&personaje, vec);
 
 	return ret;
 }
@@ -647,11 +704,6 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 		header.tipo = RECURSO_CONCEDIDO;
 		header.largo_mensaje = sizeof(t_caja);
 
-		// Resto 1 instancia del recurso
-		recurso->INSTANCIAS--;
-		gui_restarRecurso(recurso->SIMBOLO);
-		gui_dibujar();
-
 	} else {
 		header.tipo = RECURSO_DENEGADO;
 		header.largo_mensaje = 0;
@@ -672,7 +724,12 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 			log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al enviar t_caja de RECURSO_CONCEDIDO\n\n", NOMBRENIVEL);
 			return ret;
 		}
+
+		// Resto 1 instancia del recurso
+		recurso->INSTANCIAS--;
 		incrementarRecursoxPersonaje(&personaje, personaje.recurso);
+		gui_restarRecurso(recurso->SIMBOLO);
+		gui_dibujar();
 	}
 
 	return ret;
@@ -689,6 +746,9 @@ int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 		// TODO cancelo o solo retorno??
 		return ret;
 	}
+
+	log_debug(LOGGER, "%s Movimiento realizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
+	log_debug(LOGGER, "%s GUIITEMS': %d", NOMBRENIVEL, list_size(GUIITEMS));
 	gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;
@@ -712,257 +772,3 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 	return ret;
 }
 
-// FUNCIONES DE PRUEBA - BORRAR CUANDO YA NO SE USEN (simulacroJuego y ejemploGui)
-// -------------------------------------------------------------------------------
-void simulacroJuego () {
-
-	int q, p;
-	int x = 1;
-	int y = 1;
-//	int ex1 = 10, ey1 = 14;
-//	int ex2 = 20, ey2 = 3;
-
-	p = MAXCOLS;
-	q = MAXROWS;
-
-	gui_crearPersonaje('@', p, q);
-	gui_crearPersonaje('#', x, y);
-
-	gui_dibujar();
-
-	while ( 1 ) {
-		int key = getch();
-
-		switch( key ) {
-
-			case KEY_UP:
-				if (y > 1) {
-					y--;
-				}
-			break;
-
-			case KEY_DOWN:
-				if (y < MAXROWS) {
-					y++;
-				}
-			break;
-
-			case KEY_LEFT:
-				if (x > 1) {
-					x--;
-				}
-			break;
-			case KEY_RIGHT:
-				if (x < MAXCOLS) {
-					x++;
-				}
-			break;
-			case 'w':
-			case 'W':
-				if (q > 1) {
-					q--;
-				}
-			break;
-
-			case 's':
-			case 'S':
-				if (q < MAXROWS) {
-					q++;
-				}
-			break;
-
-			case 'a':
-			case 'A':
-				if (p > 1) {
-					p--;
-				}
-			break;
-			case 'D':
-			case 'd':
-				if (p < MAXCOLS) {
-					p++;
-				}
-			break;
-			case 'Q':
-			case 'q':
-				//nivel_gui_terminar();
-				//exit(0);
-			break;
-		}
-
-
-//		rnd(&ex1, MAXCOLS);
-//		rnd(&ey1, MAXROWS);
-//		rnd(&ex2, MAXCOLS);
-//		rnd(&ey2, MAXROWS);
-//		MoverPersonaje(GUIITEMS, '1', ex1, ey1 );
-//		MoverPersonaje(GUIITEMS, '2', ex2, ey2 );
-
-		gui_moverPersonaje('@', p, q);
-		gui_moverPersonaje('#', x, y);
-
-		if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
-			restarRecurso(GUIITEMS, 'H');
-		}
-
-		if (   ((p == 19) && (q == 9)) || ((x == 19) && (y == 9)) ) {
-			restarRecurso(GUIITEMS, 'F');
-		}
-
-		if (   ((p == 8) && (q == 15)) || ((x == 8) && (y == 15)) ) {
-			restarRecurso(GUIITEMS, 'M');
-		}
-
-		if((p == x) && (q == y)) {
-			BorrarItem(GUIITEMS, '#'); //si chocan, borramos uno (!)
-		}
-
-		gui_dibujar();
-
-		if (key=='q' || key=='Q')
-			break;
-	}
-
-	return;
-}
-
-
-void ejemploGui () {
-
-	t_list* items = list_create();
-
-		int rows, cols;
-		int q, p;
-
-		int x = 1;
-		int y = 1;
-
-		int ex1 = 10, ey1 = 14;
-		int ex2 = 20, ey2 = 3;
-
-		nivel_gui_inicializar();
-
-	    nivel_gui_get_area_nivel(&rows, &cols);
-
-		p = cols;
-		q = rows;
-
-		CrearPersonaje(items, '@', p, q);
-		CrearPersonaje(items, '#', x, y);
-
-		CrearEnemigo(items, '1', ex1, ey1);
-		CrearEnemigo(items, '2', ex2, ey2);
-
-		CrearCaja(items, 'H', 26, 10, 5);
-		CrearCaja(items, 'M', 8, 15, 3);
-		CrearCaja(items, 'F', 19, 9, 2);
-
-		nivel_gui_dibujar(items, "Test Chamber 04");
-
-		while ( 1 ) {
-			int key = getch();
-
-			switch( key ) {
-
-				case KEY_UP:
-					if (y > 1) {
-						y--;
-					}
-				break;
-
-				case KEY_DOWN:
-					if (y < rows) {
-						y++;
-					}
-				break;
-
-				case KEY_LEFT:
-					if (x > 1) {
-						x--;
-					}
-				break;
-				case KEY_RIGHT:
-					if (x < cols) {
-						x++;
-					}
-				break;
-				case 'w':
-				case 'W':
-					if (q > 1) {
-						q--;
-					}
-				break;
-
-				case 's':
-				case 'S':
-					if (q < rows) {
-						q++;
-					}
-				break;
-
-				case 'a':
-				case 'A':
-					if (p > 1) {
-						p--;
-					}
-				break;
-				case 'D':
-				case 'd':
-					if (p < cols) {
-						p++;
-					}
-				break;
-				case 'Q':
-				case 'q':
-					//nivel_gui_terminar();
-					//exit(0);
-				break;
-			}
-
-
-			rnd(&ex1, cols);
-			rnd(&ey1, rows);
-			rnd(&ex2, cols);
-			rnd(&ey2, rows);
-			MoverPersonaje(items, '1', ex1, ey1 );
-			MoverPersonaje(items, '2', ex2, ey2 );
-
-			MoverPersonaje(items, '@', p, q);
-			MoverPersonaje(items, '#', x, y);
-
-			if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
-				restarRecurso(items, 'H');
-			}
-
-			if (   ((p == 19) && (q == 9)) || ((x == 19) && (y == 9)) ) {
-				restarRecurso(items, 'F');
-			}
-
-			if (   ((p == 8) && (q == 15)) || ((x == 8) && (y == 15)) ) {
-				restarRecurso(items, 'M');
-			}
-
-			if((p == x) && (q == y)) {
-				BorrarItem(items, '#'); //si chocan, borramos uno (!)
-			}
-
-			nivel_gui_dibujar(items, "Test Chamber 04");
-
-			if (key=='q' || key=='Q')
-				break;
-		}
-
-		BorrarItem(items, '#');
-		BorrarItem(items, '@');
-
-		BorrarItem(items, '1');
-		BorrarItem(items, '2');
-
-		BorrarItem(items, 'H');
-		BorrarItem(items, 'M');
-		BorrarItem(items, 'F');
-
-		//list_destroy_and_destroy_elements(items, (void*)free);
-
-		nivel_gui_terminar();
-}

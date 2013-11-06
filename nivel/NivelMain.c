@@ -97,6 +97,11 @@ void principal () {
 									log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
 									break;
 
+								case NUEVO_PERSONAJE:
+									log_info(LOGGER, "Llego mensaje NUEVO_PERSONAJE (fd:%d)", i);
+									tratarNuevoPersonaje(i, header, &master);
+									break;
+
 								case SOLICITUD_UBICACION:
 									log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
 									tratarSolicitudUbicacion(i, header, &master);
