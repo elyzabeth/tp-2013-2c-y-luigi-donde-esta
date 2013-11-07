@@ -11,7 +11,7 @@ t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX,
 
 	t_personaje* nuevoPersonaje;
 
-	nuevoPersonaje = (t_personaje*)malloc(sizeof(t_personaje));
+	nuevoPersonaje = (t_personaje*)calloc(1, sizeof(t_personaje));
 	strcpy(nuevoPersonaje->nombre, nombre);
 	nuevoPersonaje->id = id;
 	nuevoPersonaje->posActual.x = posX;
@@ -19,6 +19,23 @@ t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX,
 	nuevoPersonaje->fd = fd;
 	strcpy(nuevoPersonaje->nivel, nivel);
 	nuevoPersonaje->recurso = '\0';
+
+	return nuevoPersonaje;
+}
+
+t_personaje* crearPersonajeDesdePersonaje (t_personaje personaje) {
+
+	t_personaje* nuevoPersonaje;
+
+	nuevoPersonaje = (t_personaje*)calloc(1, sizeof(t_personaje));
+
+	strcpy(nuevoPersonaje->nombre, personaje.nombre);
+	strcpy(nuevoPersonaje->nivel, personaje.nivel);
+	nuevoPersonaje->id = personaje.id;
+	nuevoPersonaje->posActual = personaje.posActual;
+	nuevoPersonaje->fd = personaje.fd;
+	nuevoPersonaje->recurso = personaje.recurso;
+	nuevoPersonaje->criterio = personaje.criterio;
 
 	return nuevoPersonaje;
 }
@@ -53,5 +70,8 @@ void destruirPersonaje (t_personaje * personaje){
 	free(personaje);
 }
 
+void imprimirPersonaje (t_personaje* p, t_log *LOGGER) {
+	log_info(LOGGER, "\r- %s -> Personaje: '%s' - simbolo: '%c' - recurso: '%c' - posicion: (%d, %d) - socket: '%d' - ", p->nivel, p->nombre, p->id, p->recurso, p->posActual.x,p->posActual.y, p->fd);
+}
 
 
