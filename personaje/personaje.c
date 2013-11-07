@@ -16,7 +16,6 @@ int main (int argc, char *argv[]) {
 
 	inicializarPersonaje();
 
-	// TODO agregar logica del personaje
 	principal(argc, argv);
 	//test ();
 
@@ -81,16 +80,6 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 	t_proximoObjetivo proximoObjetivo;
 	memset(&proximoObjetivo, 0, sizeof(t_proximoObjetivo));
 
-
-	//t_objetivosxNivel *oxn = (t_objetivosxNivel*)queue_pop(planDeNiveles);
-//	hiloPxN.objetivos = *oxn;
-//	hiloPxN.personaje.id = configPersonajeSimbolo();
-//	strcpy(hiloPxN.personaje.nombre, configPersonajeNombre());
-//	strcpy(hiloPxN.personaje.nivel, oxn->nivel);
-//	hiloPxN.personaje.posActual.x = 0;
-//	hiloPxN.personaje.posActual.y = 0;
-//	hiloPxN.personaje.recurso = proximoObjetivo.simbolo;
-
 	proximoObjetivo.simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
 	proximoObjetivo.posicion.x=0;
 	proximoObjetivo.posicion.y=0;
@@ -146,6 +135,9 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 						if (header.tipo == FINALIZAR) {
 							log_debug(LOGGER, "Personaje '%c': '%d' ES FINALIZAR", hiloPxN->personaje.id, header.tipo);
 							fin = true;
+
+							// TODO enviar mensaje al planificador???
+
 							break;
 						}
 
@@ -198,4 +190,191 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 	log_info(LOGGER, "FINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
 
 	pthread_exit(NULL);
+}
+
+
+
+void enviarMsjPlanDeNivelesConcluido() {
+	int ret, sock = -1;
+	header_t header;
+
+	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
+
+	initHeader(&header);
+	header.tipo = PLAN_NIVELES_CONCLUIDO;
+	header.largo_mensaje = 0;
+	header.id[0] = configPersonajeSimbolo();
+
+	log_info(LOGGER, "\n\nEnviando PLAN_NIVELES_CONCLUIDO al orquestador.");
+	if ((ret = enviar_header(sock, &header)) != EXITO) {
+		log_error(LOGGER, "\n\nERROR AL ENVIAR PLAN_NIVELES_CONCLUIDO al ORQUESTADOR!!!\n\n");
+	}
+}
+
+
+// TODO el mensaje de muerte lo envia el hilo pricipal del personaje al orquestador?
+// o el hilo principal se lo comunica a cada hilo hijo y estos se lo comunican a sus respectivos planificadores??
+void enviarMsjMuerteDePersonaje () {
+	int ret, sock = -1;
+	header_t header;
+
+	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
+
+	initHeader(&header);
+	header.tipo = MUERTE_PERSONAJE;
+	header.largo_mensaje = 0;
+	header.id[0] = configPersonajeSimbolo();
+
+	log_info(LOGGER, "\n\nEnviando MUERTE_PERSONAJE al orquestador.");
+	if ((ret = enviar_header(sock, &header)) != EXITO) {
+		log_error(LOGGER, "\n\nERROR AL ENVIAR MUERTE_PERSONAJE al ORQUESTADOR!!!\n\n");
+	}
+
+}
+
+
+void imprimirVidasyReintentos() {
+	log_info(LOGGER, "\n\nVIDAS Y REINTENTOS de %s\n******************\nVIDAS: %d\nREINTENTOS: %d\n\n", personaje.nombre, VIDAS, REINTENTOS);
+}
+
+
+int32_t incrementarVida() {
+	VIDAS++;
+	log_info(LOGGER, "\n\nEl Personaje incrementa vidas.\n");
+	imprimirVidasyReintentos();
+	//TODO agregar logica luego de incrementar vidas si corresponde
+	return VIDAS;
+}
+
+int32_t decrementarVida() {
+
+	if(VIDAS > 0) {
+		VIDAS--;
+		log_info(LOGGER, "Personaje decrementa 1 vida.\n");
+		imprimirVidasyReintentos();
+		return VIDAS;
+	} else {
+		log_info(LOGGER, "\nPersonaje No tiene VIDAS disponibles.\n");
+		imprimirVidasyReintentos();
+		return -1;
+	}
+}
+
+
+/**
+ * @NAME: finalizarHilosPersonaje
+ * @DESC: Finaliza los hilos de personajes creados para cada nivel enviandoles por pipe el mensaje FINALIZAR
+ */
+void finalizarHilosPersonaje() {
+	int i = 0;
+	int32_t cantHilosPersonaje;
+	header_t header;
+
+	cantHilosPersonaje = list_size(listaHilosxNivel);
+
+	if(cantHilosPersonaje <= 0)
+		return;
+
+	char* buffer_header = calloc(1,sizeof(header_t));
+
+	log_info(LOGGER, "FINALIZANDO HILOS Personaje");
+
+	initHeader(&header);
+	header.tipo = FINALIZAR;
+	header.largo_mensaje=0;
+
+	memset(buffer_header, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
+
+	void _finalizar_hilo(t_hilo_personaje *hPersonaje) {
+		log_debug(LOGGER, "hilo/de  %d/%d) Envio mensaje de FINALIZAR a hilo Personaje '%c' (%s)", ++i, cantHilosPersonaje, hPersonaje->personaje.id, hPersonaje->personaje.nivel);
+		write(hPersonaje->fdPipe[1], buffer_header, sizeof(header_t));
+		pthread_join(hPersonaje->tid, NULL);
+		sleep(1);
+	}
+
+	list_iterate(listaHilosxNivel, (void*)_finalizar_hilo);
+
+	free(buffer_header);
+}
+
+
+/*
+ * Si no le quedaran vidas disponibles, el Personaje deberá interrumpir todos sus planes de
+ * niveles y mostrar en pantalla un mensaje preguntando al usuario si desea reiniciar el juego,
+ * informando también la cantidad de reintentos que ya se realizaron. De aceptar, el Personaje
+ * incrementará su contador de reintentos y reiniciará su Plan de Niveles. En caso negativo, el
+ * Personaje se cerrará, abandonando el juego.
+ */
+void manejoSIGTERM() {
+	char respuesta;
+	int vidas_restantes = decrementarVida();
+
+	if (vidas_restantes == -1) {
+		//TODO interrumpir todos los planes de niveles
+		// llamar funcion que baje los hilos y ver que otras variables hay que reiniciar!!
+		finalizarHilosPersonaje();
+
+		printf("Desea reiniciar el juego? s/n: ");
+
+		while ((respuesta=getc(stdin)) != 's' && respuesta != 'n')
+			printf("\nPor favor ingrese 's' o 'n': ");
+
+		if(respuesta == 's'){
+			REINTENTOS++;
+			log_info(LOGGER, "REINICIANDO EL JUEGO (reintentos: %d)...", REINTENTOS);
+			// TODO llamar funcion que reinicie el juego
+
+		} else {
+			log_info(LOGGER, "CERRANDO PROCESO PERSONAJE");
+
+			finalizarPersonaje();
+
+			exit(0);
+		}
+	}
+
+}
+
+
+/*
+ * @NAME: per_signal_callback_handler
+ * @DESC: Define la funcion a llamar cuando una señal es enviada al proceso
+ * ctrl-c (SIGINT)
+ */
+void per_signal_callback_handler(int signum)
+{
+	log_info(LOGGER, "INTERRUPCION POR SEÑAL: %d = %s \n", signum, strsignal(signum));
+
+	switch(signum) {
+
+	case SIGUSR1: // SIGUSR1=10 ( kill -s USR1 <PID> )
+		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR1\n");
+		//Debo incrementar 1 vida
+		incrementarVida();
+		break;
+	case SIGTERM: // SIGTERM=15 ( kill <PID>)
+		log_info(LOGGER, " - LLEGO SEÑAL SIGTERM\n");
+		manejoSIGTERM();
+		break;
+	case SIGINT: // SIGINT=2 (ctrl-c)
+		log_info(LOGGER, " - LLEGO SEÑAL SIGINT\n");
+		finalizarPersonaje();
+		// Termino el programa
+		exit(signum);
+		break;
+	case SIGKILL: // SIGKILL=9 ( kill -9 <PID>)
+		log_info(LOGGER, " - LLEGO SEÑAL SIGKILL\n");
+		finalizarPersonaje();
+		// Termino el programa
+		exit(signum);
+		break;
+	case SIGQUIT: // SIGQUIT=3 (ctrl-4 o kill -s QUIT <PID>)
+		log_info(LOGGER, " - LLEGO SEÑAL SIGQUIT\n");
+		finalizarPersonaje();
+		// Termino el programa
+		exit(signum);
+		break;
+	}
+
 }

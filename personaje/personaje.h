@@ -70,13 +70,14 @@ pthread_mutex_t mutexEnvioMensaje;
 int principal(int argc, char *argv[]);
 void inicializarPersonaje();
 void finalizarPersonaje();
+void finalizarHilosPersonaje();
 
 void levantarHilosxNivel() ;
 void esperarHilosxNivel();
 void* personajexNivel (t_hilo_personaje *hiloPxN);
 
-t_hilo_personaje* crearHiloPersonaje();
-void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje);
+t_hilo_personaje* crearEstructuraHiloPersonaje();
+void destruirEstructuraHiloPersonaje(t_hilo_personaje* hiloPersonaje);
 
 void per_signal_callback_handler(int signum);
 void manejoSIGTERM();
@@ -91,6 +92,7 @@ int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);
 int enviarInfoPersonaje2(int sock);
 int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN);
+void enviarMsjPlanDeNivelesConcluido();
 int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN );
 int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin);

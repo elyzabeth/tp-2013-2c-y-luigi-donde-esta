@@ -37,11 +37,11 @@ void finalizarPersonaje() {
 	log_info(LOGGER, "FINALIZANDO PERSONAJE\n");
 
 	// TODO Bajar Hilos
-	// matarHilos()...
+	finalizarHilosPersonaje();
 
 	pthread_mutex_destroy(&mutexEnvioMensaje);
 
-	list_destroy_and_destroy_elements(listaHilosxNivel, (void*)destruirHiloPersonaje);
+	list_destroy_and_destroy_elements(listaHilosxNivel, (void*)destruirEstructuraHiloPersonaje);
 	destruirConfigPersonaje();
 	log_destroy(LOGGER);
 }
@@ -63,7 +63,7 @@ void levantarHilosxNivel() {
 	t_hilo_personaje *hiloPersonaje;
 
 	for (i = 0; i < cant; i++) {
-		hiloPersonaje = crearHiloPersonaje(personaje);
+		hiloPersonaje = crearEstructuraHiloPersonaje();
 		oxn = queue_pop(planDeNiveles);
 
 		strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
@@ -72,22 +72,21 @@ void levantarHilosxNivel() {
 		hiloPersonaje->objetivos = *oxn;
 
 		list_add(listaHilosxNivel, hiloPersonaje);
-log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
+
+		log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
+
 		// Creo el hilo para el nivel
 		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
-		//pthread_create (&hiloPersonaje->tid, NULL, (void*)test, (t_hilo_personaje*)hiloPersonaje);
 
-log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
-		//pthread_join(hiloPersonaje->tid, NULL);
-		//break;
+		//log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
+
 	}
 
 }
 
-t_hilo_personaje* crearHiloPersonaje() {
+t_hilo_personaje* crearEstructuraHiloPersonaje() {
 	t_hilo_personaje *hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
 
-	//memset(hiloPersonaje, '\0', sizeof(t_hilo_personaje));
 	hiloPersonaje->personaje.recurso = '-';
 	hiloPersonaje->personaje.posActual.x = 0;
 	hiloPersonaje->personaje.posActual.y = 0;
@@ -97,7 +96,7 @@ t_hilo_personaje* crearHiloPersonaje() {
 	return hiloPersonaje;
 }
 
-void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje) {
+void destruirEstructuraHiloPersonaje(t_hilo_personaje* hiloPersonaje) {
 
 	close(hiloPersonaje->fdPipe[0]);
 	close(hiloPersonaje->fdPipe[1]);
@@ -382,27 +381,6 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
 }
 
 
-void enviarMsjPlanDeNivelesConcluido() {
-	int ret, sock = -1;
-	header_t header;
-
-	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
-
-	initHeader(&header);
-	header.tipo = PLAN_NIVELES_CONCLUIDO;
-	header.largo_mensaje = 0;
-	header.id[0] = configPersonajeSimbolo();
-
-	log_info(LOGGER, "\n\nEnviando PLAN_NIVELES_CONCLUIDO al orquestador.");
-	if ((ret = enviar_header(sock, &header)) != EXITO) {
-		log_error(LOGGER, "\n\nERROR AL ENVIAR PLAN_NIVELES_CONCLUIDO al ORQUESTADOR!!!\n\n");
-	}
-}
-
-
-void imprimirVidasyReintentos() {
-	log_info(LOGGER, "\n\nVIDAS Y REINTENTOS de %s\n******************\nVIDAS: %d\nREINTENTOS: %d\n\n", personaje.nombre, VIDAS, REINTENTOS);
-}
 /*
  * En caso de tener vidas disponibles, el Personaje se descontará una vida, volverá a conectarse
  * al hilo Orquestador y le notificará su intención de iniciar nuevamente el Nivel en que estaba jugando.
@@ -427,102 +405,7 @@ void muertePersonaje(MOTIVO_MUERTE motivo) {
 
 }
 
-/*
- * @NAME: per_signal_callback_handler
- * @DESC: Define la funcion a llamar cuando una señal es enviada al proceso
- * ctrl-c (SIGINT)
- */
-void per_signal_callback_handler(int signum)
-{
-	log_info(LOGGER, "INTERRUPCION POR SEÑAL: %d = %s \n", signum, strsignal(signum));
 
-	switch(signum) {
 
-	case SIGUSR1: // SIGUSR1=10 ( kill -s USR1 <PID> )
-		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR1\n");
-		//Debo incrementar 1 vida
-		incrementarVida();
-		break;
-	case SIGTERM: // SIGTERM=15 ( kill <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGTERM\n");
-		manejoSIGTERM();
-		break;
-	case SIGINT: // SIGINT=2 (ctrl-c)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGINT\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
-	case SIGKILL: // SIGKILL=9 ( kill -9 <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGKILL\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
-	case SIGQUIT: // SIGQUIT=3 (ctrl-4 o kill -s QUIT <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGQUIT\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
-	}
 
-}
-
-int32_t incrementarVida() {
-	VIDAS++;
-	log_info(LOGGER, "\n\nEl Personaje incrementa vidas.\n");
-	imprimirVidasyReintentos();
-	//TODO agregar logica luego de incrementar vidas si corresponde
-	return VIDAS;
-}
-
-int32_t decrementarVida() {
-
-	if(VIDAS > 0) {
-		VIDAS--;
-		log_info(LOGGER, "Personaje decrementa 1 vida.\n");
-		imprimirVidasyReintentos();
-		return VIDAS;
-	} else {
-		log_info(LOGGER, "\nPersonaje No tiene VIDAS disponibles.\n");
-		imprimirVidasyReintentos();
-		return -1;
-	}
-}
-
-/*
- * Si no le quedaran vidas disponibles, el Personaje deberá interrumpir todos sus planes de
- * niveles y mostrar en pantalla un mensaje preguntando al usuario si desea reiniciar el juego,
- * informando también la cantidad de reintentos que ya se realizaron. De aceptar, el Personaje
- * incrementará su contador de reintentos y reiniciará su Plan de Niveles. En caso negativo, el
- * Personaje se cerrará, abandonando el juego.
- */
-void manejoSIGTERM() {
-	char respuesta;
-	int vidas_restantes = decrementarVida();
-
-	if (vidas_restantes == -1) {
-		//TODO interrumpir todos los planes de niveles
-
-		printf("Desea reiniciar el juego? s/n: ");
-
-		while ((respuesta=getc(stdin)) != 's' && respuesta != 'n')
-			printf("\nPor favor ingrese 's' o 'n': ");
-
-		if(respuesta == 's'){
-			REINTENTOS++;
-			log_info(LOGGER, "REINICIANDO EL JUEGO (reintentos: %d)...", REINTENTOS);
-			// TODO llamar funcion que reinicie el juego
-
-		} else {
-			log_info(LOGGER, "CERRANDO PROCESO PERSONAJE");
-			// TODO llamar funcion que baje los hilos
-			finalizarPersonaje();
-
-			exit(0);
-		}
-	}
-
-}
 
