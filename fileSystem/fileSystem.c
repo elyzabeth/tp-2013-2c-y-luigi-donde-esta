@@ -334,7 +334,7 @@ int main (int argc, char**argv) {
 	//printf("FNodo: %s", FNodo->fname);
 
 	puts("-----Tabla Nodos-------");
-	int i, j;
+	int i;
 	for(i=0; i < 1024; i++) {
 		if (NODOS[i]->state) {
 			printf("%d) bloque: %d - nombre: %s - state: %d - padre: %d\n", i, i+1, NODOS[i]->fname, NODOS[i]->state, NODOS[i]->parent_dir_block);

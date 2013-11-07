@@ -178,19 +178,19 @@ int eliminarNivelesFinalizados () {
 }
 
 
-void imprimirPersonaje (t_personaje* personaje) {
+void imprimirPersonajePlat (t_personaje* personaje) {
 	log_info(LOGGER, "Personaje: '%s' - simbolo: '%c' - socket: '%d'", personaje->nombre, personaje->id, personaje->fd);
 }
 
 
 void imprimirListaPersonajesNuevos () {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	list_iterate(listaPersonajesNuevos, (void*)imprimirPersonaje);
+	list_iterate(listaPersonajesNuevos, (void*)imprimirPersonajePlat);
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 }
 
 void imprimirListaPersonajesEnJuego () {
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
-	list_iterate(listaPersonajesEnJuego, (void*)imprimirPersonaje);
+	list_iterate(listaPersonajesEnJuego, (void*)imprimirPersonajePlat);
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
 }
