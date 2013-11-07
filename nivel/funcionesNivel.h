@@ -75,6 +75,7 @@ void principal ();
 
 void inicializarNivel ();
 void finalizarNivel ();
+void finalizarPersonajeNivel(t_personaje *personaje);
 int crearNotifyFD();
 t_vecRecursos* crearVecRecursos();
 void destruirVecRecursos(t_vecRecursos *vecRecursos);

@@ -25,6 +25,7 @@ typedef struct {
 
 #pragma pack(1)
 typedef struct enemy {
+	int32_t id;
 	t_enemigo enemigo;
 	pthread_t tid;
 	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura

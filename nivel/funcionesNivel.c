@@ -306,7 +306,7 @@ void inicializarNivel () {
 
 }
 
-void finalizarPersonaje(t_personaje *personaje) {
+void finalizarPersonajeNivel(t_personaje *personaje) {
 	t_personaje *p;
 	t_vecRecursos *vec;
 	t_caja* caja;
@@ -766,8 +766,9 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 		// TODO cancelo o solo retorno??
 		return ret;
 	}
+
 	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
-	finalizarPersonaje(&personaje);
+	finalizarPersonajeNivel(&personaje);
 
 	return ret;
 }
