@@ -7,8 +7,13 @@
 
 #include "funcionesNivel.h"
 
-int32_t detectarDeadlock();
+int32_t matAsignacion[20][20];
+int32_t matSolicitud[20][20];
+int32_t vecDisponibles[20];
+int32_t totalRecursos;
+int32_t totalPersonajes;
 
+int32_t detectarDeadlock();
 
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	header_t header;
@@ -88,10 +93,25 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 }
 
+
 int32_t detectarDeadlock() {
+
 	int32_t hayDeadLock = 0;
+//	int32_t T[20];
+//
+//	t_list *listaPJBloqueados = clonarListaPersonajesBloqueados();
+//	t_dictionary *recursosxPJ = clonarListaRecursosxPersonaje();
+//	t_dictionary *dicRecursos;
 
 	// TODO agregar algoritmo de deteccion de interbloqueo
+	// Lleno las matrices y los vectores necesarios.
+
+	// 1) Se marca cada proceso que tenga una fila de la matriz de Asignacion completamente a cero
+	// 2) Se inicia un vector temporal T asignandole el vector de disponibles
+	// 3) Se busca un indice i tal que el proceso i no este marcado actualmente y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
+	//    Es decir, Se ejecuta Tk = Tk + Aik, para 1 <= k <= m. A continuacion se vuelve al 3 paso.
+
+
 
 	return hayDeadLock;
 

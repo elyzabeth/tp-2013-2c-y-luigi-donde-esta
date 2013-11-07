@@ -38,20 +38,25 @@ int32_t watchDescriptor;
 int32_t notifyFD;
 
 t_log* LOGGER;
-char NOMBRENIVEL[20+1];
+//char NOMBRENIVEL[20+1];
+char NOMBRENIVEL[MAXCHARLEN+1];
+
 
 int MAXROWS, MAXCOLS;
-t_list* GUIITEMS;
+t_list *GUIITEMS;
 t_list *listaPersonajesEnJuego;
 t_list *listaPersonajesBloqueados;
+t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
 t_dictionary *listaRecursos;
 t_list *listaEnemigos;
 
 pthread_mutex_t mutexLockGlobalGUI;
-pthread_mutex_t mutexListaPersonajesEnJuego;
+pthread_mutex_t mutexListaPersonajesJugando;
 pthread_mutex_t mutexListaPersonajesBloqueados;
+pthread_mutex_t mutexListaRecursos;
+pthread_mutex_t mutexRecursosxPersonajes;
 
 typedef struct {
 	pthread_t tid;
@@ -60,20 +65,26 @@ typedef struct {
 
 t_hiloInterbloqueo hiloInterbloqueo;
 
+typedef struct {
+	int32_t recurso[100];
+	int32_t total;
+} t_vecRecursos;
+
 int correrTest();
 void principal ();
 
 void inicializarNivel ();
 void finalizarNivel ();
 int crearNotifyFD();
+t_vecRecursos* crearVecRecursos();
+void destruirVecRecursos(t_vecRecursos *vecRecursos);
+void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso);
 
-//Pruebas (borrar cuando ya no se use)
-void simulacroJuego ();
-void ejemploGui ();
 
 // funciones GUI sincronizadas por semaforo mutex
 void gui_dibujar();
 void gui_moverPersonaje (char id, int x, int y);
+void gui_restarRecurso (char id);
 void gui_crearEnemigo(char id, int x, int y);
 void gui_crearCaja(char id, int x, int y, int instancias);
 void gui_crearPersonaje(char id, int x, int y);
@@ -81,6 +92,13 @@ void gui_borrarItem(char id);
 
 // funciones listas compartidas
 int32_t obternerCantPersonajesEnJuego();
+void moverPersonajeABloqueados(char simboloPersonaje);
+void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
+void agregarPersonajeBloqueadosNivel(t_personaje *personaje);
+void imprimirPersonajeNivel (t_personaje* personaje);
+t_list* clonarListaPersonajesBloqueados();
+t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje);
+t_caja* obtenerRecurso(char simboloRecurso);
 
 //hilos
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo);
@@ -93,8 +111,11 @@ void signal_callback_handler(int signum);
 int enviarMsjAInterbloqueo (char msj);
 int enviarMSJNuevoNivel(int sock);
 int enviarMsjCambiosConfiguracion(int sock);
+int tratarNuevoPersonaje(int sock, header_t header, fd_set *master);
 int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master);
-
+int tratarSolicitudRecurso(int sock, header_t header, fd_set *master);
+int tratarMovimientoRealizado(int sock, header_t header, fd_set *master);
+int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master);
 
 void rnd(int *x, int max);
 

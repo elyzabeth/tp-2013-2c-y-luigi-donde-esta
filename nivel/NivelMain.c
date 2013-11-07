@@ -97,6 +97,11 @@ void principal () {
 									log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
 									break;
 
+								case NUEVO_PERSONAJE:
+									log_info(LOGGER, "Llego mensaje NUEVO_PERSONAJE (fd:%d)", i);
+									tratarNuevoPersonaje(i, header, &master);
+									break;
+
 								case SOLICITUD_UBICACION:
 									log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
 									tratarSolicitudUbicacion(i, header, &master);
@@ -104,6 +109,17 @@ void principal () {
 
 								case SOLICITUD_RECURSO:
 									log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
+									tratarSolicitudRecurso(i, header, &master);
+									break;
+
+								case MOVIMIENTO_REALIZADO:
+									log_info(LOGGER, "Llego mensaje MOVIMIENTO_REALIZADO (fd:%d)", i);
+									tratarMovimientoRealizado(i, header, &master);
+									break;
+
+								case PLAN_NIVEL_FINALIZADO:
+									log_info(LOGGER, "Llego mensaje PLAN_NIVEL_FINALIZADO (fd:%d)", i);
+									tratarPlanNivelFinalizado (i, header, &master);
 									break;
 
 								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);

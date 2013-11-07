@@ -48,6 +48,18 @@ void gui_moverPersonaje (char id, int x, int y) {
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
+void gui_restarRecurso (char id) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+	restarRecurso(GUIITEMS, id );
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
+void gui_sumarRecurso (char id) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+	sumarRecurso(GUIITEMS, id );
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
 void gui_dibujar() {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
 	nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
@@ -58,13 +70,135 @@ void gui_dibujar() {
 // Funciones sincronizadas para acceder a listas compartidas
 
 int32_t obternerCantPersonajesEnJuego() {
-	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	int cant=0;
 	cant = list_size(listaPersonajesEnJuego);
-	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
 	return cant;
 }
 
+t_personaje* quitarPersonajeDeEnJuego(char simboloPersonaje) {
+	t_personaje *personaje;
+	bool _remove_x_id (t_personaje *p) {
+		return (p->id == simboloPersonaje);
+	}
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_remove_x_id);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+
+	return personaje;
+}
+
+t_personaje* quitarPersonajeDeBloqueados(char simboloPersonaje) {
+	t_personaje *personaje;
+	bool _remove_x_id (t_personaje *p) {
+		return (p->id == simboloPersonaje);
+	}
+	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+	personaje = list_remove_by_condition(listaPersonajesBloqueados, (void*)_remove_x_id);
+	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+
+	return personaje;
+}
+
+void agregarPersonajeEnJuegoNivel(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	list_add(listaPersonajesEnJuego, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+}
+
+void agregarPersonajeABloqueadosNivel(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+	list_add(listaPersonajesBloqueados, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+}
+
+void agregarRecursoxPersonaje(t_personaje *personaje, t_vecRecursos *vec) {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	char idPersonaje[2] = {0};
+	idPersonaje[0] = personaje->id;
+	dictionary_put(recursosxPersonajes, idPersonaje, vec);
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+}
+
+t_vecRecursos* obtenerRecursoxPersonaje(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	t_vecRecursos *vec;
+	char idPersonaje[2] = {0};
+	idPersonaje[0] = personaje->id;
+	vec = dictionary_get(recursosxPersonajes, idPersonaje);
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+	return vec;
+}
+
+void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso) {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	t_vecRecursos *vec;
+	char idPersonaje[2] = {0};
+	idPersonaje[0] = personaje->id;
+	vec = dictionary_get(recursosxPersonajes, idPersonaje);
+	vec->recurso[vec->total++] = idRecurso;
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+}
+
+t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	t_vecRecursos *vec;
+	char idPersonaje[2] = {0};
+	idPersonaje[0] = personaje->id;
+	vec = dictionary_remove(recursosxPersonajes, idPersonaje);
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+	return vec;
+}
+
+t_caja* obtenerRecurso(char simboloRecurso) {
+	pthread_mutex_lock (&mutexListaRecursos);
+	t_caja* caja = NULL;
+	char simbolo[2] = {0};
+	simbolo[0] = simboloRecurso;
+	caja = dictionary_get(listaRecursos, simbolo);
+	pthread_mutex_unlock (&mutexListaRecursos);
+	return caja;
+}
+
+t_list* clonarListaPersonajesBloqueados() {
+	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+	t_list *clon = list_create();
+	t_personaje *aux;
+	void _add2Clon(t_personaje *personaje) {
+		aux = crearPersonajeDesdePersonaje(*personaje);
+		list_add(clon, aux);
+	}
+	list_iterate(listaPersonajesEnJuego, (void*)_add2Clon);
+	//list_add_all(clon, listaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+	return clon;
+}
+
+t_dictionary* clonarListaRecursosxPersonaje() {
+	pthread_mutex_lock (&mutexRecursosxPersonajes);
+	t_dictionary *clon = dictionary_create();
+	t_vecRecursos *aux;
+	void _add2Clon(char *key, t_vecRecursos *vec) {
+		aux = crearVecRecursos();
+		memcpy(aux->recurso, vec->recurso, sizeof(vec->recurso));
+		aux->total = vec->total;
+		dictionary_put(clon, key, aux);
+	}
+	dictionary_iterator(recursosxPersonajes, (void*)_add2Clon);
+	//list_add_all(clon, listaPersonajesEnJuego);
+	pthread_mutex_unlock (&mutexRecursosxPersonajes);
+	return clon;
+}
+
+void moverPersonajeABloqueados(char simboloPersonaje) {
+	t_personaje *personaje;
+
+	personaje = quitarPersonajeDeEnJuego(simboloPersonaje);
+
+	agregarPersonajeABloqueadosNivel(personaje);
+
+}
 
 /**
  * @NAME: validarPosicionCaja
@@ -151,14 +285,17 @@ void inicializarNivel () {
 	pipe(hiloInterbloqueo.fdPipe);
 
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
-	pthread_mutex_init (&mutexListaPersonajesEnJuego, NULL);
+	pthread_mutex_init (&mutexListaPersonajesJugando, NULL);
 	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
+	pthread_mutex_init (&mutexListaRecursos, NULL);
+	pthread_mutex_init (&mutexRecursosxPersonajes, NULL);
 
 	// inicializo listas
 	listaEnemigos = list_create();
 	listaPersonajesEnJuego = list_create();
 	listaPersonajesBloqueados = list_create();
 	listaRecursos = configNivelRecursos();
+	recursosxPersonajes = dictionary_create();
 
 	// inicializo inotify
 	notifyFD = crearNotifyFD();
@@ -167,6 +304,33 @@ void inicializarNivel () {
 	//inicializar NIVEL-GUI
 	inicializarNivelGui();
 
+}
+
+void finalizarPersonaje(t_personaje *personaje) {
+	t_personaje *p;
+	t_vecRecursos *vec;
+	t_caja* caja;
+	int i;
+
+	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
+	log_info(LOGGER, "%s Liberando recursos del personaje %s", NOMBRENIVEL, personaje->nombre);
+	vec = removerRecursoxPersonaje(personaje);
+	for(i = 0; i < vec->total; i++) {
+		gui_sumarRecurso(vec->recurso[i]);
+		caja = obtenerRecurso(vec->recurso[i]);
+		caja->INSTANCIAS++;
+	}
+
+	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
+	p = quitarPersonajeDeEnJuego(personaje->id);
+	if (NULL == p)
+		p = quitarPersonajeDeBloqueados(personaje->id);
+
+	// TODO free de p??
+	// free(p);
+
+	// BORRO al personaje del listado GUIITEMS
+	gui_borrarItem(personaje->id);
 }
 
 /**
@@ -179,7 +343,7 @@ void finalizarHilosEnemigos() {
 	header_t header;
 	char* buffer_header = calloc(1,sizeof(header_t));
 
-	log_info(LOGGER, "FINALIZANDO HILOS ENEMIGOS '%s'", NOMBRENIVEL);
+	log_info(LOGGER, "%s: FINALIZANDO HILOS ENEMIGOS", NOMBRENIVEL);
 
 	initHeader(&header);
 	header.tipo = FINALIZAR;
@@ -189,7 +353,7 @@ void finalizarHilosEnemigos() {
 	memcpy(buffer_header, &header, sizeof(header_t));
 
 	void _finalizar_hilo(t_hiloEnemigo *enemy) {
-		log_debug(LOGGER, "%d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", ++i, cantEnemigos, enemy->id, enemy->tid);
+		log_debug(LOGGER, "%s: %d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", NOMBRENIVEL, ++i, cantEnemigos, enemy->enemigo.id, enemy->tid);
 		write(enemy->fdPipe[1], buffer_header, sizeof(header_t));
 		pthread_join(enemy->tid, NULL);
 		sleep(1);
@@ -221,6 +385,7 @@ void finalizarNivel () {
 	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
+	dictionary_destroy_and_destroy_elements(recursosxPersonajes, (void*)destruirVecRecursos);
 
 	// Finalizo inotify
 	inotify_rm_watch(notifyFD, watchDescriptor);
@@ -228,8 +393,10 @@ void finalizarNivel () {
 
 	// libero semaforos
 	pthread_mutex_destroy(&mutexLockGlobalGUI);
-	pthread_mutex_destroy(&mutexListaPersonajesEnJuego);
+	pthread_mutex_destroy(&mutexListaPersonajesJugando);
 	pthread_mutex_destroy(&mutexListaPersonajesBloqueados);
+	pthread_mutex_destroy(&mutexListaRecursos);
+	pthread_mutex_destroy(&mutexRecursosxPersonajes);
 
 	// Libero estructuras de configuracion
 	log_info(LOGGER, "LIBERANDO ESTRUCTURAS DE CONFIG-NIVEL '%s'", NOMBRENIVEL);
@@ -266,7 +433,7 @@ int crearNotifyFD() {
  */
 void signal_callback_handler(int signum)
 {
-	log_info(LOGGER, "INTERRUPCION POR SEÑAL: %d = %s \n", signum, strsignal(signum));
+	log_info(LOGGER, "%s INTERRUPCION POR SEÑAL: %d = %s \n", NOMBRENIVEL, signum, strsignal(signum));
 
 	switch(signum) {
 		case SIGINT: // SIGINT=2 (ctrl-c)
@@ -306,6 +473,23 @@ void rnd(int *x, int max) {
 	*x = (*x>0) ? *x : 1;
 }
 
+t_vecRecursos* crearVecRecursos() {
+	t_vecRecursos *vec = calloc(1, sizeof(t_vecRecursos));
+	vec->total = 0;
+	return vec;
+}
+
+void destruirVecRecursos(t_vecRecursos *vecRecursos) {
+	free(vecRecursos);
+}
+
+void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso) {
+	vecRecursos->recurso[vecRecursos->total++] = recurso;
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+
 int enviarMsjAInterbloqueo (char msj) {
 	int ret;
 	header_t header;
@@ -318,7 +502,7 @@ int enviarMsjAInterbloqueo (char msj) {
 	memset(buffer_header, '\0', sizeof(header_t));
 	memcpy(buffer_header, &header, sizeof(header_t));
 
-	log_info(LOGGER, "Enviando mensaje al orquestador.");
+	log_info(LOGGER, "%s Enviando mensaje al orquestador.", NOMBRENIVEL);
 
 	ret =  write(hiloInterbloqueo.fdPipe[1], buffer_header, sizeof(header_t));
 	pthread_join(hiloInterbloqueo.tid, NULL);
@@ -337,11 +521,11 @@ int enviarMSJNuevoNivel(int sock) {
 	header.tipo = NUEVO_NIVEL;
 	header.largo_mensaje = sizeof(t_nivel);
 
-	log_info(LOGGER, "enviarMSJNuevoNivel: sizeof(header): %d, largo mensaje: %d \n", sizeof(header), header.largo_mensaje);
+	log_info(LOGGER, "%s enviarMSJNuevoNivel: sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sizeof(header), header.largo_mensaje);
 
 	if (enviar_header(sock, &header) != EXITO)
 	{
-		log_error(LOGGER,"enviarMSJNuevoNivel: Error al enviar header NUEVO_NIVEL\n\n");
+		log_error(LOGGER,"%s enviarMSJNuevoNivel: Error al enviar header NUEVO_NIVEL\n\n", NOMBRENIVEL);
 		return WARNING;
 	}
 
@@ -356,7 +540,7 @@ int enviarMSJNuevoNivel(int sock) {
 
 	if (enviar(sock, buffer_payload, header.largo_mensaje) != EXITO)
 	{
-		log_error(LOGGER,"enviarMSJNuevoNivel: Error al enviar datos del nivel\n\n");
+		log_error(LOGGER,"%s enviarMSJNuevoNivel: Error al enviar datos del nivel\n\n", NOMBRENIVEL);
 		free(buffer_payload);
 		return WARNING;
 	}
@@ -375,7 +559,7 @@ int enviarMsjCambiosConfiguracion(int sock) {
 	header.tipo = CAMBIOS_CONFIGURACION;
 	header.largo_mensaje = sizeof(t_nivel);
 
-	log_info(LOGGER, "enviarMsjCambiosConfiguracion: fd:%d, sizeof(header): %d, largo mensaje: %d \n", sock, sizeof(header), header.largo_mensaje);
+	log_info(LOGGER, "%s enviarMsjCambiosConfiguracion: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
 
 	if ((ret = enviar_header(sock, &header)) != EXITO)
 	{
@@ -391,9 +575,54 @@ int enviarMsjCambiosConfiguracion(int sock) {
 
 	if ((ret = enviar_nivel(sock, &nivel)) != EXITO)
 	{
-		log_error(LOGGER,"enviarMsjCambiosConfiguracion: ERROR al enviar datos del nivel con CAMBIOS_CONFIGURACION\n\n");
+		log_error(LOGGER,"%s enviarMsjCambiosConfiguracion: ERROR al enviar datos del nivel con CAMBIOS_CONFIGURACION\n\n", NOMBRENIVEL);
 		return ret;
 	}
+
+	return ret;
+}
+
+int enviarMsjRecursoInexistente (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = RECURSO_INEXISTENTE;
+	header.largo_mensaje = 0;
+
+	log_info(LOGGER, "%s enviarMsjRecursoInexistente: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjRecursoInexistente: Error al enviar header RECURSO_INEXISTENTE\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	return ret;
+}
+
+
+int tratarNuevoPersonaje(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+	t_vecRecursos *vec;
+
+	// Si llega un mensaje de NUEVO_PERSONAJE luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarNuevoPersonaje: ERROR al recibir payload t_personaje en NUEVO_PERSONAJE\n\n", NOMBRENIVEL);
+		// TODO cancelo o solo retorno??
+		return ret;
+	}
+
+	log_debug(LOGGER,"%s tratarNuevoPersonaje: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
+
+	// TODO agregar personaje a lista de personajes en juego
+	// y a la lista GUIITEMS para graficarlo.
+	agregarPersonajeEnJuegoNivel(crearPersonajeDesdePersonaje(personaje));
+	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	vec = crearVecRecursos();
+	agregarRecursoxPersonaje(&personaje, vec);
 
 	return ret;
 }
@@ -403,17 +632,28 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	t_personaje personaje;
 	t_caja *recurso;
 	t_caja caja;
+	//t_vecRecursos *vec;
 
 	// Si llega un mensaje de SOLICITUD_UBICACION luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
 	{
-		log_error(LOGGER,"tratarSolicitudUbicacion: ERROR al recibir payload t_personaje en SOLICITUD_UBICACION\n\n");
+		log_error(LOGGER,"%s tratarSolicitudUbicacion: ERROR al recibir payload t_personaje en SOLICITUD_UBICACION\n\n", NOMBRENIVEL);
 		// TODO cancelo o solo retorno??
 		return ret;
 	}
 
-	log_debug(LOGGER,"tratarSolicitudUbicacion: Llego: %s, %c, recurso '%c' \n\n", personaje.nombre, personaje.id, personaje.recurso);
-	recurso = configNivelRecurso(personaje.recurso);
+	log_debug(LOGGER,"%s tratarSolicitudUbicacion: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
+	recurso = obtenerRecurso(personaje.recurso);
+
+	if (recurso == NULL) {
+		log_error(LOGGER, "%s tratarSolicitudUbicacion: obtenerRecurso('%c') devuelve NULL!! ", NOMBRENIVEL, personaje.recurso);
+		enviarMsjRecursoInexistente(sock);
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "%s Recurso: %s %s '%c' (%d,%d) = %d", NOMBRENIVEL, recurso->NOMBRE, recurso->RECURSO, recurso->SIMBOLO, recurso->POSX, recurso->POSY, recurso->INSTANCIAS);
+
+	initCaja(&caja);
 	caja = *recurso;
 
 	// Envio caja con ubicacion al planificador
@@ -422,274 +662,113 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master) {
 	header.largo_mensaje = sizeof(t_caja);
 
 	if ((ret = enviar_header(sock, &header)) != EXITO) {
-		log_error(LOGGER,"tratarSolicitudUbicacion: ERROR al enviar header UBICACION_RECURSO\n\n");
+		log_error(LOGGER,"%s tratarSolicitudUbicacion: ERROR al enviar header UBICACION_RECURSO\n\n", NOMBRENIVEL);
 		return ret;
 	}
 
 	if ((ret = enviar_caja(sock, &caja)) != EXITO) {
-		log_error(LOGGER,"tratarSolicitudUbicacion: ERROR al enviar t_caja de UBICACION_RECURSO\n\n");
+		log_error(LOGGER,"%s tratarSolicitudUbicacion: ERROR al enviar t_caja de UBICACION_RECURSO\n\n", NOMBRENIVEL);
 		return ret;
 	}
 
-	// TODO agegar personaje a lista de personajes en juego
-	// y a la lista GUIITEMS para graficarlo.
-	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	// MUEVO ESTO A LA FUNCION tratarNuevoPersonaje
+//	// agregar personaje a lista de personajes en juego
+//	// y a la lista GUIITEMS para graficarlo.
+//	agregarPersonajeEnJuegoNivel(crearPersonajeDesdePersonaje(personaje));
+//	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+//	vec = crearVecRecursos();
+//	agregarRecursoxPersonaje(&personaje, vec);
+
+	return ret;
+}
+
+int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+	t_caja *recurso;
+	t_caja caja;
+
+	// Si llega un mensaje de SOLICITUD_RECURSO luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al recibir payload t_personaje en SOLICITUD_RECURSO\n\n", NOMBRENIVEL);
+		// TODO cancelo o solo retorno??
+		return ret;
+	}
+
+	log_debug(LOGGER,"%s tratarSolicitudRecurso: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
+	recurso = obtenerRecurso(personaje.recurso);
+
+	initHeader(&header);
+	if (recurso->INSTANCIAS > 0) {
+		header.tipo = RECURSO_CONCEDIDO;
+		header.largo_mensaje = sizeof(t_caja);
+
+	} else {
+		header.tipo = RECURSO_DENEGADO;
+		header.largo_mensaje = 0;
+		moverPersonajeABloqueados(personaje.id);
+	}
+
+	// Envio mensaje RECURSO_CONCEDIDO o RECURSO_DENEGADO al planificador
+	if ((ret = enviar_header(sock, &header)) != EXITO) {
+		log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al enviar header RECURSO_CONCEDIDO/RECURSO_DENEGADO \n\n", NOMBRENIVEL);
+		return ret;
+	}
+
+	if (header.tipo == RECURSO_CONCEDIDO) {
+		//Envio recurso al planificador
+		initCaja(&caja);
+		caja = *recurso;
+		if ((ret = enviar_caja(sock, &caja)) != EXITO) {
+			log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al enviar t_caja de RECURSO_CONCEDIDO\n\n", NOMBRENIVEL);
+			return ret;
+		}
+
+		// Resto 1 instancia del recurso
+		recurso->INSTANCIAS--;
+		incrementarRecursoxPersonaje(&personaje, personaje.recurso);
+		gui_restarRecurso(recurso->SIMBOLO);
+		gui_dibujar();
+	}
+
+	return ret;
+}
+
+int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+
+	// Si llega un mensaje de MOVIMIENTO_REALIZADO luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarMovimientoRealizado: ERROR al recibir payload t_personaje en MOVIMIENTO_REALIZADO\n\n", NOMBRENIVEL);
+		// TODO cancelo o solo retorno??
+		return ret;
+	}
+
+	log_debug(LOGGER, "%s Movimiento realizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
+	log_debug(LOGGER, "%s GUIITEMS': %d", NOMBRENIVEL, list_size(GUIITEMS));
+	gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;
 }
 
 
-// FUNCIONES DE PRUEBA - BORRAR CUANDO YA NO SE USEN (simulacroJuego y ejemploGui)
-// -------------------------------------------------------------------------------
-void simulacroJuego () {
+int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
 
-	int q, p;
-	int x = 1;
-	int y = 1;
-//	int ex1 = 10, ey1 = 14;
-//	int ex2 = 20, ey2 = 3;
-
-	p = MAXCOLS;
-	q = MAXROWS;
-
-	gui_crearPersonaje('@', p, q);
-	gui_crearPersonaje('#', x, y);
-
-	gui_dibujar();
-
-	while ( 1 ) {
-		int key = getch();
-
-		switch( key ) {
-
-			case KEY_UP:
-				if (y > 1) {
-					y--;
-				}
-			break;
-
-			case KEY_DOWN:
-				if (y < MAXROWS) {
-					y++;
-				}
-			break;
-
-			case KEY_LEFT:
-				if (x > 1) {
-					x--;
-				}
-			break;
-			case KEY_RIGHT:
-				if (x < MAXCOLS) {
-					x++;
-				}
-			break;
-			case 'w':
-			case 'W':
-				if (q > 1) {
-					q--;
-				}
-			break;
-
-			case 's':
-			case 'S':
-				if (q < MAXROWS) {
-					q++;
-				}
-			break;
-
-			case 'a':
-			case 'A':
-				if (p > 1) {
-					p--;
-				}
-			break;
-			case 'D':
-			case 'd':
-				if (p < MAXCOLS) {
-					p++;
-				}
-			break;
-			case 'Q':
-			case 'q':
-				//nivel_gui_terminar();
-				//exit(0);
-			break;
-		}
-
-
-//		rnd(&ex1, MAXCOLS);
-//		rnd(&ey1, MAXROWS);
-//		rnd(&ex2, MAXCOLS);
-//		rnd(&ey2, MAXROWS);
-//		MoverPersonaje(GUIITEMS, '1', ex1, ey1 );
-//		MoverPersonaje(GUIITEMS, '2', ex2, ey2 );
-
-		gui_moverPersonaje('@', p, q);
-		gui_moverPersonaje('#', x, y);
-
-		if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
-			restarRecurso(GUIITEMS, 'H');
-		}
-
-		if (   ((p == 19) && (q == 9)) || ((x == 19) && (y == 9)) ) {
-			restarRecurso(GUIITEMS, 'F');
-		}
-
-		if (   ((p == 8) && (q == 15)) || ((x == 8) && (y == 15)) ) {
-			restarRecurso(GUIITEMS, 'M');
-		}
-
-		if((p == x) && (q == y)) {
-			BorrarItem(GUIITEMS, '#'); //si chocan, borramos uno (!)
-		}
-
-		gui_dibujar();
-
-		if (key=='q' || key=='Q')
-			break;
+	// Si llega un mensaje de PLAN_NIVEL_FINALIZADO luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarPlanNivelFinalizado: ERROR al recibir payload t_personaje en PLAN_NIVEL_FINALIZADO\n\n", NOMBRENIVEL);
+		// TODO cancelo o solo retorno??
+		return ret;
 	}
+	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	finalizarPersonaje(&personaje);
 
-	return;
+	return ret;
 }
 
-
-void ejemploGui () {
-
-	t_list* items = list_create();
-
-		int rows, cols;
-		int q, p;
-
-		int x = 1;
-		int y = 1;
-
-		int ex1 = 10, ey1 = 14;
-		int ex2 = 20, ey2 = 3;
-
-		nivel_gui_inicializar();
-
-	    nivel_gui_get_area_nivel(&rows, &cols);
-
-		p = cols;
-		q = rows;
-
-		CrearPersonaje(items, '@', p, q);
-		CrearPersonaje(items, '#', x, y);
-
-		CrearEnemigo(items, '1', ex1, ey1);
-		CrearEnemigo(items, '2', ex2, ey2);
-
-		CrearCaja(items, 'H', 26, 10, 5);
-		CrearCaja(items, 'M', 8, 15, 3);
-		CrearCaja(items, 'F', 19, 9, 2);
-
-		nivel_gui_dibujar(items, "Test Chamber 04");
-
-		while ( 1 ) {
-			int key = getch();
-
-			switch( key ) {
-
-				case KEY_UP:
-					if (y > 1) {
-						y--;
-					}
-				break;
-
-				case KEY_DOWN:
-					if (y < rows) {
-						y++;
-					}
-				break;
-
-				case KEY_LEFT:
-					if (x > 1) {
-						x--;
-					}
-				break;
-				case KEY_RIGHT:
-					if (x < cols) {
-						x++;
-					}
-				break;
-				case 'w':
-				case 'W':
-					if (q > 1) {
-						q--;
-					}
-				break;
-
-				case 's':
-				case 'S':
-					if (q < rows) {
-						q++;
-					}
-				break;
-
-				case 'a':
-				case 'A':
-					if (p > 1) {
-						p--;
-					}
-				break;
-				case 'D':
-				case 'd':
-					if (p < cols) {
-						p++;
-					}
-				break;
-				case 'Q':
-				case 'q':
-					//nivel_gui_terminar();
-					//exit(0);
-				break;
-			}
-
-
-			rnd(&ex1, cols);
-			rnd(&ey1, rows);
-			rnd(&ex2, cols);
-			rnd(&ey2, rows);
-			MoverPersonaje(items, '1', ex1, ey1 );
-			MoverPersonaje(items, '2', ex2, ey2 );
-
-			MoverPersonaje(items, '@', p, q);
-			MoverPersonaje(items, '#', x, y);
-
-			if (   ((p == 26) && (q == 10)) || ((x == 26) && (y == 10)) ) {
-				restarRecurso(items, 'H');
-			}
-
-			if (   ((p == 19) && (q == 9)) || ((x == 19) && (y == 9)) ) {
-				restarRecurso(items, 'F');
-			}
-
-			if (   ((p == 8) && (q == 15)) || ((x == 8) && (y == 15)) ) {
-				restarRecurso(items, 'M');
-			}
-
-			if((p == x) && (q == y)) {
-				BorrarItem(items, '#'); //si chocan, borramos uno (!)
-			}
-
-			nivel_gui_dibujar(items, "Test Chamber 04");
-
-			if (key=='q' || key=='Q')
-				break;
-		}
-
-		BorrarItem(items, '#');
-		BorrarItem(items, '@');
-
-		BorrarItem(items, '1');
-		BorrarItem(items, '2');
-
-		BorrarItem(items, 'H');
-		BorrarItem(items, 'M');
-		BorrarItem(items, 'F');
-
-		//list_destroy_and_destroy_elements(items, (void*)free);
-
-		nivel_gui_terminar();
-}
