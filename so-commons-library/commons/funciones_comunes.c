@@ -31,3 +31,4 @@ int32_t calcularDistancia (int32_t posX, int32_t posY, int32_t objX, int32_t obj
 int32_t calcularDistanciaCoord (t_posicion pos1, t_posicion pos2) {
 	 return calcularDistancia(pos1.x, pos1.y, pos2.x, pos2.y);
 }
+
