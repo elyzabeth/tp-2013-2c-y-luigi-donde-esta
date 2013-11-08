@@ -8,112 +8,160 @@
 #include "personaje.h"
 
 
-/**
- * @NAME: inicializarPersonaje
- * @DESC: Inicializa todas las variables y estructuras necesarias para el proceso personaje
- */
-void inicializarPersonaje() {
-	levantarArchivoConfiguracionPersonaje();
-	// TODO agregar inicializaciones necesarias
-	LOGGER = log_create(configPersonajeLogPath(), "PERSONAJE", configPersonajeLogConsola(), configPersonajeLogNivel() );
-	log_info(LOGGER, "INICIALIZANDO PERSONAJE '%s' ", configPersonajeNombre());
 
-	strcpy(personaje.nombre, configPersonajeNombre());
-	strcpy(personaje.ip_orquestador, configPersonajePlataformaIp());
-	personaje.puerto_orquestador = configPersonajePlataformaPuerto();
-	VIDAS = configPersonajeVidas();
-	REINTENTOS = 0;
-	planDeNiveles = configPersonajePlanDeNiveles();
-	listaHilosxNivel = list_create();
+void* personajexNivel (t_hilo_personaje* hiloPxN) {
 
-	pthread_mutex_init (&mutexEnvioMensaje, NULL);
-}
+	int idProcesoHilo;
+	int sock = -1;
 
-/**
- * @NAME: finalizarPersonaje
- * @DESC: Finaliza todas las variables y estructuras que fueron creadas para el proceso personaje
- */
-void finalizarPersonaje() {
-	log_info(LOGGER, "FINALIZANDO PERSONAJE\n");
+	fd_set master;
+	fd_set read_fds;
+	int max_desc = 0;
+	int i, ret;
+	int fin = false;
+	header_t header;
+	t_proximoObjetivo proximoObjetivo;
 
-	// TODO Bajar Hilos
-	finalizarHilosPersonaje();
+	memset(&proximoObjetivo, 0, sizeof(t_proximoObjetivo));
 
-	pthread_mutex_destroy(&mutexEnvioMensaje);
+	proximoObjetivo.simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+	proximoObjetivo.posicion.x=0;
+	proximoObjetivo.posicion.y=0;
 
-	list_destroy_and_destroy_elements(listaHilosxNivel, (void*)destruirEstructuraHiloPersonaje);
-	destruirConfigPersonaje();
-	log_destroy(LOGGER);
-}
+	idProcesoHilo = getpid();
+	//system("clear");
 
+	log_info(LOGGER,"\n\n\n************** Iniciando Personaje '%s' del nivel %s (PID: %d) ***************\n", personaje.nombre, hiloPxN->personaje.nivel, idProcesoHilo);
 
-void esperarHilosxNivel() {
+	/***************** ME CONECTO Y ARMO MENSAJE DE PRESENTACION *******/
+	log_info(LOGGER,"************** CONECTANDOSE  ***************\n");
+	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
 
-	void _join_thread (t_hilo_personaje *hilo){
-		pthread_join(hilo->tid, NULL);
+	FD_ZERO(&master);
+
+	// Agrego descriptor del Pipe con Nivel.
+	// TODO PIERDO LOS SOCKETS PIPE !!!! CORREGIR ESTE BUG!!!!
+	log_info(LOGGER,"%s de %s - agregar_descriptor hiloPxN->fdPipe[0]: '%d' \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel, hiloPxN->fdPipe[0]);
+	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
+
+	agregar_descriptor(sock, &master, &max_desc);
+
+	if (enviarMsjNuevoPersonaje(sock) != EXITO)
+	{
+		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE %s \n\n", hiloPxN->personaje.nivel);
+		fin = true;
 	}
 
-	list_iterate(listaHilosxNivel, (void*)_join_thread);
-}
+	while(!fin)
+	{
+		FD_ZERO (&read_fds);
+		read_fds = master;
 
-void levantarHilosxNivel() {
-	int i;
-	int cant = queue_size(planDeNiveles);
-	t_objetivosxNivel *oxn;
-	t_hilo_personaje *hiloPersonaje;
+		ret = select(max_desc+1, &read_fds, NULL, NULL, NULL);
 
-	for (i = 0; i < cant; i++) {
+		if(ret == -1) {
+			printf("Personaje: ERROR en select en %s", hiloPxN->personaje.nivel);
+			sleep(1);
+		}
 
-		oxn = queue_pop(planDeNiveles);
+		if (ret > 0) {
+			for(i = 0; i <= max_desc; i++)
+			{
 
-		hiloPersonaje = crearEstructuraHiloPersonaje(oxn);
-		pipe(hiloPersonaje->fdPipe);
+				if (FD_ISSET(i, &read_fds))
+				{
+					// Pregunto si el socket con actividad es el del Pipe
+					if( i == hiloPxN->fdPipe[0])
+					{
+						initHeader(&header);
+						log_info(LOGGER, "Personaje '%c': Recibo mensaje desde Main por Pipe", hiloPxN->personaje.id);
+						read (hiloPxN->fdPipe[0], &header, sizeof(header_t));
 
-		list_add(listaHilosxNivel, hiloPersonaje);
+						log_debug(LOGGER, "Personaje '%c': mensaje recibido '%d'", hiloPxN->personaje.id, header.tipo);
+						if (header.tipo == FINALIZAR) {
+							log_debug(LOGGER, "\n\nPersonaje '%c' de %s: '%d' ES FINALIZAR", hiloPxN->personaje.id, hiloPxN->personaje.nivel, header.tipo);
+							fin = true;
 
-		log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
-		log_debug(LOGGER, "%s de %s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->personaje.nivel, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
-		// Creo el hilo para el nivel
-		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+							// TODO enviar mensaje al planificador???
+							enviarMsjMuertePersonajePlan(sock, hiloPxN);
 
+							break;
+						}
 
-		//log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
+					} else if (i == sock) {
+
+						// Si NO es un mensaje del hilo principal por Pipe es un mensaje del proceso Plataforma.
+
+						initHeader(&header);
+						recibirHeaderNuevoMsj(sock, &header, &master);
+
+						switch (header.tipo)
+						{
+							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO en %s", hiloPxN->personaje.nivel);
+							//hiloPxN.estado = PERSONAJE_CONECTADO;
+							enviarInfoPersonaje(sock, hiloPxN);
+							break;
+
+							case NIVEL_INEXISTENTE: log_info(LOGGER,"\n\nPersonaje: %s - NIVEL_INEXISTENTE (%s) !!!! \n\n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+							hiloPxN->estado = NIVEL_INEXISTENTE;
+							fin=true;
+							// TODO hago algo mas si el nivel no existe??
+							break;
+
+							case TURNO_CONCEDIDO: log_info(LOGGER,"TURNO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarTurnoConcedido(sock, &proximoObjetivo, hiloPxN);
+							break;
+
+							case UBICACION_RECURSO: log_info(LOGGER, "UBICACION_RECURSO en %s", hiloPxN->personaje.nivel);
+							recibirUbicacionRecursoPlanificador( sock, &master, &proximoObjetivo, hiloPxN);
+							break;
+
+							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarRecursoConcedido(sock, &proximoObjetivo, hiloPxN, &fin);
+							break;
+
+							case RECURSO_INEXISTENTE: log_info(LOGGER,"RECURSO_INEXISTENTE en %s", hiloPxN->personaje.nivel);
+							log_error(LOGGER, "ERROR!! \n\nERROR en configuración '%c' RECURSO_INEXISTENTE en %s!!!\n\n", hiloPxN->personaje.recurso, hiloPxN->personaje.nivel);
+							fin=true;
+							break;
+
+							case OTRO: log_info(LOGGER, "que otro?? %s", hiloPxN->personaje.nivel);
+							break;
+
+						}
+
+					} else {
+						log_debug(LOGGER, "Actividad en el socket %d", i);
+					}
+
+				}
+			}
+		}
 
 	}
 
+	log_info(LOGGER, "\n\nFINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
+	close(sock);
+
+	//destruirEstructuraHiloPersonaje(quitarHiloPersonajexTid(hiloPxN->tid));
+
+	pthread_exit(NULL);
 }
 
-t_hilo_personaje* crearEstructuraHiloPersonaje(t_objetivosxNivel *oxn) {
-	t_hilo_personaje *hiloPersonaje;
 
-	hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
+t_hilo_personaje* quitarHiloPersonajexTid (int32_t tid) {
 
-	strcpy(hiloPersonaje->personaje.nombre, configPersonajeNombre());
-	strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
-	hiloPersonaje->objetivos = *oxn;
-	hiloPersonaje->personaje.id = configPersonajeSimbolo();
-	hiloPersonaje->personaje.recurso = '-';
-	hiloPersonaje->personaje.posActual.x = 0;
-	hiloPersonaje->personaje.posActual.y = 0;
-	hiloPersonaje->moverPorX=true;
+	pthread_mutex_lock (&mutexListaHilosxNivel);
+	t_hilo_personaje* hilo;
+	bool _buscar_x_tid (t_hilo_personaje* h) {
+		return (h->tid == tid);
+	}
+	hilo = list_remove_by_condition(listaHilosxNivel, (void*)_buscar_x_tid);
+	pthread_mutex_unlock (&mutexListaHilosxNivel);
 
-//	if (pipe(hiloPersonaje->fdPipe) == -1)
-//	{
-//		perror ("crearEstructuraHiloPersonaje: No se puede crear Tuberia de comunicacion.");
-//		exit (-1);
-//	}
-//log_debug(LOGGER, "%s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
-
-	return hiloPersonaje;
+	return hilo;
 }
 
-void destruirEstructuraHiloPersonaje(t_hilo_personaje* hiloPersonaje) {
-
-	close(hiloPersonaje->fdPipe[0]);
-	close(hiloPersonaje->fdPipe[1]);
-
-	free(hiloPersonaje);
-}
 
 int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master) {
 
@@ -147,31 +195,30 @@ int enviarMsjNuevoPersonaje( int sock ) {
 	return ret;
 }
 
+
 int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN) {
 	header_t header;
 	t_personaje yo = hiloPxN->personaje;
 
-	log_debug(LOGGER, "Envio mensaje con info del personaje");
-
-//	log_debug(LOGGER, "Datos: (%s, %d, %c)",  configPersonajeNombre(),configPersonajeSimbolo(), configPersonajeSimbolo());
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio mensaje con info del personaje");
 	log_debug(LOGGER, "Datos: (%s, %d, %c)",  yo.nombre, yo.id, yo.id);
 
 	initHeader(&header);
 	header.tipo = CONECTAR_NIVEL;
 	header.largo_mensaje = sizeof(t_personaje);
 
-	log_debug(LOGGER, "Envio header CONECTAR_NIVEL %d", sizeof(header_t));
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio header CONECTAR_NIVEL (size: %d)", sizeof(header_t));
 	if (enviar_header(sock, &header) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar header CONECTAR_NIVEL\n\n");
+		log_error(LOGGER,"enviarInfoPersonaje: Error al enviar header CONECTAR_NIVEL\n\n");
 		return WARNING;
 	}
 
 	hiloPxN->estado = CONECTAR_NIVEL;
-	log_debug(LOGGER, "Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
 	if (enviar_personaje(sock, &yo) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar informacion del personaje\n\n");
+		log_error(LOGGER,"enviarInfoPersonaje: Error al enviar informacion del personaje\n\n");
 		return WARNING;
 	}
 
@@ -207,6 +254,7 @@ int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hi
 
 	return EXITO;
 }
+
 
 int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN ) {
 	int ret, se_desconecto;
@@ -287,6 +335,23 @@ int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 	return ret;
 }
 
+int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
+
+	header_t header;
+	int ret;
+
+	initHeader(&header);
+	header.tipo = MUERTE_PERSONAJE;
+	header.largo_mensaje = 0;
+
+	log_debug(LOGGER,"enviarMsjMuertePersonajePlan: MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+
+	 if ((ret = enviar_header(sock, &header)) != EXITO){
+		 log_error(LOGGER,"enviarMsjMuertePersonajePlan: ERROR al enviar MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+	 }
+
+	return ret;
+}
 
 
 

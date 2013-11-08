@@ -20,14 +20,6 @@
 #include "tads/tad_personaje.h"
 #include "tads/tad_caja.h"
 
-t_log* LOGGER;
-int32_t VIDAS;
-int32_t REINTENTOS;
-
-//char *buffer_header;
-
-t_queue *planDeNiveles;
-t_list *listaHilosxNivel;
 
 typedef enum motivo_muerte {
 	MUERTE_POR_SIGTERM,
@@ -44,11 +36,12 @@ typedef struct personaje_s
 	int puerto;
 	char ip_orquestador[15+1];
 	int puerto_orquestador;
+	int reiniciar;
 } personaje_t;
 
 
 #pragma pack(1)
-typedef struct hilo {
+typedef struct {
 	t_personaje personaje;
 	t_objetivosxNivel objetivos;
 	//t_posicion posicionActual;
@@ -67,22 +60,39 @@ typedef struct {
 } t_proximoObjetivo;
 #pragma pack(0)
 
-personaje_t personaje;
+t_log* LOGGER;
+int32_t VIDAS;
+int32_t REINTENTOS;
+
+
+t_queue *planDeNiveles;
+t_list *listaHilosxNivel;
 
 pthread_mutex_t mutexEnvioMensaje;
+pthread_mutex_t mutexVidas;
+pthread_mutex_t mutexListaHilosxNivel;
+pthread_mutex_t mutexReinicio;
+
+personaje_t personaje;
+
 
 // Prototipos de funciones
 int principal(int argc, char *argv[]);
 void inicializarPersonaje();
+void inicializarVariablesGlobales();
+void reiniciar(bool valor);
 void finalizarPersonaje();
 void finalizarHilosPersonaje();
 
 void levantarHilosxNivel() ;
 void esperarHilosxNivel();
 void* personajexNivel (t_hilo_personaje *hiloPxN);
+int chequearFinTodosLosNiveles();
 
 t_hilo_personaje* crearEstructuraHiloPersonaje(t_objetivosxNivel *oxn);
 void destruirEstructuraHiloPersonaje(t_hilo_personaje* hiloPersonaje);
+
+t_hilo_personaje* quitarHiloPersonajexTid (int32_t tid);
 
 void per_signal_callback_handler(int signum);
 void manejoSIGTERM();
@@ -97,6 +107,7 @@ int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);
 int enviarInfoPersonaje2(int sock);
 int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN);
+int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN );
 int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN );
 int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin);

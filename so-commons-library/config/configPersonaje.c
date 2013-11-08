@@ -92,13 +92,22 @@ int32_t configPersonajeLogConsola() {
 }
 
 
+t_objetivosxNivel* crearObjetivosxNivel() {
+	t_objetivosxNivel *objxniv;
+	objxniv = (t_objetivosxNivel*)calloc(1, sizeof(t_objetivosxNivel));
+	return objxniv;
+}
+
+void destruirObjetivosxNivel(t_objetivosxNivel *objxniv) {
+	free(objxniv);
+}
 
 // *********************************
 /// FUNCIONES PRIVADAS
 // *********************************
 
 void destruirConfigPersonaje () {
-	queue_destroy_and_destroy_elements(configPersonaje.PLANDENIVELES, (void*)free);
+	queue_destroy_and_destroy_elements(configPersonaje.PLANDENIVELES, (void*)destruirObjetivosxNivel);
 }
 
 t_queue* clonarColaPlan(t_queue* planDeNiveles) {
@@ -142,9 +151,10 @@ void GenerarPlanDeNiveles(t_config *config) {
 
 	void _add_objetives(char *nivel) {
 		int32_t cantObjetivos = 0;
-		//int i=0;
 		t_objetivosxNivel *objxniv;
-		objxniv = (t_objetivosxNivel*)calloc(1, sizeof(t_objetivosxNivel));
+
+		//objxniv = (t_objetivosxNivel*)calloc(1, sizeof(t_objetivosxNivel));
+		objxniv = crearObjetivosxNivel();
 		strcpy(objxniv->nivel, nivel);
 		sprintf(key, "obj[%s]", nivel );
 
