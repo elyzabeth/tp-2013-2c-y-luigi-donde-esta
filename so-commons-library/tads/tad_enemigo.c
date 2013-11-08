@@ -11,7 +11,7 @@ t_hiloEnemigo* crearHiloEnemigo(int32_t idEnemigo) {
 	t_hiloEnemigo *nuevoHiloEnemigo;
 	nuevoHiloEnemigo = calloc(1, sizeof(t_hiloEnemigo));
 
-	nuevoHiloEnemigo->id = idEnemigo;
+	nuevoHiloEnemigo->enemigo.id = idEnemigo;
 
 	// pipe() Devuelve en fdPipe[0] el descriptor de lectura y en fdPipe[1] el descriptor de escritura
 	// NivelMain debe escribir en fdPipe[1] y el hilo enemigo debe leer en fdPipe[0]

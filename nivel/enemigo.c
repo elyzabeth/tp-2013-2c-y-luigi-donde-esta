@@ -13,7 +13,7 @@ t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
 void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo);//,int32_t x,int32_t y);
 void moverEnemigoPorEje(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
 
-void movimientoL(int32_t x,int32_t y,int32_t newx,int32_t newy);
+void movimientoL(int32_t posX,int32_t posY, int32_t* newx,int32_t* newy);
 int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
 
 void* enemigo (t_hiloEnemigo *enemy) {
