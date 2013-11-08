@@ -10,7 +10,7 @@
 #include "list.h"
 
 t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
-void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo);//,int32_t x,int32_t y);
+void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo);
 void moverEnemigoPorEje(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
 
 void movimientoL(int32_t posX,int32_t posY, int32_t* newx,int32_t* newy);
