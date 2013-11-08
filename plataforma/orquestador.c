@@ -151,23 +151,43 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 int enviarMsjPersonajeConectado (int fd) {
 	int ret;
 	header_t header;
-	char* buffer_header = malloc(sizeof(header_t));
+	//char* buffer_header = malloc(sizeof(header_t));
 
 	initHeader(&header);
 	header.tipo=PERSONAJE_CONECTADO;
 	header.largo_mensaje=0;
 
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
+//	memset(buffer_header, '\0', sizeof(header_t));
+//	memcpy(buffer_header, &header, sizeof(header_t));
 
-	log_info(LOGGER, "Envio mensaje de personaje conectado (fd: %d)...", fd);
+	log_info(LOGGER, "enviarMsjPersonajeConectado: Envio mensaje de personaje conectado (fd: %d)...", fd);
+	ret = enviar_header(fd, &header);
 
-	ret =  enviar(fd, buffer_header, sizeof(header_t));
-	free(buffer_header);
+//	ret =  enviar(fd, buffer_header, sizeof(header_t));
+//	free(buffer_header);
 
 	return ret;
 }
 
+
+/**
+ * @NAME: enviarMsjNivelInexistente
+ * @DESC: Envia el mensaje NIVEL_INEXISTENTE al personaje.
+ * recibe el file descriptor del personaje
+ */
+int enviarMsjNivelInexistente (int fd) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo=NIVEL_INEXISTENTE;
+	header.largo_mensaje=0;
+
+	log_info(LOGGER, "enviarMsjPersonajeConectado: Envio mensaje NIVEL_INEXISTENTE al personaje (fd: %d)...", fd);
+	ret = enviar_header(fd, &header);
+
+	return ret;
+}
 
 /**
  * @NAME: enviarMsjNivelConectado
@@ -210,7 +230,7 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 
 	/**Contesto Mensaje **/
 
-	log_info(LOGGER, "Envio mensaje de PERSONAJE_CONECTADO al personaje...");
+	log_info(LOGGER, "nuevoPersonaje: Envio mensaje de PERSONAJE_CONECTADO al personaje...");
 	if (enviarMsjPersonajeConectado(fdPersonaje) != EXITO)
 	{
 		log_error(LOGGER, "Error al enviar header PERSONAJE_CONECTADO\n\n");
@@ -220,21 +240,21 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 		// recibir informacion del personaje.
 		// SI existe el nivel solicitado lo agrego si no, enviar mensaje de nivel inexistente??
 
-		log_debug(LOGGER, "Espero header CONECTAR_NIVEL (%d)...", CONECTAR_NIVEL);
+		log_debug(LOGGER, "nuevoPersonaje: Espero header CONECTAR_NIVEL (tipo: %d)...", CONECTAR_NIVEL);
 		recibir_header(fdPersonaje, &header, master, &se_desconecto);
-		log_debug(LOGGER, "Recibo %d...", header.tipo);
+		log_debug(LOGGER, "nuevoPersonaje: Recibo tipo: %d...", header.tipo);
 
 		if (se_desconecto) {
-			log_info(LOGGER, "El personaje se desconecto");
+			log_info(LOGGER, "nuevoPersonaje: El personaje se desconecto");
 			quitar_descriptor(fdPersonaje, master, max_desc);
 		}
 
 		if (!se_desconecto && header.tipo == CONECTAR_NIVEL) {
 			personaje = crearPersonajeVacio();
 
-			log_debug(LOGGER, "Espero recibir estructura personaje (size:%d)...", header.largo_mensaje);
+			log_debug(LOGGER, "nuevoPersonaje: Espero recibir estructura personaje (size:%d)...", header.largo_mensaje);
 			recibir_personaje(fdPersonaje, personaje, master, &se_desconecto);
-			log_debug(LOGGER, "Llego: %s, %c, %s", personaje->nombre, personaje->id, personaje->nivel);
+			log_debug(LOGGER, "nuevoPersonaje: Llego: %s, %c, %s", personaje->nombre, personaje->id, personaje->nivel);
 			personaje->fd = fdPersonaje;
 
 			// Verifico si existe el nivel solicitado y su estado
@@ -242,20 +262,21 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 
 				planner = obtenerNivel(personaje->nivel);
 
-				log_info(LOGGER, "Agrego personaje '%s' ('%c') a lista de personajes Nuevos.", personaje->nombre, personaje->id);
+				log_info(LOGGER, "nuevoPersonaje: Agrego personaje '%s' ('%c') a lista de personajes Nuevos.", personaje->nombre, personaje->id);
 				agregarPersonajeNuevo(personaje);
 				plataforma.personajes_en_juego++;
 
 				//Informo al planificador correspondiente
-				log_debug(LOGGER, "Informo al planificador correspondiente.");
+				log_debug(LOGGER, "nuevoPersonaje: Informo al planificador correspondiente.");
 				enviarMsjAPlanificador(planner, NUEVO_PERSONAJE );
 
 			} else {
 				//TODO Que hago si no existe el nivel????
-				log_info(LOGGER, "El personaje '%s' ('%c') solicita Nivel inexistente (%s).", personaje->nombre, personaje->id, personaje->nivel);
+				log_info(LOGGER, "nuevoPersonaje: El personaje '%s' ('%c') solicita Nivel inexistente (%s).", personaje->nombre, personaje->id, personaje->nivel);
+				enviarMsjNivelInexistente(fdPersonaje);
 			}
 		} else {
-			log_info(LOGGER, "Se esperaba mensaje CONECTAR_NIVEL se recibio: %d",header.tipo);
+			log_info(LOGGER, "nuevoPersonaje: Se esperaba mensaje CONECTAR_NIVEL se recibio: %d",header.tipo);
 		}
 
 	}
