@@ -8,13 +8,16 @@
 #include "funcionesNivel.h"
 #include "tad_enemigo.h"
 #include "list.h"
+void moverEnemigo(t_hiloEnemigo* hiloEnemigo);
+moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY);
+t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
+t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
+t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
+void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x);
+t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion);
+int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
+void* enemigo (t_hiloEnemigo *enemy);
 
-t_posicion buscarPJcercano(t_personaje* listaPJS,t_hiloEnemigo* hiloEnemigo);
-void moverEnemigo(t_personaje* listaPJS,t_hiloEnemigo* strTipoEnemigo);
-void moverEnemigoPorEje(t_personaje* listaPJS,t_hiloEnemigo* id,int32_t x,int32_t y);
-
-void movimientoL(int32_t posX,int32_t posY, int32_t* newx,int32_t* newy);
-int32_t	validarPosicionEnemigo(int32_t newx,int32_t newy);
 
 void* enemigo (t_hiloEnemigo *enemy) {
 
@@ -100,15 +103,24 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 
 //SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
-void moverEnemigo(t_hiloEnemigo* hiloEnemigo)//, x, y)
-{
+void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
 	int32_t* posX, posY;
 	*posX=*posY=0;
-	t_posicion posicionPJ;
+	t_personaje *PJ;
+	t_posicion posicionPJ, posicionNueva;
 	if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
 	{
-		posicionPJ = obternerPosPersonajeMasCercano(hiloEnemigo->enemigo->posicionActual);
-		moverEnemigoPorEje(hiloEnemigo, posicionPJ);
+		pthread_mutex_lock (&mutexListaPersonajesJugando);
+		PJ = obternerPosPersonajeMasCercano(hiloEnemigo->enemigo->posicionActual);
+		pthread_mutex_unlock (&mutexListaPersonajesJugando);
+		posicionPJ = PJ->posActual;
+		posicionNueva = moverEnemigoPorEje(hiloEnemigo, posicionPJ);
+
+		if ((posicionNueva->x == posicionPJ->x)&&(posicionNueva->y == posicionPJ->y)){
+			log_info(LOGGER, "El PJ '%c' ha sido alcanzado por un enemigo:",PJ->id);
+			//NOTIFICAR AL PLANIFICADOR que el personaje perdio una vida
+			// IMPRIMIR por pantalla
+			}
 	}
 
 	else{ //No hay personajes en el nivel
@@ -124,7 +136,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo)//, x, y)
 		movimientoLfinalizado = 1;
 	}
 }
-//PARA QUE EL MOVIEMIENTO SE REALICE DE A UNO POR VEZ
+//PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
 
 moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY){
 	while ((hiloEnemigo->enemigo->posicionActual->x) != posX) OR
@@ -139,8 +151,8 @@ moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY){
 			(hiloEnemigo->enemigo->posicionActual->y)++}
 	}
 }
-void moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia)
-{
+
+t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia){
 	t_posicion posicionNueva;
 	if (hiloEnemigo->enemigo->moverPorX){
 		posicionNueva moverEnemigoEnX(hiloEnemigo, posicionHacia);
@@ -149,6 +161,7 @@ void moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia)
 		posicionNueva moverEnemigoEnY(hiloEnemigo, posicionHacia);
 		validarPosicionEnemigo(posicionNueva);
 	}
+	return posicionNueva;
 }
 t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia){
 	t_posicion posicionNueva;
@@ -156,26 +169,35 @@ t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia)
 	if ((posicionHacia->x) > (hiloEnemigo->enemigo->posicionActual->x)){
 		(posicionNueva.x)++;
 		if (validarPosicionEnemigo(posicionNueva)){
-			(hiloEnemigo->enemigo->x)++;
+			(hiloEnemigo->enemigo->posicionActual->x)++;
 		}
 
 	}else{
 		(posicionNueva.x)--;
 		if (validarPosicionEnemigo(posicionNueva)){
-				(hiloEnemigo->enemigo->x)--;
+				(hiloEnemigo->enemigo->posicionActual->x)--;
 			}
 	}
 	hiloEnemigo->enemigo->moverPorX = 0;
-	if (posicionNueva == posicionHacia){
-		//print("pj alcanzado");
-		}
 	return posicionNueva;
 }
-int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x) {
-	//FALTA desarrollar
-	//  que no pase por cajas   usar mutex para la lista de cajas
-	//MAXROWS MAXCOLS
-	return 1; //PosicionOK
+t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia){
+	t_posicion posicionNueva;
+	posicionNueva = (hiloEnemigo->enemigo->posicionActual);
+	if ((posicionHacia->y) > (hiloEnemigo->enemigo->posicionActual->y)){
+		(posicionNueva.y)++;
+		if (validarPosicionEnemigo(posicionNueva)){
+			(hiloEnemigo->enemigo->posicionActual->y)++;
+		}
+
+	}else{
+		(posicionNueva.y)--;
+		if (validarPosicionEnemigo(posicionNueva)){
+				(hiloEnemigo->enemigo->posicionActual->y)--;
+			}
+	}
+	hiloEnemigo->enemigo->moverPorX = 1;
+	return posicionNueva;
 }
 
 void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x) {
@@ -211,24 +233,34 @@ void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x) {
 	}
 }
 
-void buscarPJcercano(t_personaje *pj) {
-	int32_t distancia = calcularDistanciaCoord(miPosicion, pj->posActual);
-		if (distanciaMasCercana > distancia) {
-			posMasCercana = p->posActual;
-			distanciaMasCercana = distancia;
-		}
-}
 t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion) {
-	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	//pthread_mutex_lock (&mutexListaPersonajesJugando);
+	t_personaje *pjcercano;
 	int cant=0;
 	cant = list_size(listaPersonajesEnJuego);
 	t_posicion posMasCercana;
 	posMasCercana.x = 1000;
 	posMasCercana.y = 1000;
+	void buscarPJcercano(t_personaje *p) {
+		int32_t distancia = calcularDistanciaCoord(miPosicion, p->posActual);
+			if (distanciaMasCercana > distancia) {
+				posMasCercana = p->posActual;
+				distanciaMasCercana = distancia;
+				pjcercano = p;
+			}
+	}
 	int32_t distanciaMasCercana = calcularDistanciaCoord(miPosicion, posMasCercana);
 	if(cant > 0){
 		list_iterate(listaPersonajesEnJuego, (void*)buscarPJcercano);
-		pthread_mutex_unlock (&mutexListaPersonajesJugando);
-		return posMasCercana;
+		//pthread_mutex_unlock (&mutexListaPersonajesJugando);
+		return pjcercano;
 	}
+}
+
+
+int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y) {
+	//FALTA desarrollar
+	//  que no pase por cajas   usar mutex para la lista de cajas
+	//MAXROWS MAXCOLS
+	return 1; //PosicionOK
 }
