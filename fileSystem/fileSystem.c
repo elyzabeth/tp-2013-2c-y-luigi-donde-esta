@@ -255,6 +255,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 	size_t len;
 	(void) fi;
 	GFile *fileNode;
+	int i;
 	size = size!=0?size:BLKSIZE;
 
 	indirect_block_number = (offset / (BLKDIRECT * BLKSIZE));
@@ -263,6 +264,10 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 	direct_block_number = (indblk_resto / BLKSIZE);
 	//direct_block_number = (offset / BLKSIZE);
 	directblk_offset = (indblk_resto % BLKSIZE);
+
+	for(i=0; i <= (BLKDIRECT * BLKSIZE); i ++)
+		if (indblk_resto == i)
+			log_debug(LOGGER, "indblk_resto = %d", i);
 
 	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %u ", offset, size);
 	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, indirect_block_number, indblk_resto, direct_block_number, directblk_offset);
@@ -279,7 +284,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 	log_info(LOGGER, "grasa_read: path: %s - len: %d - posicion %d - bloque: %d - memoria: %d", path, len, posicion, NODOS[posicion]->blk_indirect[indirect_block_number], DATOS+(2109*4096));
 
-	int i;
+
 	for (i = 0; i < BLKINDIRECT ; i++)
 		if (NODOS[posicion]->blk_indirect[i]!=0)
 			log_debug(LOGGER, "NODOS[%d]->blk_indirect[%d]: %d", posicion, i , NODOS[posicion]->blk_indirect[i]);
