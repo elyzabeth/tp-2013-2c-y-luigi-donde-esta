@@ -45,6 +45,7 @@
 #define PLAN_NIVEL_FINALIZADO	0x25
 #define PLAN_NIVELES_CONCLUIDO	0x26
 #define MUERTE_PERSONAJE		0x27
+#define NIVEL_INEXISTENTE		0x28
 
 
 
@@ -78,6 +79,8 @@ int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int quitar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int crear_listener(int puerto, int *listener);
 void genId(char idMsg[]);
+
+char* getStringTipo(int tipo);
 
 void senialMurioHijo(int senial);
 //void senialSuspendido(int senial);
