@@ -65,7 +65,7 @@ int principal(int argc, char *argv[]) {
 
 
 
-void* personajexNivel (t_hilo_personaje *hiloPxN) {
+void* personajexNivel (t_hilo_personaje* hiloPxN) {
 
 	int id_proceso;
 	int sock = -1;
@@ -96,6 +96,8 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 	FD_ZERO(&master);
 
 	// Agrego descriptor del Pipe con Nivel.
+	// TODO PIERDO LOS SOCKETS PIPE !!!! CORREGIR ESTE BUG!!!!
+	log_info(LOGGER,"%s de %s - agregar_descriptor hiloPxN->fdPipe[0]: '%d' \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel, hiloPxN->fdPipe[0]);
 	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
 
 	agregar_descriptor(sock, &master, &max_desc);
@@ -133,7 +135,7 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 
 						log_debug(LOGGER, "Personaje '%c': mensaje recibido '%d'", hiloPxN->personaje.id, header.tipo);
 						if (header.tipo == FINALIZAR) {
-							log_debug(LOGGER, "Personaje '%c': '%d' ES FINALIZAR", hiloPxN->personaje.id, header.tipo);
+							log_debug(LOGGER, "\n\nPersonaje '%c' de %s: '%d' ES FINALIZAR", hiloPxN->personaje.id, hiloPxN->personaje.nivel, header.tipo);
 							fin = true;
 
 							// TODO enviar mensaje al planificador???
@@ -187,7 +189,7 @@ void* personajexNivel (t_hilo_personaje *hiloPxN) {
 
 	}
 
-	log_info(LOGGER, "FINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
+	log_info(LOGGER, "\n\nFINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
 
 	pthread_exit(NULL);
 }
@@ -214,7 +216,7 @@ void enviarMsjPlanDeNivelesConcluido() {
 
 // TODO el mensaje de muerte lo envia el hilo pricipal del personaje al orquestador?
 // o el hilo principal se lo comunica a cada hilo hijo y estos se lo comunican a sus respectivos planificadores??
-void enviarMsjMuerteDePersonaje () {
+void enviarMsjMuerteDePersonajeAlOrq () {
 	int ret, sock = -1;
 	header_t header;
 
@@ -290,7 +292,7 @@ void finalizarHilosPersonaje() {
 		log_debug(LOGGER, "hilo/de  %d/%d) Envio mensaje de FINALIZAR a hilo Personaje '%c' (%s)", ++i, cantHilosPersonaje, hPersonaje->personaje.id, hPersonaje->personaje.nivel);
 		write(hPersonaje->fdPipe[1], buffer_header, sizeof(header_t));
 		pthread_join(hPersonaje->tid, NULL);
-		sleep(1);
+		sleep(3);
 	}
 
 	list_iterate(listaHilosxNivel, (void*)_finalizar_hilo);
@@ -315,18 +317,25 @@ void manejoSIGTERM() {
 		// llamar funcion que baje los hilos y ver que otras variables hay que reiniciar!!
 		finalizarHilosPersonaje();
 
-		printf("Desea reiniciar el juego? s/n: ");
+		printf("\n\nKnock, knock, Neo...\n\n");
+		sleep(2);
+		printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe.\n");
+		printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n");
+		printf("Remember that all I am offering is the truth. Nothing more... \n");
+		printf("Take blue or red pill b/r: ");
+		printf("(traducción: Desea reiniciar el juego? s/n:) ");
 
-		while ((respuesta=getc(stdin)) != 's' && respuesta != 'n')
-			printf("\nPor favor ingrese 's' o 'n': ");
+		while ((respuesta=getc(stdin)) != 's' && respuesta != 'b' && respuesta != 'n' && respuesta != 'r')
+			printf("\nPor favor ingrese 's' o 'b' para reiniciar, o ingrese 'n' o 'r' para terminar: ");
 
-		if(respuesta == 's'){
+		if(respuesta == 's' || respuesta == 'b') {
 			REINTENTOS++;
-			log_info(LOGGER, "REINICIANDO EL JUEGO (reintentos: %d)...", REINTENTOS);
+			log_info(LOGGER, "VOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
+			imprimirVidasyReintentos();
 			// TODO llamar funcion que reinicie el juego
 
 		} else {
-			log_info(LOGGER, "CERRANDO PROCESO PERSONAJE");
+			log_info(LOGGER, "SALIENDO DE MATRIX....\n\n CERRANDO PROCESO PERSONAJE");
 
 			finalizarPersonaje();
 

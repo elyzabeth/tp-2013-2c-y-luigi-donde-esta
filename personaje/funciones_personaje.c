@@ -63,20 +63,19 @@ void levantarHilosxNivel() {
 	t_hilo_personaje *hiloPersonaje;
 
 	for (i = 0; i < cant; i++) {
-		hiloPersonaje = crearEstructuraHiloPersonaje();
+
 		oxn = queue_pop(planDeNiveles);
 
-		strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
-		strcpy(hiloPersonaje->personaje.nombre, configPersonajeNombre());
-		hiloPersonaje->personaje.id = configPersonajeSimbolo();
-		hiloPersonaje->objetivos = *oxn;
+		hiloPersonaje = crearEstructuraHiloPersonaje(oxn);
+		pipe(hiloPersonaje->fdPipe);
 
 		list_add(listaHilosxNivel, hiloPersonaje);
 
 		log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
-
+		log_debug(LOGGER, "%s de %s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->personaje.nivel, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
 		// Creo el hilo para el nivel
 		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+
 
 		//log_debug(LOGGER, "Hilo tid %d", hiloPersonaje->tid);
 
@@ -84,14 +83,26 @@ void levantarHilosxNivel() {
 
 }
 
-t_hilo_personaje* crearEstructuraHiloPersonaje() {
-	t_hilo_personaje *hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
+t_hilo_personaje* crearEstructuraHiloPersonaje(t_objetivosxNivel *oxn) {
+	t_hilo_personaje *hiloPersonaje;
 
+	hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
+
+	strcpy(hiloPersonaje->personaje.nombre, configPersonajeNombre());
+	strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
+	hiloPersonaje->objetivos = *oxn;
+	hiloPersonaje->personaje.id = configPersonajeSimbolo();
 	hiloPersonaje->personaje.recurso = '-';
 	hiloPersonaje->personaje.posActual.x = 0;
 	hiloPersonaje->personaje.posActual.y = 0;
 	hiloPersonaje->moverPorX=true;
-	pipe(hiloPersonaje->fdPipe);
+
+//	if (pipe(hiloPersonaje->fdPipe) == -1)
+//	{
+//		perror ("crearEstructuraHiloPersonaje: No se puede crear Tuberia de comunicacion.");
+//		exit (-1);
+//	}
+//log_debug(LOGGER, "%s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
 
 	return hiloPersonaje;
 }

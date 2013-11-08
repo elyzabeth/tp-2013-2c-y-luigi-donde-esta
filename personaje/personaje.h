@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #include "config/configPersonaje.h"
 #include "commons/log.h"
@@ -46,6 +47,7 @@ typedef struct personaje_s
 } personaje_t;
 
 
+#pragma pack(1)
 typedef struct hilo {
 	t_personaje personaje;
 	t_objetivosxNivel objetivos;
@@ -54,13 +56,16 @@ typedef struct hilo {
 	int32_t estado;
 	int32_t objetivosConseguidos;
 	int32_t tid;
-	int32_t fdPipe[2];
+	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura
 } t_hilo_personaje;
+#pragma pack(0)
 
+#pragma pack(1)
 typedef struct {
 	char simbolo;
 	t_posicion posicion;
 } t_proximoObjetivo;
+#pragma pack(0)
 
 personaje_t personaje;
 
@@ -76,7 +81,7 @@ void levantarHilosxNivel() ;
 void esperarHilosxNivel();
 void* personajexNivel (t_hilo_personaje *hiloPxN);
 
-t_hilo_personaje* crearEstructuraHiloPersonaje();
+t_hilo_personaje* crearEstructuraHiloPersonaje(t_objetivosxNivel *oxn);
 void destruirEstructuraHiloPersonaje(t_hilo_personaje* hiloPersonaje);
 
 void per_signal_callback_handler(int signum);
@@ -92,9 +97,12 @@ int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);
 int enviarInfoPersonaje2(int sock);
 int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN);
-void enviarMsjPlanDeNivelesConcluido();
 int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN );
 int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN);
 int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin);
+
+void enviarMsjPlanDeNivelesConcluido();
+void enviarMsjMuerteDePersonajeAlOrq();
+
 
 #endif /* PERSONAJE_H_ */
