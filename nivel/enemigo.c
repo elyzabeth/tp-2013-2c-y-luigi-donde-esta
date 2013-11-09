@@ -17,6 +17,8 @@ void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x);
 t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion);
 int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
 void* enemigo (t_hiloEnemigo *enemy);
+posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
+int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -119,7 +121,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
 		if ((posicionNueva->x == posicionPJ->x)&&(posicionNueva->y == posicionPJ->y)){
 			log_info(LOGGER, "El PJ '%c' ha sido alcanzado por un enemigo:",PJ->id);
 			//NOTIFICAR AL PLANIFICADOR que el personaje perdio una vida
-			// IMPRIMIR por pantalla
+			// IMPRIMIR por pantalla  GUI??
 			}
 	}
 
@@ -257,10 +259,26 @@ t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion) {
 	}
 }
 
-
-int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y) {
-	//FALTA desarrollar
-	//  que no pase por cajas   usar mutex para la lista de cajas
-	//MAXROWS MAXCOLS
-	return 1; //PosicionOK
+posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion){
+	pthread_mutex_lock (&mutexListaRecursos);
+	int32_t hayCaja = 0;
+int32_t hayItemEn(t_caja *caja){
+	if (posicion->x == caja->X && posicion->x == caja->X){
+	hayCaja = 1;
+	}
+	}
+list_iterate(ListaRecursos, (void*)hayItem);
+	pthread_mutex_unlock (&mutexListaRecursos);
+	return hayCaja;
 }
+
+int32_t	validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
+	t_posicion pos;	pos->x=X;pos->y=Y;
+	if((Y=<MAXROWS)&&(X=<MAXCOLS)&&(!posicionConItem(hiloEnemigo,pos))){
+		if (!posicionConItem(pos)){
+			return 1;//PosicionOK
+		}
+	}
+	return 0;// POSICION INVALIDA
+}
+
