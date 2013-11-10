@@ -14,7 +14,7 @@ t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHac
 t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
 t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
 void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x);
-t_posicion obternerPosPersonajeMasCercano(t_posicion miPosicion);
+t_posicion obternerPersonajeMasCercano(t_posicion miPosicion);
 int32_t        validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
 void* enemigo (t_hiloEnemigo *enemy);
 posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
@@ -113,9 +113,9 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
         t_posicion posicionPJ, posicionNueva;
         if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
         {
-                //pthread_mutex_lock (&mutexlistaPersonajesEnJuego);
+
                 PJ = obternerPosPersonajeMasCercano(hiloEnemigo->enemigo->posicionActual);
-                //pthread_mutex_unlock (&mutexlistaPersonajesEnJuego);
+                pthread_mutex_unlock (&mutexListaPersonajesJugando);
                 posicionPJ = PJ->posActual;
                 posicionNueva = moverEnemigoPorEje(hiloEnemigo, posicionPJ);
 
@@ -161,12 +161,14 @@ moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY){
 
 t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia){
         t_posicion posicionNueva;
-        if (hiloEnemigo->enemigo->moverPorX){
-                posicionNueva moverEnemigoEnX(hiloEnemigo, posicionHacia);
+        if ((hiloEnemigo->enemigo->moverPorX) &&
+        	(hiloEnemigo->enemigo->posicionActual->x != posicionHacia.x)){
+        		posicionNueva moverEnemigoEnX(hiloEnemigo, posicionHacia);
         }
         else{
-                posicionNueva moverEnemigoEnY(hiloEnemigo, posicionHacia);
-                validarPosicionEnemigo(posicionNueva);
+                if(hiloEnemigo->enemigo->posicionActual->y != posicionHacia.y){
+                	posicionNueva moverEnemigoEnY(hiloEnemigo, posicionHacia);
+                }
         }
         return posicionNueva;
 }
@@ -240,9 +242,11 @@ void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x) {
         }
 }
 
-t_personaje obternerPosPersonajeMasCercano(t_posicion miPosicion) {
-        t_personaje *pjcercano;
-        int32_t cant=0;
+t_personaje obternerPersonajeMasCercano(t_posicion miPosicion) {
+		pthread_mutex_lock (&mutexListaPersonajesJugando);
+		t_personaje *pjcercano;
+        pjcercano = NULL;
+		int32_t cant=0;
         cant = list_size(listaPersonajesEnJuego);
         t_posicion posMasCercana;
         posMasCercana.x = 1000;
@@ -258,9 +262,10 @@ t_personaje obternerPosPersonajeMasCercano(t_posicion miPosicion) {
 			}
         if(cant > 0){
                 list_iterate(listaPersonajesEnJuego, (void*)buscarPJcercano);
-                return pjcercano;
+
         }
-        else return 0;//ERROR
+        pthread_mutex_unlock (&mutexListaPersonajesJugando);
+        return pjcercano;
 }
 
 posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion){
