@@ -17,12 +17,15 @@
 #include <fcntl.h>
 #include <fuse.h>
 #include <err.h>
+#include <time.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <time.h>
+
 
 #include "commons/bitarray.h"
 #include "commons/log.h"
+#include "commons/string.h"
 
 #define FUSE_USE_VERSION 26
 
@@ -70,5 +73,7 @@ char *DATOS;
 ptrGBloque blk_direct[BLKDIRECT];
 
 t_log* LOGGER;
+
+pthread_mutex_t mutexGrasaWrite;
 
 #endif /* FILESYSTEM_H_ */
