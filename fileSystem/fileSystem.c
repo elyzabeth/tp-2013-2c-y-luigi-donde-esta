@@ -92,22 +92,37 @@ void copiarBloque (char *buf, int posicion, long long int nroBlkInd, long long i
 }
 
 size_t copiarABuffer (char *buf, GFile *Nodo, off_t offset, size_t size) {
+	// off_t = long int
+	// size_t = unsigned int
+
 	long int nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect;
-	ptrGBloque *directBlk[BLKDIRECT];
-	size=size<=BLKSIZE?size:BLKSIZE;
+	//ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
+	ptrGBloque directBlk[BLKDIRECT]={0};
+	size_t totalAcopiarDelBloque = 0;
+
 
 	nroBlkInd = (offset / (BLKDIRECT * BLKSIZE));
 	indblk_resto = offset % (BLKDIRECT * BLKSIZE);
 	nroBlkDirect = (indblk_resto / BLKSIZE);
 	offsetBlkDirect = (indblk_resto % BLKSIZE);
 
-	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect);
+	totalAcopiarDelBloque = BLKSIZE - offsetBlkDirect;
+	size=size<=totalAcopiarDelBloque?size:totalAcopiarDelBloque;
 
-	directBlk = DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE);
-	//memcpy(directBlk, DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE), BLKSIZE);
-	log_debug(LOGGER, "3) blk_direct[%d]: %d",nroBlkDirect , blk_direct[nroBlkDirect]);
+	log_info(LOGGER, "\n\ncopiarABuffer\n*************\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect);
 
-	memcpy(buf, DATOS+(blk_direct[nroBlkDirect] * BLKSIZE)+offsetBlkDirect, size);
+	log_debug(LOGGER, "copiarABuffer: Nodo->blk_indirect[%d]: %d", nroBlkInd, Nodo->blk_indirect[nroBlkInd]);
+
+
+//	directBlk = (ptrGBloque*)DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE);
+//	log_debug(LOGGER, " 1- directBlk[%d]: %d", nroBlkDirect , directBlk[nroBlkDirect]);
+
+	memcpy(directBlk, DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE), BLKSIZE);
+	log_debug(LOGGER, " 2- directBlk[%d]: %u", nroBlkDirect , directBlk[nroBlkDirect]);
+
+
+	//memcpy(buf, DATOS+(blk_direct[nroBlkDirect] * BLKSIZE)+offsetBlkDirect, size);
+	memcpy(buf, DATOS+(( directBlk[nroBlkDirect] ) * BLKSIZE)+offsetBlkDirect, size);
 
 	return size;
 }
@@ -288,28 +303,15 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 	len = fileNode->file_size;
 
-//	indirect_block_number = (offset / (BLKDIRECT * BLKSIZE));
-//	indblk_resto = offset % (BLKDIRECT * BLKSIZE);
-//	direct_block_number = (indblk_resto / BLKSIZE);
-//	directblk_offset = (indblk_resto % BLKSIZE);
-
-	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %zu ", offset, size);
-	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, indirect_block_number, indblk_resto, direct_block_number, directblk_offset);
-	log_info(LOGGER, "grasa_read\n\n offset % 4194304: %ld (%ld) \n (16384 % 4194304): %ld \n\n", ( offset % 4194304), indblk_resto, ( 16384 % 4194304 ));
-	log_info(LOGGER, "grasa_read: path: %s - len: %d - posicion %d - bloque: %d - memoria: %d", path, len, posicion, NODOS[posicion]->blk_indirect[indirect_block_number], DATOS+(2109*4096));
-
-	for (i = 0; i < BLKINDIRECT ; i++)
-		if (NODOS[posicion]->blk_indirect[i]!=0)
-			log_debug(LOGGER, "NODOS[%d]->blk_indirect[%d]: %d", posicion, i , NODOS[posicion]->blk_indirect[i]);
-
+	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %u - size: %zu", offset, size, size);
 
 	while( copiado < size) {
+		log_info(LOGGER, "\n\ngrasa_read: offset %ld - size: %u - size: %zu - copiado: %zu", offset, size, size, copiado);
 		//copiado = copiarBloque(buf, posicion, indirect_block_number, direct_block_number, directblk_offset, size);
-		copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size);
+		copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
 	}
 
 	return size;
-
 
 }
 
