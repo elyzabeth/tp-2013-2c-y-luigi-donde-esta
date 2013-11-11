@@ -339,8 +339,7 @@ void nuevoNivel(int fdNivel, header_t header) {
  */
 void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 
-	// TODO mover al personaje a la lista de finalizados??
-
+	sleep(5);
 	// Si todos los personajes concluyeron sus planes
 	// Lanzar el proceso Koopa.
 	imprimirListaPersonajesFinalizados ();

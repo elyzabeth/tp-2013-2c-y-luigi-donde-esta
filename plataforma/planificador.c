@@ -186,6 +186,10 @@ void* planificador(t_planificador *planner) {
 								recibirPlanNivelFinalizado ( i, header, &master, planner);
 								break;
 
+							case MUERTE_PERSONAJE: log_info(LOGGER, "PLANIFICADOR %s: MUERTE_PERSONAJE", planner->nivel.nombre);
+								recibirPlanNivelFinalizado ( i, header, &master, planner);
+								break;
+
 							case OTRO: log_info(LOGGER, "PLANIFICADOR %s: OTRO", planner->nivel.nombre);
 								break;
 
@@ -599,15 +603,49 @@ int recibirPlanNivelFinalizado(int fdPersonaje, header_t header, fd_set *master,
 	}
 
 	// TODO quitar personaje de listados
-	quitarPersonajeColaxId(planner->personajesListos, personaje.id);
-	planner->personajeEjecutando = NULL;
+	//quitarPersonajeColaxId(planner->personajesListos, personaje.id);
 
 	moverPersonajeAFinalizados(personaje.id, planner->nivel.nombre);
+
+	planner->personajeEjecutando = NULL;
+	// TODO Liberar recursos del personaje??
+
+	return ret;
+}
+
+
+int recibirMuertePersonajePlan(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+	//t_personaje *p;
+
+	initPersonje(&personaje);
+	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
+	log_debug(LOGGER, "PLANIFICADOR %s: recibirPlanNivelFinalizado: %s (%c) MUERTE_PERSONAJE del %s ", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel);
+
+	log_debug(LOGGER, "recibirMuertePersonajePlan: Enviando mensaje de MUERTE_PERSONAJE del personaje %s ('%c') al %s ", personaje.nombre, personaje.id, personaje.nivel);
+	if ((ret = enviar_header(planner->nivel.fdSocket, &header)) != EXITO){
+		log_error(LOGGER, "ERROR en recibirMuertePersonajePlan al enviar_header MUERTE_PERSONAJE al nivel ");
+		return WARNING;
+	}
+
+	if ((ret = enviar_personaje(planner->nivel.fdSocket, &personaje)) != EXITO){
+		log_error(LOGGER, "ERROR en recibirMuertePersonajePlan al enviar_personaje MUERTE_PERSONAJE al nivel ");
+		return WARNING;
+	}
+
+	// TODO quitar personaje de listados
+	quitarPersonajeColaxId(planner->personajesListos, personaje.id);
+	quitarPersonajeColaxId(planner->personajesBloqueados, personaje.id);
+	planner->personajeEjecutando = NULL;
+
+	moverPersonajeAFinAnormal(personaje.id, planner->nivel.nombre);
 
 	// TODO Liberar recursos del personaje??
 
 	return ret;
 }
+
 
 int enviarMsjTurnoConcedido(t_personaje *personaje, char* nivel) {
 	int ret;
