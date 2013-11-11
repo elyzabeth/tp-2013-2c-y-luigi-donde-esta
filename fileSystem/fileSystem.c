@@ -91,6 +91,27 @@ void copiarBloque (char *buf, int posicion, long long int nroBlkInd, long long i
 	memcpy(buf, DATOS+(blk_direct[nroBlkDirect] * BLKSIZE)+offsetBlkDirect, size);
 }
 
+size_t copiarABuffer (char *buf, GFile *Nodo, off_t offset, size_t size) {
+	long int nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect;
+	ptrGBloque *directBlk[BLKDIRECT];
+	size=size<=BLKSIZE?size:BLKSIZE;
+
+	nroBlkInd = (offset / (BLKDIRECT * BLKSIZE));
+	indblk_resto = offset % (BLKDIRECT * BLKSIZE);
+	nroBlkDirect = (indblk_resto / BLKSIZE);
+	offsetBlkDirect = (indblk_resto % BLKSIZE);
+
+	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect);
+
+	directBlk = DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE);
+	//memcpy(directBlk, DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE), BLKSIZE);
+	log_debug(LOGGER, "3) blk_direct[%d]: %d",nroBlkDirect , blk_direct[nroBlkDirect]);
+
+	memcpy(buf, DATOS+(blk_direct[nroBlkDirect] * BLKSIZE)+offsetBlkDirect, size);
+
+	return size;
+}
+
 /*
  * @DESC
  *  Esta función va a ser llamada cuando a la biblioteca de FUSE le llege un pedido
@@ -250,30 +271,15 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 {
 	// NOTA: off_t = long int
 	// size_t = unsigned int
-	long int indirect_block_number, indblk_resto, direct_block_number, directblk_offset;
+	//long int indirect_block_number, indblk_resto, direct_block_number, directblk_offset;
 	int posicion;
 	size_t len;
 	(void) fi;
 	GFile *fileNode;
 	int i;
-	size = size!=0?size:BLKSIZE;
+	size_t copiado = 0;
 
-	indirect_block_number = (offset / (BLKDIRECT * BLKSIZE));
-	indblk_resto = offset % (BLKDIRECT * BLKSIZE);
-	//indblk_resto = ( offset % 4194304);
-	direct_block_number = (indblk_resto / BLKSIZE);
-	//direct_block_number = (offset / BLKSIZE);
-	directblk_offset = (indblk_resto % BLKSIZE);
-
-	for(i=0; i <= (BLKDIRECT * BLKSIZE); i ++)
-		if (indblk_resto == i)
-			log_debug(LOGGER, "indblk_resto = %d", i);
-
-	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %u ", offset, size);
-	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, indirect_block_number, indblk_resto, direct_block_number, directblk_offset);
-
-	log_info(LOGGER, "grasa_read\n\n offset % 4194304: %ld (%ld) \n (16384 % 4194304): %ld \n\n", ( offset % 4194304), indblk_resto, ( 16384 % 4194304 ));
-
+	//size = size!=0?size:BLKSIZE;
 	fileNode = getGrasaFileNode(path, &posicion);
 
 	if (posicion<0){
@@ -282,15 +288,25 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 	len = fileNode->file_size;
 
-	log_info(LOGGER, "grasa_read: path: %s - len: %d - posicion %d - bloque: %d - memoria: %d", path, len, posicion, NODOS[posicion]->blk_indirect[indirect_block_number], DATOS+(2109*4096));
+//	indirect_block_number = (offset / (BLKDIRECT * BLKSIZE));
+//	indblk_resto = offset % (BLKDIRECT * BLKSIZE);
+//	direct_block_number = (indblk_resto / BLKSIZE);
+//	directblk_offset = (indblk_resto % BLKSIZE);
 
+	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %zu ", offset, size);
+	log_info(LOGGER, "grasa_read\n\n offset: %ld \n indirect_block_number: %ld \n indblk_resto: %ld \n direct_block_number: %ld \n directblk_offset: %ld ", offset, indirect_block_number, indblk_resto, direct_block_number, directblk_offset);
+	log_info(LOGGER, "grasa_read\n\n offset % 4194304: %ld (%ld) \n (16384 % 4194304): %ld \n\n", ( offset % 4194304), indblk_resto, ( 16384 % 4194304 ));
+	log_info(LOGGER, "grasa_read: path: %s - len: %d - posicion %d - bloque: %d - memoria: %d", path, len, posicion, NODOS[posicion]->blk_indirect[indirect_block_number], DATOS+(2109*4096));
 
 	for (i = 0; i < BLKINDIRECT ; i++)
 		if (NODOS[posicion]->blk_indirect[i]!=0)
 			log_debug(LOGGER, "NODOS[%d]->blk_indirect[%d]: %d", posicion, i , NODOS[posicion]->blk_indirect[i]);
 
 
-	copiarBloque(buf, posicion, indirect_block_number, direct_block_number, directblk_offset, size);
+	while( copiado < size) {
+		//copiado = copiarBloque(buf, posicion, indirect_block_number, direct_block_number, directblk_offset, size);
+		copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size);
+	}
 
 	return size;
 
