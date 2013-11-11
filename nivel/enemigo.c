@@ -15,10 +15,15 @@ t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia)
 t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
 void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x);
 t_posicion obternerPersonajeMasCercano(t_posicion miPosicion);
-int32_t        validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
+int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
 void* enemigo (t_hiloEnemigo *enemy);
 posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
-int32_t        validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
+int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
+
+
+//t_posicion posProhibidas array[]
+
+t_dictionary* listaPosicionesProhibidas = configNivelRecursos();
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -269,15 +274,13 @@ t_personaje obternerPersonajeMasCercano(t_posicion miPosicion) {
 }
 
 posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion){
-        //pthread_mutex_lock (&mutexListaRecursos);
-        int32_t hayCaja = 0;
+    int32_t hayCaja = 0;
 void hayItemEn(t_caja *caja){
-        if (posicion->x == caja->POSX && posicion->x == caja->POSY){
-        hayCaja = 1;
+			if (posicion->x == caja->POSX && posicion->x == caja->POSY){
+			hayCaja = 1;
+			}
         }
-        }
-list_iterate(listaRecursos, (void*)hayItemEn);
-        //pthread_mutex_unlock (&mutexListaRecursos);
+list_iterate(listaPosicionesProhibidas, (void*)hayItemEn);
         return hayCaja;
 }
 
