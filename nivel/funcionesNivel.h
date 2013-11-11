@@ -46,6 +46,7 @@ int MAXROWS, MAXCOLS;
 t_list *GUIITEMS;
 t_list *listaPersonajesEnJuego;
 t_list *listaPersonajesBloqueados;
+t_list *listaPersonajesFinalizados;
 t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
@@ -55,6 +56,7 @@ t_list *listaEnemigos;
 pthread_mutex_t mutexLockGlobalGUI;
 pthread_mutex_t mutexListaPersonajesJugando;
 pthread_mutex_t mutexListaPersonajesBloqueados;
+pthread_mutex_t mutexListaPersonajesFinalizados;
 pthread_mutex_t mutexListaRecursos;
 pthread_mutex_t mutexRecursosxPersonajes;
 
@@ -117,6 +119,7 @@ int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master);
 int tratarSolicitudRecurso(int sock, header_t header, fd_set *master);
 int tratarMovimientoRealizado(int sock, header_t header, fd_set *master);
 int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master);
+int tratarMuertePersonaje(int sock, header_t header, fd_set *master);
 
 void rnd(int *x, int max);
 

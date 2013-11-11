@@ -67,6 +67,12 @@ void gui_dibujar() {
 }
 
 
+void gui_dibujarEnemigo(char * msj) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+	nivel_gui_dibujar(GUIITEMS, msj);
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
+
 // Funciones sincronizadas para acceder a listas compartidas
 
 int32_t obternerCantPersonajesEnJuego() {
@@ -111,6 +117,12 @@ void agregarPersonajeABloqueadosNivel(t_personaje *personaje) {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	list_add(listaPersonajesBloqueados, personaje);
 	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+}
+
+void agregarPersonajeAFinalizadosNivel(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
+	list_add(listaPersonajesFinalizados, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
 }
 
 void agregarRecursoxPersonaje(t_personaje *personaje, t_vecRecursos *vec) {
@@ -287,6 +299,7 @@ void inicializarNivel () {
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
 	pthread_mutex_init (&mutexListaPersonajesJugando, NULL);
 	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
+	pthread_mutex_init (&mutexListaPersonajesFinalizados, NULL);
 	pthread_mutex_init (&mutexListaRecursos, NULL);
 	pthread_mutex_init (&mutexRecursosxPersonajes, NULL);
 
@@ -294,6 +307,7 @@ void inicializarNivel () {
 	listaEnemigos = list_create();
 	listaPersonajesEnJuego = list_create();
 	listaPersonajesBloqueados = list_create();
+	listaPersonajesFinalizados = list_create();
 	listaRecursos = configNivelRecursos();
 	recursosxPersonajes = dictionary_create();
 
@@ -326,8 +340,8 @@ void finalizarPersonajeNivel(t_personaje *personaje) {
 	if (NULL == p)
 		p = quitarPersonajeDeBloqueados(personaje->id);
 
-	// TODO free de p??
-	// free(p);
+	if (p != NULL)
+		agregarPersonajeAFinalizadosNivel(p);
 
 	// BORRO al personaje del listado GUIITEMS
 	gui_borrarItem(personaje->id);
@@ -384,6 +398,7 @@ void finalizarNivel () {
 	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirHiloEnemigo);
 	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
+	list_destroy_and_destroy_elements(listaPersonajesFinalizados, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 	dictionary_destroy_and_destroy_elements(recursosxPersonajes, (void*)destruirVecRecursos);
 
@@ -395,6 +410,7 @@ void finalizarNivel () {
 	pthread_mutex_destroy(&mutexLockGlobalGUI);
 	pthread_mutex_destroy(&mutexListaPersonajesJugando);
 	pthread_mutex_destroy(&mutexListaPersonajesBloqueados);
+	pthread_mutex_destroy(&mutexListaPersonajesFinalizados);
 	pthread_mutex_destroy(&mutexListaRecursos);
 	pthread_mutex_destroy(&mutexRecursosxPersonajes);
 
@@ -767,9 +783,25 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 		return ret;
 	}
 
-	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 	finalizarPersonajeNivel(&personaje);
 
 	return ret;
 }
 
+
+int tratarMuertePersonaje(int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+
+	// Si llega un mensaje de MUERTE_PERSONAJE luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarMuertePersonaje: ERROR al recibir payload t_personaje en MUERTE_PERSONAJE \n\n", NOMBRENIVEL);
+		return ret;
+	}
+
+	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	finalizarPersonajeNivel(&personaje);
+
+	return ret;
+}

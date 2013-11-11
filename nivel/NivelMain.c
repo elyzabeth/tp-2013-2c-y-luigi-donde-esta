@@ -93,6 +93,7 @@ void principal () {
 							log_debug(LOGGER, "Llego mensaje %d (fd:%d)", header.tipo, i);
 
 							switch(header.tipo) {
+
 								case NIVEL_CONECTADO:
 									log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
 									break;
@@ -120,6 +121,11 @@ void principal () {
 								case PLAN_NIVEL_FINALIZADO:
 									log_info(LOGGER, "Llego mensaje PLAN_NIVEL_FINALIZADO (fd:%d)", i);
 									tratarPlanNivelFinalizado (i, header, &master);
+									break;
+
+								case MUERTE_PERSONAJE:
+									log_info(LOGGER, "Llego mensaje MUERTE_PERSONAJE (fd:%d)", i);
+									tratarMuertePersonaje (i, header, &master);
 									break;
 
 								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);
