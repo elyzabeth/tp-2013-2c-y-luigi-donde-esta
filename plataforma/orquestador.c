@@ -316,7 +316,7 @@ void nuevoNivel(int fdNivel, header_t header) {
 
 		// levantar hilo Planificador para el nivel
 		log_info(LOGGER, "Levanto Hilo Planificador para Nivel '%s'", nivel.nombre);
-		pthread_create(&planner->tid, NULL, (void*)planificador, planner);
+		pthread_create(&(planner->tid), NULL, (void*)planificador, planner);
 
 		/**Contesto Mensaje **/
 		if (enviarMsjNivelConectado(fdNivel) != EXITO) {

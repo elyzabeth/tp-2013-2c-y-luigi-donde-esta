@@ -189,7 +189,7 @@ void levantarHilosxNivel() {
 		log_debug(LOGGER, "%s de %s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->personaje.nivel, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
 
 		// Creo el hilo para el nivel
-		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+		pthread_create (&(hiloPersonaje->tid), NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
 
 		queue_push(planDeNiveles, oxn);
 

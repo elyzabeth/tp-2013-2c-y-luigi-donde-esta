@@ -48,7 +48,7 @@ typedef struct {
 	int32_t moverPorX;
 	int32_t estado;
 	int32_t objetivosConseguidos;
-	int32_t tid;
+	pthread_t tid;
 	int32_t fdPipe[2]; // fdPipe[0] de lectura / fdPipe[1] de escritura
 } t_hilo_personaje;
 #pragma pack(0)

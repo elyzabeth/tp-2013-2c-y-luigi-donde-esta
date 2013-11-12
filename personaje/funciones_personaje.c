@@ -165,19 +165,17 @@ t_hilo_personaje* quitarHiloPersonajexTid (int32_t tid) {
 
 int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master) {
 
-	pthread_mutex_lock (&mutexEnvioMensaje);
+	//pthread_mutex_lock (&mutexEnvioMensaje);
 	int ret, se_desconecto;
 
 	ret = recibir_header(sock, header, master, &se_desconecto);
 
-	pthread_mutex_unlock (&mutexEnvioMensaje);
+	//pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
 
 int enviarMsjNuevoPersonaje( int sock ) {
-
-	pthread_mutex_lock (&mutexEnvioMensaje);
 
 	header_t header;
 	int ret;
@@ -189,8 +187,6 @@ int enviarMsjNuevoPersonaje( int sock ) {
 	log_debug(LOGGER,"enviarMsjNuevoPersonaje: NUEVO_PERSONAJE sizeof(header): %d, largo mensaje: %d \n", sizeof(header), header.largo_mensaje);
 
 	ret =  enviar_header(sock, &header);
-
-	pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
@@ -275,6 +271,7 @@ int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObje
 	return ret;
 }
 
+
 int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
 
 	header_t header;
@@ -309,7 +306,6 @@ int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 
 int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 
-	pthread_mutex_lock (&mutexEnvioMensaje);
 	t_personaje yo;
 	yo = hiloPxN->personaje;
 
@@ -330,7 +326,6 @@ int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 		return WARNING;
 	}
 
-	pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
