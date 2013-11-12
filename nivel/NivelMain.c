@@ -50,20 +50,24 @@ void principal () {
 
 	// Conectar con proceso Plataforma
 	conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sock);
+
 	if (enviarMSJNuevoNivel(sock) != EXITO) {
 		log_error(LOGGER, "ERROR en conexion con Plataforma");
 		finalizarNivel();
 		exit(EXIT_FAILURE);
 	}
 
-	// Agrego descriptor del socket
+	// Agrego descriptor del socket de conexion con plataforma
 	agregar_descriptor(sock, &master, &max_desc);
 
 	// Agrego descriptor del inotify
 	agregar_descriptor(notifyFD, &master, &max_desc);
 
-	//simulacroJuego ();
-	//ejemploGui();
+	// Agrego descriptor de comunicacion con hilo de interbloqueo por pipe
+	agregar_descriptor(hiloInterbloqueo.fdPipeI2N[0], &master, &max_desc);
+
+	// Agrego fd del pipe con hilos enemigos
+	agregarFDPipeEscuchaEnemigo(&master, &max_desc);
 
 	while(!fin) {
 		FD_ZERO (&read_fds);
@@ -132,6 +136,7 @@ void principal () {
 									break;
 							}
 						}
+
 					} else if (i == notifyFD) {
 
 						log_info(LOGGER, "Hubo un cambio en el archivo de configuracion (fd:%d)", i);
@@ -141,21 +146,50 @@ void principal () {
 
 						enviarMsjCambiosConfiguracion(sock);
 
+					} else if ( i == hiloInterbloqueo.fdPipeI2N[0]) {
+
+						// Llega mensaje desde hilo interbloqueo por Pipe
+						log_info(LOGGER, "NivelMain: Recibo mensaje desde Interbloqueo por Pipe: %d", i);
+
+						initHeader(&header);
+						read (i, &header, sizeof(header_t));
+
+						log_debug(LOGGER, "NivelMain: mensaje recibido '%d'", header.tipo);
+						switch (header.tipo)
+						{
+							case MUERTE_PERSONAJE_XRECOVERY: log_debug(LOGGER, "'%d' ES MUERTE_PERSONAJE_XRECOVERY", header.tipo);
+								// TODO informar al planificador
+								// Mover personaje a una lista de fiambres.
+
+								break;
+						}
+
 					} else {
 
-						// NO ES NI notifyFD NI mi Planificador?? WTF ??
-						log_debug(LOGGER, "2) actividad en el socket %d", i);
-						initHeader(&header);
-						recibir_header(i, &header, &master, &se_desconecto);
+						// NO ES NI notifyFD NI mi Planificador Ni el hilo de Interbloqueo
+						// Entonces debe ser un hilo Enemigo
+						log_debug(LOGGER, "NivelMain: actividad en el socket %d", i);
 
-						if(se_desconecto)
+						log_info(LOGGER, "NivelMain: Recibo mensaje desde Enemigo por Pipe: %d", i);
+						initHeader(&header);
+						read (i, &header, sizeof(header_t));
+
+						log_debug(LOGGER, "NivelMain: mensaje recibido '%d'", header.tipo);
+						switch (header.tipo)
 						{
-							log_info(LOGGER, "Se desconecto el socket %d", i);
-							//FD_CLR(i, &master);
-							quitar_descriptor(i, &master, &max_desc);
-						} else {
-							log_debug(LOGGER, "2) Llego mensaje del socket %d: %d NO RECONOCIDO", i, header.tipo);
+							case MUERTE_PERSONAJE_XENEMIGO: log_debug(LOGGER, "'%d' ES MUERTE_PERSONAJE_XENEMIGO", header.tipo);
+								// TODO informar al planificador
+								break;
 						}
+
+//						if(se_desconecto)
+//						{
+//							log_info(LOGGER, "Se desconecto el socket %d", i);
+//							quitar_descriptor(i, &master, &max_desc);
+//
+//						} else {
+//							log_debug(LOGGER, "2) Llego mensaje del socket %d: %d NO RECONOCIDO", i, header.tipo);
+//						}
 
 					}
 				}

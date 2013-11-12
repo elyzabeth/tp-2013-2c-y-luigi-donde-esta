@@ -29,7 +29,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	int32_t RecoveryOn;
 	int32_t hayDeadLock;
 
-	log_info(LOGGER, "DETECCION DE INTERBLOQUEO: Iniciado.");
+	log_info(LOGGER, "HILO DE DETECCION DE INTERBLOQUEO: Iniciado.");
 
 	FD_ZERO(&master);
 	FD_ZERO(&read_fds);
@@ -87,7 +87,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 	}
 
-	log_info(LOGGER, "FINALIZANDO HILO INTERBLOQUEO...");
+	log_info(LOGGER, "FINALIZANDO HILO INTERBLOQUEO...\n");
 
 	pthread_exit(NULL);
 
@@ -111,7 +111,7 @@ int32_t detectarDeadlock() {
 	// 3) Se busca un indice i tal que el proceso i no este marcado actualmente y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
 	//    Es decir, Se ejecuta Tk = Tk + Aik, para 1 <= k <= m. A continuacion se vuelve al 3 paso.
 
-
+	enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
 
 	return hayDeadLock;
 

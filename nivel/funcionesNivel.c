@@ -213,11 +213,26 @@ void moverPersonajeABloqueados(char simboloPersonaje) {
 }
 
 /**
+ * @NAME: posicionDentroDeLosLimites
+ * @DESC: Valida que (x, y) sea mayor a (0, 0) y menor a los limites de la pantalla (MAXCOLS, MAXROWS)
+ */
+bool posicionDentroDeLosLimites (int32_t x, int32_t y) {
+
+	if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
  * @NAME: validarPosicionCaja
  * @DESC: Valida que la caja de recursos que se va a agregar este dentro de los limites.
  */
 void validarPosicionCaja(char s, int32_t x, int32_t y) {
-	if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
+
+	//if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
+	if ( !posicionDentroDeLosLimites(x, y) ) {
 		log_error(LOGGER, "ERROR AL CREAR CAJA '%c' POSICION (%d, %d) FUERA DE LOS LIMITES (%d, %d)", s, x, y, MAXCOLS, MAXROWS);
 		perror("ERROR AL CREAR CAJA POSICION FUERA DE LOS LIMITES");
 		finalizarNivel();
@@ -293,8 +308,9 @@ void inicializarNivel () {
 	log_info(LOGGER, " ********************* INICIALIZANDO NIVEL '%s' ***************************\n", NOMBRENIVEL);
 
 	// Inicializo estructura de hilo de deteccion de interbloqueo
-	memset(&hiloInterbloqueo,'\0',sizeof(t_hiloInterbloqueo));
+	memset(&hiloInterbloqueo, 0, sizeof(t_hiloInterbloqueo));
 	pipe(hiloInterbloqueo.fdPipe);
+	pipe(hiloInterbloqueo.fdPipeI2N);
 
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
 	pthread_mutex_init (&mutexListaPersonajesJugando, NULL);
@@ -354,44 +370,40 @@ void finalizarPersonajeNivel(t_personaje *personaje) {
 void finalizarHilosEnemigos() {
 	int i = 0;
 	int32_t cantEnemigos = configNivelEnemigos();
-	header_t header;
-	char* buffer_header = calloc(1,sizeof(header_t));
 
 	log_info(LOGGER, "%s: FINALIZANDO HILOS ENEMIGOS", NOMBRENIVEL);
 
-	initHeader(&header);
-	header.tipo = FINALIZAR;
-	header.largo_mensaje=0;
-
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
-
 	void _finalizar_hilo(t_hiloEnemigo *enemy) {
 		log_debug(LOGGER, "%s: %d/%d) Envio mensaje de FINALIZAR a Enemigo '%c' (%u)", NOMBRENIVEL, ++i, cantEnemigos, enemy->enemigo.id, enemy->tid);
-		write(enemy->fdPipe[1], buffer_header, sizeof(header_t));
+
+		enviarMsjPorPipe(enemy->fdPipe[1], FINALIZAR);
 		pthread_join(enemy->tid, NULL);
-		sleep(1);
+		//sleep(1);
 	}
 
 	list_iterate(listaEnemigos, (void*)_finalizar_hilo);
 
-	free(buffer_header);
 }
 
 void finalizarNivel () {
 
 	log_info(LOGGER, "FINALIZANDO NIVEL-GUI '%s'", NOMBRENIVEL);
 
-	// finalizo hilos enemigos
+	// finalizo hilos enemigos antes de finalizar la GUI si no da error.
 	finalizarHilosEnemigos();
-
-	// finalizo hilo Interbloqueo
-	enviarMsjAInterbloqueo(FINALIZAR);
 
 	// Libero / finalizo NIVEL-GUI
 	nivel_gui_terminar();
 
 	log_info(LOGGER, "FINALIZANDO NIVEL '%s'", NOMBRENIVEL);
+
+	// finalizo hilo Interbloqueo
+	enviarMsjAInterbloqueo(FINALIZAR);
+	close(hiloInterbloqueo.fdPipe[0]);
+	close(hiloInterbloqueo.fdPipe[1]);
+	close(hiloInterbloqueo.fdPipeI2N[0]);
+	close(hiloInterbloqueo.fdPipeI2N[1]);
+
 
 	// Libero listas dinamicas
 	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
@@ -439,6 +451,19 @@ int crearNotifyFD() {
 	}
 
 	return fd;
+}
+
+
+int agregarFDPipeEscuchaEnemigo(fd_set *listaDesc, int *maxDesc) {
+
+	void _add_enemy_fd(t_hiloEnemigo *enemy) {
+		// Agrego descriptor del Pipe con Nivel.
+		agregar_descriptor(enemy->fdPipeE2N[0], listaDesc, maxDesc);
+	}
+
+	list_iterate(listaEnemigos, (void*)_add_enemy_fd);
+
+	return EXITO;
 }
 
 
@@ -506,24 +531,33 @@ void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso) {
 
 /////////////////////////////////////////////////////////////////////////
 
-int enviarMsjAInterbloqueo (char msj) {
+int enviarMsjPorPipe (int32_t fdPipe, char msj) {
 	int ret;
 	header_t header;
-	char* buffer_header = malloc(sizeof(header_t));
+	char* buffer_header = calloc(1,sizeof(header_t));
 
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = msj;
 	header.largo_mensaje=0;
 
 	memset(buffer_header, '\0', sizeof(header_t));
 	memcpy(buffer_header, &header, sizeof(header_t));
 
-	log_info(LOGGER, "%s Enviando mensaje al orquestador.", NOMBRENIVEL);
-
-	ret =  write(hiloInterbloqueo.fdPipe[1], buffer_header, sizeof(header_t));
-	pthread_join(hiloInterbloqueo.tid, NULL);
+	ret =  write(fdPipe, buffer_header, sizeof(header_t));
 
 	free(buffer_header);
+
+	return ret;
+}
+
+
+int enviarMsjAInterbloqueo (char msj) {
+	int ret;
+
+	log_info(LOGGER, "%s Enviando mensaje al hilo de interbloqueo.", NOMBRENIVEL);
+
+	ret =  enviarMsjPorPipe(hiloInterbloqueo.fdPipe[1], msj);
+	pthread_join(hiloInterbloqueo.tid, NULL);
 
 	return ret;
 }
@@ -792,6 +826,24 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 int tratarMuertePersonaje(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
+
+	// Si llega un mensaje de MUERTE_PERSONAJE luego espero recibir un t_personaje
+	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
+	{
+		log_error(LOGGER,"%s tratarMuertePersonaje: ERROR al recibir payload t_personaje en MUERTE_PERSONAJE \n\n", NOMBRENIVEL);
+		return ret;
+	}
+
+	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	finalizarPersonajeNivel(&personaje);
+
+	return ret;
+}
+
+int tratarMuertePersonajexEnemigo (int sock, header_t header, fd_set *master) {
+	int ret, se_desconecto;
+	t_personaje personaje;
+
 
 	// Si llega un mensaje de MUERTE_PERSONAJE luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)

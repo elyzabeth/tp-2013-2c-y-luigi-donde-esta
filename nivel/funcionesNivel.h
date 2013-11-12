@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <sys/inotify.h>
 
@@ -63,6 +64,7 @@ pthread_mutex_t mutexRecursosxPersonajes;
 typedef struct {
 	pthread_t tid;
 	int32_t fdPipe[2];
+	int32_t fdPipeI2N[2];
 } t_hiloInterbloqueo;
 
 t_hiloInterbloqueo hiloInterbloqueo;
@@ -79,9 +81,13 @@ void inicializarNivel ();
 void finalizarNivel ();
 void finalizarPersonajeNivel(t_personaje *personaje);
 int crearNotifyFD();
+int agregarFDPipeEscuchaEnemigo(fd_set *listaDesc, int *maxDesc);
+
 t_vecRecursos* crearVecRecursos();
 void destruirVecRecursos(t_vecRecursos *vecRecursos);
 void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso);
+bool posicionDentroDeLosLimites (int32_t x, int32_t y);
+void validarPosicionCaja(char s, int32_t x, int32_t y);
 
 
 // funciones GUI sincronizadas por semaforo mutex
@@ -111,6 +117,7 @@ void* enemigo (t_hiloEnemigo *enemy);
 void signal_callback_handler(int signum);
 
 //comunicacion
+int enviarMsjPorPipe (int32_t fdPipe, char msj);
 int enviarMsjAInterbloqueo (char msj);
 int enviarMSJNuevoNivel(int sock);
 int enviarMsjCambiosConfiguracion(int sock);
