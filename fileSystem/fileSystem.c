@@ -95,9 +95,9 @@ size_t copiarABuffer (char *buf, GFile *Nodo, off_t offset, size_t size) {
 	// off_t = long int
 	// size_t = unsigned int
 
-	long int nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect;
-	//ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
-	ptrGBloque directBlk[BLKDIRECT]={0};
+	off_t nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect;
+	ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
+	//ptrGBloque directBlk1[BLKDIRECT]={0};
 	size_t totalAcopiarDelBloque = 0;
 
 
@@ -110,22 +110,21 @@ size_t copiarABuffer (char *buf, GFile *Nodo, off_t offset, size_t size) {
 	size=size<=totalAcopiarDelBloque?size:totalAcopiarDelBloque;
 
 	log_info(LOGGER, "\n\ncopiarABuffer\n*************\n offset: %lu \n indirect_block_number: %lu \n indblk_resto: %lu \n direct_block_number: %lu \n directblk_offset: %lu ", offset, nroBlkInd, indblk_resto, nroBlkDirect, offsetBlkDirect);
-
-	log_debug(LOGGER, "copiarABuffer: Nodo->blk_indirect[%d]: %d", nroBlkInd, Nodo->blk_indirect[nroBlkInd]);
-
-
-//	directBlk = (ptrGBloque*)DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE);
-//	log_debug(LOGGER, " 1- directBlk[%d]: %d", nroBlkDirect , directBlk[nroBlkDirect]);
-
-	memcpy(directBlk, DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE), BLKSIZE);
-	log_debug(LOGGER, " 2- directBlk[%d]: %u", nroBlkDirect , directBlk[nroBlkDirect]);
+	log_debug(LOGGER, "- copiarABuffer: Nodo->blk_indirect[%d]: %d", nroBlkInd, Nodo->blk_indirect[nroBlkInd]);
 
 
-	//memcpy(buf, DATOS+(blk_direct[nroBlkDirect] * BLKSIZE)+offsetBlkDirect, size);
-	memcpy(buf, DATOS+(( directBlk[nroBlkDirect] ) * BLKSIZE)+offsetBlkDirect, size);
+	//memcpy(directBlk1, DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE), BLKSIZE);
+	//log_debug(LOGGER, "-- copiarABuffer: 2- directBlk[%d]: %u", nroBlkDirect , directBlk1[nroBlkDirect]);
+	//memcpy(buf, DATOS+( (directBlk1[nroBlkDirect]) * BLKSIZE ) + offsetBlkDirect, size);
+
+	directBlk = (ptrGBloque(*)[BLKDIRECT])(DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE));
+	log_debug(LOGGER, "-- copiarABuffer: 1- directBlk[%d]: %d", nroBlkDirect , (*directBlk)[nroBlkDirect]);
+
+	memcpy(buf, DATOS + ( ((*directBlk)[nroBlkDirect]) * BLKSIZE ) + offsetBlkDirect, size);
 
 	return size;
 }
+
 
 GFile* buscarPrimerNodoLibre(int *posicion){
 	int i;
@@ -146,7 +145,8 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	int posicion;
 	GFile *Nodo;
 	GFile *NodoPadre;
-	char **subpath = string_split(path, "/");
+	char *pathCopia = strdup(path);
+	char **subpath = string_split(pathCopia, "/");
 
 	Nodo = buscarPrimerNodoLibre(&posicion);
 	int i=0;
@@ -162,6 +162,7 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 
 	string_iterate_lines(subpath, (void*) free);
 	free(subpath);
+	free(pathCopia);
 
 	return Nodo;
 }
@@ -193,6 +194,8 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 		encontrado = i;
 		stbuf->st_mode = 0755|S_IFDIR;
 		stbuf->st_nlink = 2;
+		stbuf->st_uid = 1001;
+		stbuf->st_gid = 1001;
 
 	} else {
 
@@ -347,7 +350,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %u - size: %zu", offset, size, size);
 
 	while( copiado < size) {
-		log_info(LOGGER, "\n\ngrasa_read: offset %ld - size: %u - size: %zu - copiado: %zu", offset, size, size, copiado);
+		log_info(LOGGER, "\n\ngrasa_read: offset %ld - size: %u - size: %zu - copiado: %u - copiado: %zu", offset, size, size, copiado, copiado);
 		//copiado = copiarBloque(buf, posicion, indirect_block_number, direct_block_number, directblk_offset, size);
 		copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
 	}
@@ -362,12 +365,17 @@ static int grasa_mknod (const char *path, mode_t mode, dev_t dev){
 	return 0;
 }
 
+int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
+	log_debug(LOGGER, "grasa_create: %s", path);
+	return 0;
+}
+
 //int grasa_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 static int grasa_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	pthread_mutex_lock (&mutexGrasaWrite);
 	int posicion;
 	GFile *fileNode;
-	size_t copiado = 0;
+	//size_t copiado = 0;
 
 	log_debug(LOGGER, "grasa_write: %s", path);
 
@@ -392,10 +400,7 @@ static int grasa_write (const char *path, const char *buf, size_t size, off_t of
 
 static struct fuse_operations grasa_oper = {
 
-//		.readdir = hello_readdir,
-//		.open = hello_open,
-//		.read = hello_read,
-
+		.create = grasa_create,
 		.getattr = grasa_getattr,
 		.readdir = grasa_readdir,
 		.read = grasa_read,

@@ -21,11 +21,19 @@ t_hiloEnemigo* crearHiloEnemigo(int32_t idEnemigo) {
 		exit (-1);
 	}
 
+	if (pipe(nuevoHiloEnemigo->fdPipeE2N) == -1)
+	{
+		perror ("tad_enemigo-crearEnemigo: No se puede crear Tuberia de comunicacion.");
+		exit (-1);
+	}
+
 	return nuevoHiloEnemigo;
 }
 
 void destruirHiloEnemigo (t_hiloEnemigo* enemigo) {
 	close(enemigo->fdPipe[0]);
 	close(enemigo->fdPipe[1]);
+	close(enemigo->fdPipeE2N[0]);
+	close(enemigo->fdPipeE2N[1]);
 	free(enemigo);
 }
