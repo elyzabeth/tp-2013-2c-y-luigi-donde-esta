@@ -13,7 +13,10 @@ int32_t vecDisponibles[20];
 int32_t totalRecursos;
 int32_t totalPersonajes;
 
+// Prototipos de funciones del hilo
 int32_t detectarDeadlock();
+t_personaje* recovery();
+
 
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	header_t header;
@@ -46,12 +49,12 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 		FD_ZERO (&read_fds);
 		read_fds = master;
-		timeout.tv_sec = TiempoChequeoDeadlock; /// retardo en segundos timeout
-		timeout.tv_usec = 0;
+		timeout.tv_sec = 0; /// timeout en segundos
+		timeout.tv_usec = TiempoChequeoDeadlock * 1000; //timeout en microsegundos
 
 		if((ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout )) == -1)
 		{
-			puts("INTERBLOQUEO: ERROR en select");
+			puts("\n\nINTERBLOQUEO: ERROR en select!!\n");
 
 		} else if (ret == 0) {
 
@@ -59,8 +62,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 			// Aca va la logica de interbloqueo
 			hayDeadLock = detectarDeadlock();
+
 			if (hayDeadLock && RecoveryOn) {
-				// TODO agregar logica de recovery
+				recovery();
 			}
 
 		} else {
@@ -77,7 +81,8 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 					if (header.tipo == FINALIZAR) {
 						log_debug(LOGGER, "INTERBLOQUEO: '%d' ES FINALIZAR", header.tipo);
 						fin = true;
-						FD_CLR(hiloInterbloqueo.fdPipe[0], &master);
+						//FD_CLR(hiloInterbloqueo.fdPipe[0], &master);
+						quitar_descriptor(hiloInterbloqueo.fdPipe[0], &master, &max_desc);
 						break;
 					}
 				}
@@ -111,9 +116,21 @@ int32_t detectarDeadlock() {
 	// 3) Se busca un indice i tal que el proceso i no este marcado actualmente y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
 	//    Es decir, Se ejecuta Tk = Tk + Aik, para 1 <= k <= m. A continuacion se vuelve al 3 paso.
 
-	enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
-
 	return hayDeadLock;
 
 }
 
+
+t_personaje* recovery() {
+
+	t_personaje *personaje = NULL;
+
+	// TODO agregar logica de recovery
+	// 1- Seleccionar la victima (es la primera que entro al nivel)
+	// 2- Mover al personaje seleccionado de los listados (deberia estar en bloqueados solamente) y agregarlo al listado MuerteXrecovery.
+	// 3- Informar al nivel que hay un personaje muerto (el nivel debe encargarse de informar al personaje correspondiente).
+
+	enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
+
+	return personaje;
+}

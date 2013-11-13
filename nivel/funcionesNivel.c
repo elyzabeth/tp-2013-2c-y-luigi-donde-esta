@@ -13,202 +13,14 @@ int correrTest() {
 	return EXIT_SUCCESS;
 }
 
-// FUNCIONES de la interfaz grafica sincronizadas con semaforo mutex.
-// Porque se acceden concurrentemente desde varios hilos.
-void gui_borrarItem(char id) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-    bool _search_by_id(ITEM_NIVEL* item) {
-        return item->id == id;
-    }
-    free(list_remove_by_condition(GUIITEMS, (void*) _search_by_id));
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_crearPersonaje(char id, int x, int y) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	CrearPersonaje(GUIITEMS, id, x, y);
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_crearCaja(char id, int x, int y, int instancias) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	CrearCaja(GUIITEMS, id, x, y, instancias);
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_crearEnemigo(char id, int x, int y) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	CrearEnemigo(GUIITEMS, id, x, y);
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_moverPersonaje (char id, int x, int y) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	MoverPersonaje(GUIITEMS, id, x, y );
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_restarRecurso (char id) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	restarRecurso(GUIITEMS, id );
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_sumarRecurso (char id) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	sumarRecurso(GUIITEMS, id );
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-void gui_dibujar() {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	nivel_gui_dibujar(GUIITEMS, NOMBRENIVEL);
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-
-void gui_dibujarEnemigo(char * msj) {
-	pthread_mutex_lock (&mutexLockGlobalGUI);
-	nivel_gui_dibujar(GUIITEMS, msj);
-	pthread_mutex_unlock (&mutexLockGlobalGUI);
-}
-
-// Funciones sincronizadas para acceder a listas compartidas
-
-int32_t obternerCantPersonajesEnJuego() {
-	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	int cant=0;
-	cant = list_size(listaPersonajesEnJuego);
-	pthread_mutex_unlock (&mutexListaPersonajesJugando);
-	return cant;
-}
-
-t_personaje* quitarPersonajeDeEnJuego(char simboloPersonaje) {
-	t_personaje *personaje;
-	bool _remove_x_id (t_personaje *p) {
-		return (p->id == simboloPersonaje);
-	}
-	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_remove_x_id);
-	pthread_mutex_unlock (&mutexListaPersonajesJugando);
-
-	return personaje;
-}
-
-t_personaje* quitarPersonajeDeBloqueados(char simboloPersonaje) {
-	t_personaje *personaje;
-	bool _remove_x_id (t_personaje *p) {
-		return (p->id == simboloPersonaje);
-	}
-	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
-	personaje = list_remove_by_condition(listaPersonajesBloqueados, (void*)_remove_x_id);
-	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
-
-	return personaje;
-}
-
-void agregarPersonajeEnJuegoNivel(t_personaje *personaje) {
-	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	list_add(listaPersonajesEnJuego, personaje);
-	pthread_mutex_unlock (&mutexListaPersonajesJugando);
-}
-
-void agregarPersonajeABloqueadosNivel(t_personaje *personaje) {
-	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
-	list_add(listaPersonajesBloqueados, personaje);
-	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
-}
-
-void agregarPersonajeAFinalizadosNivel(t_personaje *personaje) {
-	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
-	list_add(listaPersonajesFinalizados, personaje);
-	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
-}
-
-void agregarRecursoxPersonaje(t_personaje *personaje, t_vecRecursos *vec) {
-	pthread_mutex_lock (&mutexRecursosxPersonajes);
-	char idPersonaje[2] = {0};
-	idPersonaje[0] = personaje->id;
-	dictionary_put(recursosxPersonajes, idPersonaje, vec);
-	pthread_mutex_unlock (&mutexRecursosxPersonajes);
-}
-
-t_vecRecursos* obtenerRecursoxPersonaje(t_personaje *personaje) {
-	pthread_mutex_lock (&mutexRecursosxPersonajes);
-	t_vecRecursos *vec;
-	char idPersonaje[2] = {0};
-	idPersonaje[0] = personaje->id;
-	vec = dictionary_get(recursosxPersonajes, idPersonaje);
-	pthread_mutex_unlock (&mutexRecursosxPersonajes);
-	return vec;
-}
-
-void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso) {
-	pthread_mutex_lock (&mutexRecursosxPersonajes);
-	t_vecRecursos *vec;
-	char idPersonaje[2] = {0};
-	idPersonaje[0] = personaje->id;
-	vec = dictionary_get(recursosxPersonajes, idPersonaje);
-	vec->recurso[vec->total++] = idRecurso;
-	pthread_mutex_unlock (&mutexRecursosxPersonajes);
-}
-
-t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje) {
-	pthread_mutex_lock (&mutexRecursosxPersonajes);
-	t_vecRecursos *vec;
-	char idPersonaje[2] = {0};
-	idPersonaje[0] = personaje->id;
-	vec = dictionary_remove(recursosxPersonajes, idPersonaje);
-	pthread_mutex_unlock (&mutexRecursosxPersonajes);
-	return vec;
-}
-
-t_caja* obtenerRecurso(char simboloRecurso) {
-	pthread_mutex_lock (&mutexListaRecursos);
-	t_caja* caja = NULL;
-	char simbolo[2] = {0};
-	simbolo[0] = simboloRecurso;
-	caja = dictionary_get(listaRecursos, simbolo);
-	pthread_mutex_unlock (&mutexListaRecursos);
-	return caja;
-}
-
-t_list* clonarListaPersonajesBloqueados() {
-	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
-	t_list *clon = list_create();
-	t_personaje *aux;
-	void _add2Clon(t_personaje *personaje) {
-		aux = crearPersonajeDesdePersonaje(*personaje);
-		list_add(clon, aux);
-	}
-	list_iterate(listaPersonajesEnJuego, (void*)_add2Clon);
-	//list_add_all(clon, listaPersonajesEnJuego);
-	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
-	return clon;
-}
-
-t_dictionary* clonarListaRecursosxPersonaje() {
-	pthread_mutex_lock (&mutexRecursosxPersonajes);
-	t_dictionary *clon = dictionary_create();
-	t_vecRecursos *aux;
-	void _add2Clon(char *key, t_vecRecursos *vec) {
-		aux = crearVecRecursos();
-		memcpy(aux->recurso, vec->recurso, sizeof(vec->recurso));
-		aux->total = vec->total;
-		dictionary_put(clon, key, aux);
-	}
-	dictionary_iterator(recursosxPersonajes, (void*)_add2Clon);
-	//list_add_all(clon, listaPersonajesEnJuego);
-	pthread_mutex_unlock (&mutexRecursosxPersonajes);
-	return clon;
-}
 
 void moverPersonajeABloqueados(char simboloPersonaje) {
 	t_personaje *personaje;
 
-	personaje = quitarPersonajeDeEnJuego(simboloPersonaje);
+	personaje = quitarPersonajeEnJuegoNivel(simboloPersonaje);
 
-	agregarPersonajeABloqueadosNivel(personaje);
+	if (personaje != NULL)
+		agregarPersonajeABloqueadosNivel(personaje);
 
 }
 
@@ -316,6 +128,7 @@ void inicializarNivel () {
 	pthread_mutex_init (&mutexListaPersonajesJugando, NULL);
 	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
 	pthread_mutex_init (&mutexListaPersonajesFinalizados, NULL);
+	pthread_mutex_init (&mutexListaPersonajesEnNivel, NULL);
 	pthread_mutex_init (&mutexListaRecursos, NULL);
 	pthread_mutex_init (&mutexRecursosxPersonajes, NULL);
 
@@ -324,8 +137,10 @@ void inicializarNivel () {
 	listaPersonajesEnJuego = list_create();
 	listaPersonajesBloqueados = list_create();
 	listaPersonajesFinalizados = list_create();
-	listaRecursos = configNivelRecursos();
+	listaPersonajesEnNivel = queue_create();
 	recursosxPersonajes = dictionary_create();
+
+	listaRecursos = configNivelRecursos();
 
 	// inicializo inotify
 	notifyFD = crearNotifyFD();
@@ -335,6 +150,7 @@ void inicializarNivel () {
 	inicializarNivelGui();
 
 }
+
 
 void finalizarPersonajeNivel(t_personaje *personaje) {
 	t_personaje *p;
@@ -352,9 +168,9 @@ void finalizarPersonajeNivel(t_personaje *personaje) {
 	}
 
 	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
-	p = quitarPersonajeDeEnJuego(personaje->id);
+	p = quitarPersonajeEnJuegoNivel(personaje->id);
 	if (NULL == p)
-		p = quitarPersonajeDeBloqueados(personaje->id);
+		p = quitarPersonajeBloqueadosNivel(personaje->id);
 
 	if (p != NULL)
 		agregarPersonajeAFinalizadosNivel(p);
@@ -411,6 +227,7 @@ void finalizarNivel () {
 	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesFinalizados, (void*)destruirPersonaje);
+	queue_destroy_and_destroy_elements(listaPersonajesEnNivel, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 	dictionary_destroy_and_destroy_elements(recursosxPersonajes, (void*)destruirVecRecursos);
 
@@ -423,6 +240,7 @@ void finalizarNivel () {
 	pthread_mutex_destroy(&mutexListaPersonajesJugando);
 	pthread_mutex_destroy(&mutexListaPersonajesBloqueados);
 	pthread_mutex_destroy(&mutexListaPersonajesFinalizados);
+	pthread_mutex_destroy(&mutexListaPersonajesEnNivel);
 	pthread_mutex_destroy(&mutexListaRecursos);
 	pthread_mutex_destroy(&mutexRecursosxPersonajes);
 
