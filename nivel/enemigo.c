@@ -6,24 +6,25 @@
 */
 #include <stdlib.h>
 #include "funcionesNivel.h"
-#include "tad_enemigo.h"
-#include "list.h"
+#include "tads/tad_enemigo.h"
+#include <commons/collections/list.h>
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo);
 moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY);
 t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
 t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
 t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
-void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* x);
+void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* y);
 t_posicion obternerPersonajeMasCercano(t_posicion miPosicion);
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t x,int32_t y);
 void* enemigo (t_hiloEnemigo *enemy);
-posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
+int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
 
 
 //t_posicion posProhibidas array[]
 
-t_dictionary* listaPosicionesProhibidas = configNivelRecursos();
+t_dictionary* listaPosicionesProhibidas;
+listaPosicionesProhibidas = configNivelRecursos();
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -111,15 +112,14 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 //SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
-        int32_t* posX, posY;
+        int32_t *posX, *posY;
         *posX=*posY=0;
         int32_t movimientoLfinalizado;
         t_personaje *PJ;
         t_posicion posicionPJ, posicionNueva;
         if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
         {
-
-                PJ = obternerPosPersonajeMasCercano(hiloEnemigo->enemigo->posicionActual);
+                PJ = obternerPersonajeMasCercano(hiloEnemigo->enemigo->posicionActual);
                 pthread_mutex_unlock (&mutexListaPersonajesJugando);
                 posicionPJ = PJ->posActual;
                 posicionNueva = moverEnemigoPorEje(hiloEnemigo, posicionPJ);
@@ -147,19 +147,19 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
 }
 //PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
 
-moverEnL(t_hiloEnemigo* hiloEnemigo, posX,posY){
+moverEnL(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
         while (
-			((hiloEnemigo->enemigo->posicionActual->x) != posX) ||
-			((hiloEnemigo->enemigo->posicionActual->y) != posY)
+			((hiloEnemigo->enemigo->posicionActual->x) != *posX) ||
+			((hiloEnemigo->enemigo->posicionActual->y) != *posY)
 			)
         {
-                if ((hiloEnemigo->enemigo->posicionActual->x) > posX){
+                if ((hiloEnemigo->enemigo->posicionActual->x) > *posX){
                         (hiloEnemigo->enemigo->posicionActual->x)--;}
-                if ((hiloEnemigo->enemigo->posicionActual->x) < posX){
+                if ((hiloEnemigo->enemigo->posicionActual->x) < *posX){
                         (hiloEnemigo->enemigo->posicionActual->x)++;}
-                if ((hiloEnemigo->enemigo->posicionActual->y) > posY){
+                if ((hiloEnemigo->enemigo->posicionActual->y) > *posY){
                         (hiloEnemigo->enemigo->posicionActual->y)--;}
-                if ((hiloEnemigo->enemigo->posicionActual->y) < posY){
+                if ((hiloEnemigo->enemigo->posicionActual->y) < *posY){
                         (hiloEnemigo->enemigo->posicionActual->y)++;}
         }
 }
@@ -273,18 +273,18 @@ t_personaje obternerPersonajeMasCercano(t_posicion miPosicion) {
         return pjcercano;
 }
 
-posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion){
+int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion){
     int32_t hayCaja = 0;
-void hayItemEn(t_caja *caja){
+    void hayItemEn(t_caja *caja){
 			if (posicion->x == caja->POSX && posicion->x == caja->POSY){
-			hayCaja = 1;
-			}
-        }
-list_iterate(listaPosicionesProhibidas, (void*)hayItemEn);
-        return hayCaja;
+				hayCaja = 1;
+				}
+    		}
+    list_iterate(listaPosicionesProhibidas, (void*)hayItemEn);
+    return hayCaja;
 }
 
-int32_t        validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
+int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
         t_posicion pos;
         pos->x=X;pos->y=Y;
         int32_t pAux=posicionConItem(hiloEnemigo,pos);
