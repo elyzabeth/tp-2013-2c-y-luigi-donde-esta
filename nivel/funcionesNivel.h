@@ -109,6 +109,8 @@ void moverPersonajeABloqueados(char simboloPersonaje);
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
 void agregarPersonajeABloqueadosNivel(t_personaje *personaje);
 void agregarPersonajeAFinalizadosNivel(t_personaje *personaje);
+void agregarRecursoxPersonaje(t_personaje *personaje, t_vecRecursos *vec);
+void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso);
 t_list* clonarListaPersonajesBloqueados();
 t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje);
 t_caja* obtenerRecurso(char simboloRecurso);
