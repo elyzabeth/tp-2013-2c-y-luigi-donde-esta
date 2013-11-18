@@ -130,6 +130,8 @@ int enviarMsjPorPipe (int32_t fdPipe, char msj);
 int enviarMsjAInterbloqueo (char msj);
 int enviarMSJNuevoNivel(int sock);
 int enviarMsjCambiosConfiguracion(int sock);
+int enviarMsjMuertexRecovery (int sock);
+int enviarMsjMuertexEnemigo (int sock);
 int tratarNuevoPersonaje(int sock, header_t header, fd_set *master);
 int tratarSolicitudUbicacion(int sock, header_t header, fd_set *master);
 int tratarSolicitudRecurso(int sock, header_t header, fd_set *master);

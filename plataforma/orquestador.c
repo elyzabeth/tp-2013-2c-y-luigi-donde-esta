@@ -10,7 +10,7 @@
 int enviarMsjPersonajeConectado (int fd);
 int enviarMsjNivelConectado (int fd);
 void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc);
-void nuevoNivel(int fdNivel, header_t header);
+void nuevoNivel(int fdNivel, header_t header, fd_set *master);
 void recibirPlanNivelesConcluido(header_t *header, int *fin);
 
 
@@ -79,7 +79,7 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 
 						case NUEVO_NIVEL:
 							log_info(LOGGER, "ORQUESTADOR: NUEVO NIVEL");
-							nuevoNivel(nuevo_sock, header);
+							nuevoNivel(nuevo_sock, header, &master);
 							//agregar_descriptor(nuevo_sock, &master, &max_desc);
 							break;
 
@@ -151,20 +151,13 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 int enviarMsjPersonajeConectado (int fd) {
 	int ret;
 	header_t header;
-	//char* buffer_header = malloc(sizeof(header_t));
 
 	initHeader(&header);
 	header.tipo=PERSONAJE_CONECTADO;
 	header.largo_mensaje=0;
 
-//	memset(buffer_header, '\0', sizeof(header_t));
-//	memcpy(buffer_header, &header, sizeof(header_t));
-
 	log_info(LOGGER, "enviarMsjPersonajeConectado: Envio mensaje de personaje conectado (fd: %d)...", fd);
 	ret = enviar_header(fd, &header);
-
-//	ret =  enviar(fd, buffer_header, sizeof(header_t));
-//	free(buffer_header);
 
 	return ret;
 }
@@ -195,22 +188,16 @@ int enviarMsjNivelInexistente (int fd) {
  * recibe el file descriptor del nivel
  */
 int enviarMsjNivelConectado (int fd) {
-	header_t header;
-	char* buffer_header = malloc(sizeof(header_t));
 	int ret;
+	header_t header;
 
 	initHeader(&header);
 	header.tipo=NIVEL_CONECTADO;
 	header.largo_mensaje=0;
 
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
-
 	log_info(LOGGER, "Envio mensaje de nivel conectado al nivel (fd: %d)...", fd);
 
-	ret = enviar(fd, buffer_header, sizeof(header_t));
-
-	free(buffer_header);
+	ret = enviar_header(fd, &header);
 
 	return ret;
 }
@@ -250,12 +237,16 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 		}
 
 		if (!se_desconecto && header.tipo == CONECTAR_NIVEL) {
+
 			personaje = crearPersonajeVacio();
 
 			log_debug(LOGGER, "nuevoPersonaje: Espero recibir estructura personaje (size:%d)...", header.largo_mensaje);
 			recibir_personaje(fdPersonaje, personaje, master, &se_desconecto);
+
 			log_debug(LOGGER, "nuevoPersonaje: Llego: %s, %c, %s", personaje->nombre, personaje->id, personaje->nivel);
 			personaje->fd = fdPersonaje;
+			// Cuando se conecta un personaje nuevo le asigno RD por default para SRDF
+			personaje->criterio = configPlatRemainingDistance();
 
 			// Verifico si existe el nivel solicitado y su estado
 			if ( existeNivel(personaje->nivel) && (obtenerEstadoNivel(personaje->nivel) == CORRIENDO)) {
@@ -271,7 +262,7 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 				enviarMsjAPlanificador(planner, NUEVO_PERSONAJE );
 
 			} else {
-				//TODO Que hago si no existe el nivel????
+				// Si el nivel solicitado no existe se informa al personaje.
 				log_info(LOGGER, "nuevoPersonaje: El personaje '%s' ('%c') solicita Nivel inexistente (%s).", personaje->nombre, personaje->id, personaje->nivel);
 				enviarMsjNivelInexistente(fdPersonaje);
 			}
@@ -290,25 +281,23 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
  * Si no existe el planificador del nivel se crea la estructura correspondiente, lo agrega al diccionario de niveles,
  * se lanza el hilo planificador para el nuevo nivel.
  */
-void nuevoNivel(int fdNivel, header_t header) {
-	char *buffer;
+void nuevoNivel(int fdNivel, header_t header, fd_set *master) {
+
+	int se_desconecto;
 	t_nivel nivel;
 	t_planificador *planner;
 
-	/************************************************/
-	buffer = calloc(1, header.largo_mensaje);
-	recibir (fdNivel, buffer, header.largo_mensaje);
-
 	initNivel(&nivel);
-	memcpy(&nivel, buffer, sizeof(t_nivel));
+	recibir_nivel(fdNivel, &nivel, master, &se_desconecto);
 
 	nivel.fdSocket = fdNivel;
 	planner = crearPlanificador(nivel);
 
-	log_info(LOGGER, "Se conecto el Nivel: %s\n", nivel.nombre);
+	log_info(LOGGER, "ORQUESTADOR - nuevoNivel: Se conecto el Nivel %s\n", nivel.nombre);
 
 	// PRIMERO QUITO NIVELES EN ESTADO FINALIZADO
 	eliminarNivelesFinalizados();
+
 	if (!existeNivel(nivel.nombre)) {
 
 		// Agrego el nivel al diccionario de niveles
@@ -328,7 +317,6 @@ void nuevoNivel(int fdNivel, header_t header) {
 		// TODO ENVIAR MENSAJE AL NIVEL
 	}
 
-	free(buffer);
 }
 
 /**
@@ -338,16 +326,23 @@ void nuevoNivel(int fdNivel, header_t header) {
  * Si todos los personajes en juego finalizaron sus planes se debe lanzar el proceso Koopa.
  */
 void recibirPlanNivelesConcluido(header_t *header, int *fin) {
+	int espera = configPlatSleepKoopa();
 
-	sleep(5);
+	log_info(LOGGER, "\n\n\nORQUESTADOR recibirPlanNivelesConcluido espero %d segundos... \n\n", espera);
+	sleep(espera);
+
+	log_info(LOGGER, "\n\nORQUESTADOR: Zapatilla de goma, el que no finalizó, se embroma, punto y coma!!\n", espera);
+
 	// Si todos los personajes concluyeron sus planes
 	// Lanzar el proceso Koopa.
 	imprimirListaPersonajesFinalizados ();
-	if (list_size(listaPersonajesEnJuego)== 0 && list_size(listaPersonajesNuevos)== 0) {
+
+	if ( list_size(listaPersonajesEnJuego)== 0 && list_size(listaPersonajesNuevos) == 0 ) {
 		log_info(LOGGER, "\n\n\nTODOS LOS PERSONAJES CONCLUYERON SUS PLANES DE NIVELES...\n\nEJECUTO PROCESO KOOPAA!!!!!");
 		// TODO lanzar proceso Koopa!
 
-	}
+	} else {
 
-	log_info(LOGGER, "\n\nTodavía hay personajes en juego %d o nuevos: %d", list_size(listaPersonajesEnJuego), list_size(listaPersonajesNuevos));
+		log_info(LOGGER, "\n\nTodavía hay personajes en juego %d o nuevos: %d", list_size(listaPersonajesEnJuego), list_size(listaPersonajesNuevos));
+	}
 }

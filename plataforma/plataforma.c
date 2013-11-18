@@ -166,17 +166,18 @@ void finalizarPlataforma() {
 
 void matarHilos() {
 
-	// Finalizo hilo orquetador
-	enviarMsjAOrquestador(FINALIZAR);
-	sleep(1);
-
 	// Finalizo hilos planificadores
-	void _finalizar_hilo(char* key, t_planificador *planner){
-		enviarMsjAPlanificador(planner, FINALIZAR );
-		pthread_join(planner->tid, NULL);
+	void _finalizar_hilo(char* key, t_planificador *planner) {
+		if ( planner->estado != FINALIZADO ) {
+			enviarMsjAPlanificador(planner, FINALIZAR );
+			pthread_join(planner->tid, NULL);
+		}
 	}
 	dictionary_iterator(listaNiveles, (void*)_finalizar_hilo);
 
+	// Finalizo hilo orquestador
+	enviarMsjAOrquestador(FINALIZAR);
+	sleep(1);
 }
 
 /*

@@ -46,7 +46,6 @@ void agregarPersonajeFinalizado(t_personaje* personaje) {
 
 	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
 	list_add(listaPersonajesFinalizados, personaje);
-	//plataforma.personajes_en_juego--; ???
 	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
 }
 
@@ -63,6 +62,18 @@ void agregarPersonajeFinAnormal(t_personaje* personaje) {
 	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
 }
 
+_Bool existePersonajexFDEnFinalizados(int fdPersonaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
+	t_personaje *personaje;
+	_Bool _buscarxfd(t_personaje* p) {
+		return (p->fd == fdPersonaje);
+	}
+	personaje = list_find(listaPersonajesFinalizados, (void*)_buscarxfd);
+	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
+
+	return (personaje != NULL );
+}
 
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 
@@ -70,13 +81,14 @@ t_personaje* quitarPersonajeNuevoxNivel(char* nivel) {
 	t_personaje *personaje;
 
 	bool _buscar_x_nivel(t_personaje *p) {
-		return !strcasecmp(p->nivel, nivel);
+		return (strcasecmp(p->nivel, nivel)==0);
 	}
 	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_nivel);
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 	imprimirListaPersonajesNuevos();
 	return personaje;
 }
+
 
 t_personaje* quitarPersonajeNuevoxFD(int32_t fdPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
@@ -86,22 +98,6 @@ t_personaje* quitarPersonajeNuevoxFD(int32_t fdPersonaje) {
 		return (p->fd == fdPersonaje);
 	}
 	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_x_fd);
-	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
-	imprimirListaPersonajesNuevos();
-
-	return personaje;
-}
-
-
-t_personaje* quitarPersonajeNuevoxNivelxId (char* nivel, char idPersonaje) {
-
-	pthread_mutex_lock (&mutexListaPersonajesNuevos);
-	t_personaje *personaje;
-
-	bool _buscar_xnivel_xid(t_personaje *p) {
-		return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
-	}
-	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_xnivel_xid);
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 	imprimirListaPersonajesNuevos();
 
@@ -125,13 +121,31 @@ t_personaje* quitarPersonajeEnJuegoxFD(int32_t fdPersonaje) {
 	return personaje;
 }
 
+
+t_personaje* quitarPersonajeNuevoxNivelxId (char* nivel, char idPersonaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesNuevos);
+	t_personaje *personaje;
+
+	bool _buscar_xnivel_xid(t_personaje *p) {
+		return (strcasecmp(p->nivel, nivel)==0 && p->id == idPersonaje);
+	}
+	personaje = list_remove_by_condition(listaPersonajesNuevos, (void*)_buscar_xnivel_xid);
+	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
+	imprimirListaPersonajesNuevos();
+
+	return personaje;
+}
+
+
 t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje) {
 
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
 	t_personaje *personaje;
 
 	bool _buscar_xnivel_xid(t_personaje *p) {
-		return (strcasecmp(p->nivel, nivel) && p->id == idPersonaje);
+		//log_debug(LOGGER, "quitarPersonajeEnJuegoxNivelxId: p->nivel = nivel ? "p->nivel, nivel, strcasecmp(p->nivel, nivel));
+		return (strcasecmp(p->nivel, nivel)==0 && p->id == idPersonaje);
 	}
 	personaje = list_remove_by_condition(listaPersonajesEnJuego, (void*)_buscar_xnivel_xid);
 	pthread_mutex_unlock (&mutexListaPersonajesEnJuego);
@@ -140,7 +154,9 @@ t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje) {
 	return personaje;
 }
 
-t_personaje* quitarPersonajexFD(int32_t fdPersonaje) {
+
+
+t_personaje* moverPersonajexFDAFinAnormal(int32_t fdPersonaje) {
 
 	t_personaje *personaje;
 
@@ -158,14 +174,18 @@ void moverPersonajeAFinalizados(char idPersonaje, char *nivel) {
 	//TODO!!!
 	t_personaje *personaje = NULL;
 
-	log_info(LOGGER, "Moviendo al personaje %c del %s a Finalizados", idPersonaje, nivel);
+	log_info(LOGGER, "moverPersonajeAFinalizados: Moviendo al personaje %c del %s a Finalizados", idPersonaje, nivel);
 	personaje = quitarPersonajeEnJuegoxNivelxId(nivel, idPersonaje);
 
-	if (personaje == NULL) {
-		log_error(LOGGER, "ERROR No se encontro al personaje %c del %s en el listado de personajes en Juego!!", idPersonaje, nivel);
+	if (personaje != NULL) {
+		agregarPersonajeFinalizado(personaje);
+	} else {
+		log_error(LOGGER, "moverPersonajeAFinalizados: ERROR No se encontro al personaje %c del %s en el listado de personajes en Juego!!", idPersonaje, nivel);
 	}
 
-	agregarPersonajeFinalizado(personaje);
+	imprimirListaPersonajesNuevos();
+	imprimirListaPersonajesEnJuego();
+	imprimirListaPersonajesFinalizados();
 
 }
 
@@ -195,7 +215,7 @@ void moverPersonajesAFinAnormalxNivel (char *nivel) {
 	log_info(LOGGER, "moverPersonajesAFinAnormal Nivel '%s'", nivel);
 
 	bool _buscar_x_nivel(t_personaje *p) {
-			return !strcasecmp(p->nivel, nivel);
+			return (strcasecmp(p->nivel, nivel)==0);
 	}
 
 	pthread_mutex_lock (&mutexListaPersonajesEnJuego);
@@ -305,7 +325,10 @@ int eliminarNivelesFinalizados () {
 
 
 void imprimirPersonajePlat (t_personaje* personaje) {
-	imprimirPersonaje(personaje, LOGGER);
+	if(personaje != NULL)
+		imprimirPersonaje(personaje, LOGGER);
+	else
+		log_error(LOGGER, "\n\nimprimirPersonajePlat: ERROR al imprimir personaje NULL!!\n");
 }
 
 

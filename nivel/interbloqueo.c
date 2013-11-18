@@ -58,8 +58,6 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 		} else if (ret == 0) {
 
-			log_info(LOGGER, "Incio deteccion de interbloqueo...");
-
 			// Aca va la logica de interbloqueo
 			hayDeadLock = detectarDeadlock();
 
@@ -100,7 +98,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 
 int32_t detectarDeadlock() {
-
+	log_info(LOGGER, "Incio deteccion de interbloqueo...");
 	int32_t hayDeadLock = 0;
 //	int32_t T[20];
 //
@@ -122,7 +120,7 @@ int32_t detectarDeadlock() {
 
 
 t_personaje* recovery() {
-
+	log_info(LOGGER, "Incio proceso de recovery deadlock...");
 	t_personaje *personaje = NULL;
 
 	// TODO agregar logica de recovery
