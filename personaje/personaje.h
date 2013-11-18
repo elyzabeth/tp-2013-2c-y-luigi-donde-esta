@@ -101,6 +101,7 @@ void imprimirVidasyReintentos();
 int32_t incrementarVida();
 int32_t decrementarVida();
 
+int enviarMsjPorPipePJ (int32_t fdPipe, char msj);
 int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master);
 int enviarMsjNuevoPersonaje( int sock );
 int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN);

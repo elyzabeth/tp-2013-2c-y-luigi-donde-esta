@@ -129,35 +129,28 @@ void finalizarPersonaje() {
 void finalizarHilosPersonaje() {
 	int i = 0;
 	int32_t cantHilosPersonaje;
-	header_t header;
 
 	cantHilosPersonaje = list_size(listaHilosxNivel);
 
 	if(cantHilosPersonaje <= 0)
 		return;
 
-	char* buffer_header = calloc(1,sizeof(header_t));
-
 	log_info(LOGGER, "FINALIZANDO HILOS Personaje");
 
-	initHeader(&header);
-	header.tipo = FINALIZAR;
-	header.largo_mensaje=0;
-
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
-
 	void _finalizar_hilo(t_hilo_personaje *hPersonaje) {
-		log_debug(LOGGER, "\nhilo %d/de %d) Envio mensaje de FINALIZAR a hilo Personaje '%c' (%s) - por Pipe socket: %d", ++i, cantHilosPersonaje, hPersonaje->personaje.id, hPersonaje->personaje.nivel, hPersonaje->fdPipe[1]);
-		write(hPersonaje->fdPipe[1], buffer_header, sizeof(header_t));
+
+		log_debug(LOGGER, "\n\nHILO %d/de %d) Envio mensaje de FINALIZAR a hilo Personaje '%c' (%s) - por Pipe socket: %d", ++i, cantHilosPersonaje, hPersonaje->personaje.id, hPersonaje->personaje.nivel, hPersonaje->fdPipe[1]);
+
+		// write(hPersonaje->fdPipe[1], buffer_header, sizeof(header_t));
+		enviarMsjPorPipePJ(hPersonaje->fdPipe[1], FINALIZAR);
 		pthread_join(hPersonaje->tid, NULL);
+		//sleep(1);
 	}
 
 	list_iterate(listaHilosxNivel, (void*)_finalizar_hilo);
 
-	list_clean_and_destroy_elements(listaHilosxNivel, (void*)destruirEstructuraHiloPersonaje);
+	//list_clean_and_destroy_elements(listaHilosxNivel, (void*)destruirEstructuraHiloPersonaje);
 
-	free(buffer_header);
 }
 
 void esperarHilosxNivel() {
@@ -260,6 +253,25 @@ int chequearFinTodosLosNiveles () {
 }
 
 
+int enviarMsjPorPipePJ (int32_t fdPipe, char msj) {
+	int ret;
+	header_t header;
+	char* buffer_header = calloc(1,sizeof(header_t));
+
+	initHeader(&header);
+	header.tipo = msj;
+	header.largo_mensaje=0;
+
+	memset(buffer_header, '\0', sizeof(header_t));
+	memcpy(buffer_header, &header, sizeof(header_t));
+
+	ret =  write(fdPipe, buffer_header, sizeof(header_t));
+
+	free(buffer_header);
+
+	return ret;
+}
+
 void enviarMsjPlanDeNivelesConcluido() {
 	int ret, sock = -1;
 	header_t header;
@@ -353,6 +365,7 @@ void manejoSIGTERM() {
 		// llamar funcion que baje los hilos y ver que otras variables hay que reiniciar!!
 		finalizarHilosPersonaje();
 		sleep(2);
+
 		printf("\n\nKnock, knock, Neo...\n\n");
 		sleep(2);
 		printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe.\n");

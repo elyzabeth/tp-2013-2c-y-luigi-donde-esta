@@ -331,9 +331,10 @@ int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
 }
 
 int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
-
-	header_t header;
 	int ret;
+	header_t header;
+	t_personaje yo;
+	yo = hiloPxN->personaje;
 
 	initHeader(&header);
 	header.tipo = MUERTE_PERSONAJE;
@@ -344,6 +345,12 @@ int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
 	 if ((ret = enviar_header(sock, &header)) != EXITO){
 		 log_error(LOGGER,"enviarMsjMuertePersonajePlan: ERROR al enviar MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
 	 }
+
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjMuertePersonajePlan: Error al enviar t_personaje de MUERTE_PERSONAJE\n\n");
+		return WARNING;
+	}
 
 	return ret;
 }
