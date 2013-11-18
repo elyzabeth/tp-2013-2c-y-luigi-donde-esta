@@ -427,14 +427,13 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
 	hiloPxN->estado = RECURSO_CONCEDIDO;
 	log_info(LOGGER, "gestionarRecursoConcedido. objetivosConseguidos: %d/%d", hiloPxN->objetivosConseguidos,hiloPxN->objetivos.totalObjetivos );
 
-	// TODO agregar logica...
 	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
 	//	volverá al punto 3) (esperar TURNO_CONCEDIDO), o, si ya cumplió sus objetivos del Nivel
 	// Notificar a su Planificador que completó los objetivos de ese nivel y desconectarse.
 	if(hiloPxN->objetivosConseguidos == hiloPxN->objetivos.totalObjetivos){
 
 		// TODO Se completo el nivel
-		log_info(LOGGER, "COMPLETE EL PLAN DEL %s !!!\n", hiloPxN->personaje.nivel);
+		log_info(LOGGER, "\n\nCOMPLETE EL PLAN DEL %s !!!\n", hiloPxN->personaje.nivel);
 		hiloPxN->estado = PLAN_NIVEL_FINALIZADO;
 		enviarMsjPlanDeNivelFinalizado(sock, hiloPxN);
 		*fin = true;

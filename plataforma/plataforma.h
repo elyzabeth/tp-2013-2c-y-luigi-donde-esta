@@ -7,11 +7,12 @@
 #include <curses.h>
 #include <pthread.h>
 
-#include "commons/comunicacion.h"
-#include "config/configPlataforma.h"
 #include "commons/log.h"
 #include "commons/collections/list.h"
 #include "commons/collections/queue.h"
+#include "commons/comunicacion.h"
+#include "commons/funciones_comunes.h"
+#include "config/configPlataforma.h"
 #include "tads/tad_personaje.h"
 #include "tads/tad_nivel.h"
 #include "tads/tad_planificador.h"
@@ -73,13 +74,15 @@ void agregarPersonajeNuevo(t_personaje* personaje);
 void agregarPersonajeEnJuego(t_personaje* personaje);
 void agregarPersonajeFinalizado(t_personaje* personaje);
 void agregarPersonajeFinAnormal(t_personaje* personaje);
+_Bool existePersonajexFDEnFinalizados(int fdPersonaje);
 t_personaje* quitarPersonajeNuevoxNivel(char* nivel);
 t_personaje* quitarPersonajeNuevoxFD(int32_t fdPersonaje);
 t_personaje* quitarPersonajeNuevoxNivelxId (char* nivel, char idPersonaje);
 t_personaje* quitarPersonajeEnJuegoxFD(int32_t fdPersonaje);
 t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje);
-t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
+//t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
 
+t_personaje* moverPersonajexFDAFinAnormal(int32_t fdPersonaje);
 void moverPersonajeAFinAnormal (char idPersonaje, char *nivel);
 void moverPersonajesAFinAnormalxNivel (char *nivel);
 void moverPersonajeAFinalizados(char idPersonaje, char *nivel);
