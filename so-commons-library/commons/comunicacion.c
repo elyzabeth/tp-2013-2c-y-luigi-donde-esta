@@ -84,16 +84,17 @@ int conectar(char ip[15+1], int puerto, int *sock)
 int aceptar_conexion(int *listener, int *nuevo_sock)
 {
 	struct sockaddr_in dirRemota;
-	size_t dirLong;
+	//size_t dirLong;
+	socklen_t dirLong;
 	dirLong = sizeof(dirRemota);
 
 	if ((*nuevo_sock = accept(*listener, (struct sockaddr *)&dirRemota, &dirLong)) == -1)
 	{
-	  puts("error accept");
+		puts("error accept");
 		return ERROR;
 	}
 
-  return EXITO;
+	return EXITO;
 }
 
 int enviar_header (int sock, header_t *header) {

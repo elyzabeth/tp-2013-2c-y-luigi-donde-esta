@@ -71,7 +71,7 @@ void destruirPersonaje (t_personaje * personaje){
 }
 
 void imprimirPersonaje (t_personaje* p, t_log *LOGGER) {
-	log_info(LOGGER, "\r- %s -> Personaje: '%s' - simbolo: '%c' - recurso: '%c' - posicion: (%d, %d) - socket: '%d' - ", p->nivel, p->nombre, p->id, p->recurso, p->posActual.x,p->posActual.y, p->fd);
+	log_info(LOGGER, "\r- %s -> Personaje: '%s' ('%c') - recurso: '%c' - posicion: (%d, %d) - socket: '%d' - ", p->nivel, p->nombre, p->id, p->recurso, p->posActual.x,p->posActual.y, p->fd);
 }
 
 
