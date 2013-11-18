@@ -32,7 +32,7 @@ int main (int argc, char**argv) {
 void principal () {
 	int id_proceso, i, se_desconecto;
 	int fin = false;
-	int sock = -1;
+	int sockPlataforma = -1;
 	header_t header;
 	fd_set master;
 	fd_set read_fds;
@@ -49,16 +49,16 @@ void principal () {
 
 
 	// Conectar con proceso Plataforma
-	conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sock);
+	conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sockPlataforma);
 
-	if (enviarMSJNuevoNivel(sock) != EXITO) {
+	if (enviarMSJNuevoNivel(sockPlataforma) != EXITO) {
 		log_error(LOGGER, "ERROR en conexion con Plataforma");
 		finalizarNivel();
 		exit(EXIT_FAILURE);
 	}
 
 	// Agrego descriptor del socket de conexion con plataforma
-	agregar_descriptor(sock, &master, &max_desc);
+	agregar_descriptor(sockPlataforma, &master, &max_desc);
 
 	// Agrego descriptor del inotify
 	agregar_descriptor(notifyFD, &master, &max_desc);
@@ -81,7 +81,7 @@ void principal () {
 			{
 				if (FD_ISSET(i, &read_fds))
 				{
-					if (i == sock)
+					if (i == sockPlataforma)
 					{
 						log_debug(LOGGER, "1) recibo mensaje socket %d", i);
 						initHeader(&header);
@@ -144,7 +144,7 @@ void principal () {
 						levantarCambiosArchivoConfiguracionNivel();
 						log_info(LOGGER, "Nuevos Valores: algoritmo=%s - quantum=%d - retardo=%d", configNivelAlgoritmo(), configNivelQuantum(), configNivelRetardo());
 
-						enviarMsjCambiosConfiguracion(sock);
+						enviarMsjCambiosConfiguracion(sockPlataforma);
 
 					} else if ( i == hiloInterbloqueo.fdPipeI2N[0]) {
 
@@ -158,8 +158,10 @@ void principal () {
 						switch (header.tipo)
 						{
 							case MUERTE_PERSONAJE_XRECOVERY: log_debug(LOGGER, "'%d' ES MUERTE_PERSONAJE_XRECOVERY", header.tipo);
-								// TODO informar al planificador
-								// Mover personaje a una lista de fiambres.
+								// TODO Mover personaje a una lista de fiambres??
+
+								// informar al planificador
+								enviarMsjMuertexRecovery(sockPlataforma);
 
 								break;
 						}
@@ -178,7 +180,9 @@ void principal () {
 						switch (header.tipo)
 						{
 							case MUERTE_PERSONAJE_XENEMIGO: log_debug(LOGGER, "'%d' ES MUERTE_PERSONAJE_XENEMIGO", header.tipo);
-								// TODO informar al planificador
+								// TODO mover personaje a lista de fiambres ??
+								// informar al planificador
+								enviarMsjMuertexEnemigo(sockPlataforma);
 								break;
 						}
 
@@ -199,7 +203,7 @@ void principal () {
 
 	pthread_join (hiloInterbloqueo.tid, NULL); //espera que finalice el hilo de interbloqueo para continuar
 
-	close (sock);
+	close (sockPlataforma);
 
 	return;
 }

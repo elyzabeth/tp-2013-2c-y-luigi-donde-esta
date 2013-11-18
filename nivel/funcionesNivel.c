@@ -161,6 +161,12 @@ void finalizarPersonajeNivel(t_personaje *personaje) {
 	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
 	log_info(LOGGER, "%s Liberando recursos del personaje %s", NOMBRENIVEL, personaje->nombre);
 	vec = removerRecursoxPersonaje(personaje);
+
+	if (vec == NULL) {
+		log_error(LOGGER, "\n\nfinalizarPersonajeNivel: ERROR personaje %s no tiene recursos en recursosxPersonajes", personaje->nombre);
+		return;
+	}
+
 	for(i = 0; i < vec->total; i++) {
 		gui_sumarRecurso(vec->recurso[i]);
 		caja = obtenerRecurso(vec->recurso[i]);
@@ -469,6 +475,44 @@ int enviarMsjRecursoInexistente (int sock) {
 	return ret;
 }
 
+int enviarMsjMuertexRecovery (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = MUERTE_PERSONAJE_XRECOVERY;
+	header.largo_mensaje = 0;
+
+	log_info(LOGGER, "%s enviarMsjMuertexRecovery: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjMuertexRecovery: Error al enviar header MUERTE_PERSONAJE_XRECOVERY\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	return ret;
+}
+
+
+int enviarMsjMuertexEnemigo (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = MUERTE_PERSONAJE_XENEMIGO;
+	header.largo_mensaje = 0;
+
+	log_info(LOGGER, "%s enviarMsjMuertexEnemigo: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjMuertexEnemigo: Error al enviar header MUERTE_PERSONAJE_XENEMIGO\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	return ret;
+}
 
 int tratarNuevoPersonaje(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
@@ -569,10 +613,13 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 
 	initHeader(&header);
 	if (recurso->INSTANCIAS > 0) {
+		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_CONCEDIDO");
 		header.tipo = RECURSO_CONCEDIDO;
 		header.largo_mensaje = sizeof(t_caja);
 
 	} else {
+
+		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_DENEGADO");
 		header.tipo = RECURSO_DENEGADO;
 		header.largo_mensaje = 0;
 		moverPersonajeABloqueados(personaje.id);
@@ -585,7 +632,8 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	}
 
 	if (header.tipo == RECURSO_CONCEDIDO) {
-		//Envio recurso al planificador
+
+		// Envio recurso al planificador
 		initCaja(&caja);
 		caja = *recurso;
 		if ((ret = enviar_caja(sock, &caja)) != EXITO) {
@@ -616,7 +664,7 @@ int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 	}
 
 	log_debug(LOGGER, "%s Movimiento realizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
-	log_debug(LOGGER, "%s GUIITEMS': %d", NOMBRENIVEL, list_size(GUIITEMS));
+	//log_debug(LOGGER, "%s GUIITEMS: %d", NOMBRENIVEL, list_size(GUIITEMS));
 	gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;
