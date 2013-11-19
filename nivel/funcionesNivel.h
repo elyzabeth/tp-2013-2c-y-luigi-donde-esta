@@ -114,12 +114,16 @@ void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
 void agregarPersonajeABloqueadosNivel(t_personaje *personaje);
 void agregarPersonajeAFinalizadosNivel(t_personaje *personaje);
 void agregarRecursoxPersonaje(t_personaje *personaje, t_vecRecursos *vec);
+void agregarPersonajeMuertoxRecovery(t_personaje *personaje);
+void agregarPersonajeMuertoxEnemigo(t_personaje *personaje);
 void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso);
 t_list* clonarListaPersonajesBloqueados();
 t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje);
 t_caja* obtenerRecurso(char simboloRecurso);
 t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje);
 t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje);
+t_personaje* quitarPersonajeMuertoxRecovery();
+t_personaje* quitarPersonajeMuertoxEnemigo();
 void imprimirPersonajeNivel (t_personaje* personaje);
 
 //hilos

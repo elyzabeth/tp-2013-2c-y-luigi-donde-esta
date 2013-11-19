@@ -4,10 +4,13 @@
  * Created on: Oct 11, 2013
  * Author: elizabeth
  */
-#include <stdlib.h>
+
+//#include <stdlib.h>
+//#include "tads/tad_enemigo.h"
+//#include <commons/collections/list.h>
+
 #include "funcionesNivel.h"
-#include "tads/tad_enemigo.h"
-#include <commons/collections/list.h>
+
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo);
 void moverEnL(t_hiloEnemigo* hiloEnemigo,int32_t* posX,int32_t* posY);
 t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
@@ -19,6 +22,7 @@ int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
 void* enemigo (t_hiloEnemigo *enemy);
 int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 
+void checarPosicionPersonajes(t_hiloEnemigo *enemy);
 
 //t_posicion posProhibidas array[]
 
@@ -33,7 +37,7 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	fd_set read_fds;
 	int max_desc = 0;
 	int i, ret;
-	int x=10, y=15;
+	//int x=10, y=15;
 	int fin = false;
 	struct timeval timeout;
 
@@ -47,9 +51,12 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	// Agrego descriptor del Pipe con Nivel.
 	agregar_descriptor(enemy->fdPipe[0], &master, &max_desc);
 
-	rnd(&x, MAXCOLS);
-	rnd(&y, MAXROWS);
-	gui_crearEnemigo(id, x, y);
+//	rnd(&x, MAXCOLS);
+//	rnd(&y, MAXROWS);
+	rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
+	rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
+
+	gui_crearEnemigo(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y);
 	gui_dibujar();
 
 	while (!fin) {
@@ -70,10 +77,15 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 			//TODO agregar logica del enemigo
 			// Cambiar este movimiento aleatorio por el que corresponde
-			rnd(&x, MAXCOLS);
-			rnd(&y, MAXROWS);
+//			rnd(&x, MAXCOLS);
+//			rnd(&y, MAXROWS);
+			rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
+			rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
 
-			gui_moverPersonaje(id, x, y );
+			checarPosicionPersonajes(enemy);
+
+			//gui_moverPersonaje(id, x, y );
+			gui_moverPersonaje(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y);
 			gui_dibujar();
 
 		}
@@ -106,7 +118,39 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	pthread_exit(NULL);
 }
 
+void checarPosicionPersonajes(t_hiloEnemigo *enemy) {
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
 
+	t_personaje *personaje;
+	int i;
+
+	void _comparaCoordPJEnemigo(t_personaje *p) {
+		if (calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) == 0)
+		{
+			enviarMsjPorPipe(enemy->fdPipeE2N[1], MUERTE_PERSONAJE_XENEMIGO);
+			//agregarPersonajeMuertoxEnemigo(p);
+			queue_push(listaPersonajesMuertosxEnemigo, p);
+		}
+	}
+
+	list_iterate(listaPersonajesEnJuego, (void*)_comparaCoordPJEnemigo);
+
+	bool _remove_x_id (t_personaje *p) {
+		return (p->id == personaje->id);
+	}
+
+	for (i=0; i < queue_size(listaPersonajesMuertosxEnemigo); i++) {
+		personaje = queue_pop(listaPersonajesMuertosxEnemigo);
+		queue_push(listaPersonajesMuertosxEnemigo, personaje);
+
+		list_remove_by_condition(listaPersonajesEnJuego, (void*)_remove_x_id);
+	}
+
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxEnemigo);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+
+}
 
 //SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo){

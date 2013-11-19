@@ -155,27 +155,37 @@ void inicializarNivel () {
 
 }
 
-
-void finalizarPersonajeNivel(t_personaje *personaje) {
-	t_personaje *p;
+void liberarRecursosPersonaje (t_personaje *personaje) {
 	t_vecRecursos *vec;
 	t_caja* caja;
 	int i;
 
-	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
 	log_info(LOGGER, "%s Liberando recursos del personaje %s", NOMBRENIVEL, personaje->nombre);
 	vec = removerRecursoxPersonaje(personaje);
 
-	if (vec == NULL) {
-		log_error(LOGGER, "\n\nfinalizarPersonajeNivel: ERROR personaje %s no tiene recursos en recursosxPersonajes", personaje->nombre);
+	if (vec == NULL){
+		log_error(LOGGER, "\n\nliberarRecursosPersonaje: ERROR personaje %s no tiene recursos en recursosxPersonajes", personaje->nombre);
 		return;
 	}
 
-	for(i = 0; i < vec->total; i++) {
+	for (i = 0; i < vec->total; i++) {
+		// TODO FALTA informar al planificador de los recursos liberados!!!
+		// Desbloquear personajes que esten esperando el recurso.
+		// enviarMsjRecursoConcedido
+
 		gui_sumarRecurso(vec->recurso[i]);
 		caja = obtenerRecurso(vec->recurso[i]);
 		caja->INSTANCIAS++;
 	}
+
+}
+
+
+void finalizarPersonajeNivel(t_personaje *personaje) {
+	t_personaje *p;
+
+	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
+	liberarRecursosPersonaje (personaje);
 
 	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
 	p = quitarPersonajeEnJuegoNivel(personaje->id);
@@ -464,6 +474,44 @@ int enviarMsjCambiosConfiguracion(int sock) {
 	return ret;
 }
 
+int enviarMsjRecursoConcedido (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = RECURSO_CONCEDIDO;
+	header.largo_mensaje = sizeof(t_caja);
+
+	log_info(LOGGER, "%s enviarMsjRecursoConcedido: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjRecursoConcedido: Error al enviar header RECURSO_CONCEDIDO\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	return ret;
+}
+
+int enviarMsjRecursoDenegado (int sock) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = RECURSO_DENEGADO;
+	header.largo_mensaje = 0;
+
+	log_info(LOGGER, "%s enviarMsjRecursoDenegado: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjRecursoDenegado: Error al enviar header RECURSO_DENEGADO\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	return ret;
+}
+
 int enviarMsjRecursoInexistente (int sock) {
 	int ret;
 	header_t header;
@@ -503,21 +551,35 @@ int enviarMsjMuertexRecovery (int sock) {
 }
 
 
-int enviarMsjMuertexEnemigo (int sock) {
+int enviarMsjMuertexEnemigo (int socketPlanificador) {
 	int ret;
 	header_t header;
+	t_personaje *personaje=NULL;
+	t_personaje p;
+
+	personaje = quitarPersonajeMuertoxEnemigo();
+	p = *personaje;
 
 	initHeader(&header);
 	header.tipo = MUERTE_PERSONAJE_XENEMIGO;
 	header.largo_mensaje = 0;
 
-	log_info(LOGGER, "%s enviarMsjMuertexEnemigo: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+	log_info(LOGGER, "%s enviarMsjMuertexEnemigo: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, socketPlanificador, sizeof(header), header.largo_mensaje);
 
-	if ((ret = enviar_header(sock, &header)) != EXITO)
+	if ((ret = enviar_header(socketPlanificador, &header)) != EXITO)
 	{
 		log_error(LOGGER,"%s enviarMsjMuertexEnemigo: Error al enviar header MUERTE_PERSONAJE_XENEMIGO\n\n", NOMBRENIVEL);
 		return WARNING;
 	}
+
+	if ((ret = enviar_personaje(socketPlanificador, &p)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjMuertexEnemigo: Error al enviar t_personaje MUERTE_PERSONAJE_XENEMIGO\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	// TODO ver si corresponde!!!!
+	finalizarPersonajeNivel(personaje);
 
 	return ret;
 }
@@ -623,21 +685,23 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	if (recurso->INSTANCIAS > 0) {
 		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_CONCEDIDO");
 		header.tipo = RECURSO_CONCEDIDO;
-		header.largo_mensaje = sizeof(t_caja);
+//		header.largo_mensaje = sizeof(t_caja);
+		enviarMsjRecursoConcedido(sock);
 
 	} else {
 
 		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_DENEGADO");
 		header.tipo = RECURSO_DENEGADO;
-		header.largo_mensaje = 0;
+//		header.largo_mensaje = 0;
+		enviarMsjRecursoDenegado(sock);
 		moverPersonajeABloqueados(personaje.id);
 	}
 
-	// Envio mensaje RECURSO_CONCEDIDO o RECURSO_DENEGADO al planificador
-	if ((ret = enviar_header(sock, &header)) != EXITO) {
-		log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al enviar header RECURSO_CONCEDIDO/RECURSO_DENEGADO \n\n", NOMBRENIVEL);
-		return ret;
-	}
+//	// Envio mensaje RECURSO_CONCEDIDO o RECURSO_DENEGADO al planificador
+//	if ((ret = enviar_header(sock, &header)) != EXITO) {
+//		log_error(LOGGER,"%s tratarSolicitudRecurso: ERROR al enviar header RECURSO_CONCEDIDO/RECURSO_DENEGADO \n\n", NOMBRENIVEL);
+//		return ret;
+//	}
 
 	if (header.tipo == RECURSO_CONCEDIDO) {
 
