@@ -195,6 +195,7 @@ void* planificador(t_planificador *planner) {
 
 							case MUERTE_PERSONAJE: log_info(LOGGER, "PLANIFICADOR %s: MUERTE_PERSONAJE", planner->nivel.nombre);
 								recibirMuertePersonajePJ2Plan( i, header, &master, planner);
+								quitar_descriptor(i, &master, &max_desc);
 								break;
 
 							case MUERTE_PERSONAJE_XENEMIGO: log_info(LOGGER, "PLANIFICADOR %s: MUERTE_PERSONAJE_XENEMIGO", planner->nivel.nombre);
@@ -209,6 +210,7 @@ void* planificador(t_planificador *planner) {
 								break;
 
 							default: log_info(LOGGER, "PLANIFICADOR %s: MENSAJE NO RECONOCIDO '%d' ", planner->nivel.nombre, header.tipo);
+
 						}
 					}
 				}
@@ -614,23 +616,22 @@ int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_
 }
 
 int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *planner ) {
-	int ret;
-	t_personaje *personaje;
+	int ret, maxDesc=0;
 
 	log_debug(LOGGER, "recibirRecursoInexistente: Enviando mensaje de RECURSO_INEXISTENTE '%c' al personaje %s del nivel %s", planner->personajeEjecutando->recurso, planner->personajeEjecutando->nombre, planner->personajeEjecutando->nivel);
 	ret = enviar_header(planner->personajeEjecutando->fd, &header);
 
 	// TODO quitar personaje de listados
-	personaje = quitarPersonajeColaxId(planner->personajesListos, planner->personajeEjecutando->id);
+	quitarPersonajeColaxId(planner->personajesListos, planner->personajeEjecutando->id);
+
+	moverPersonajeAFinAnormal( planner->personajeEjecutando->id, planner->nivel.nombre );
+
+	quitar_descriptor(planner->personajeEjecutando->fd, master, &maxDesc);
+
 	planner->personajeEjecutando = NULL;
 
-	if (personaje != NULL)
-		moverPersonajeAFinAnormal(personaje->id, planner->nivel.nombre);
-
-	// TODO Liberar recursos del personaje??
-
-
 	return ret;
+
 }
 
 int recibirPlanNivelFinalizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
@@ -676,18 +677,20 @@ int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *mast
 	t_personaje personaje;
 	//t_personaje *p;
 
+	//recibo el Msj desde el personaje
 	initPersonje(&personaje);
 	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
-	log_debug(LOGGER, "PLANIFICADOR %s: recibirMuertePersonajePlan: %s (%c) MUERTE_PERSONAJE del %s ", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel);
+	log_debug(LOGGER, "PLANIFICADOR %s: recibirMuertePersonajePJ2Plan: %s (%c) MUERTE_PERSONAJE del %s ", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel);
 
-	log_debug(LOGGER, "recibirMuertePersonajePlan: Enviando mensaje de MUERTE_PERSONAJE del personaje %s ('%c') al %s ", personaje.nombre, personaje.id, personaje.nivel);
+	// envio Msj al nivel
+	log_debug(LOGGER, "recibirMuertePersonajePJ2Plan: Enviando mensaje de MUERTE_PERSONAJE del personaje %s ('%c') al %s ", personaje.nombre, personaje.id, personaje.nivel);
 	if ((ret = enviar_header(planner->nivel.fdSocket, &header)) != EXITO){
-		log_error(LOGGER, "ERROR en recibirMuertePersonajePlan al enviar_header MUERTE_PERSONAJE al nivel ");
+		log_error(LOGGER, "ERROR en recibirMuertePersonajePJ2Plan al enviar_header MUERTE_PERSONAJE al nivel ");
 		return WARNING;
 	}
 
 	if ((ret = enviar_personaje(planner->nivel.fdSocket, &personaje)) != EXITO){
-		log_error(LOGGER, "ERROR en recibirMuertePersonajePlan al enviar_personaje MUERTE_PERSONAJE al nivel ");
+		log_error(LOGGER, "ERROR en recibirMuertePersonajePJ2Plan al enviar_personaje MUERTE_PERSONAJE al nivel ");
 		return WARNING;
 	}
 
@@ -699,6 +702,7 @@ int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *mast
 	// TODO quitar personaje de TODAS las listas compartidas
 	moverPersonajeAFinAnormal(personaje.id, planner->nivel.nombre);
 
+
 	return ret;
 }
 
@@ -708,7 +712,7 @@ int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *mast
  * Esta situacion puede darse cuando un enemigo toca a un personaje o cuando es victima de recovery
  */
 int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planificador *planner ) {
-	int ret, se_desconecto;
+	int ret, se_desconecto, maxDesc;
 	t_personaje personaje;
 	t_personaje *pj=NULL;
 
@@ -716,23 +720,34 @@ int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planific
 	ret = recibir_personaje(planner->nivel.fdSocket, &personaje, master, &se_desconecto);
 	log_debug(LOGGER, "PLANIFICADOR %s: recibirMuertePersonajeNivel2Plan: %s (%c) MUERTE_PERSONAJE del %s ", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel);
 
-	// quitar personaje de colas del planificador.
+	// quitar personaje de colas del planificador y de listas compartidas
 	// si MUERTE_PERSONAJE_XENEMIGO el personaje debe estar en listos (un enemigo no puede atacar personaje bloqueado)
 	// si MUERTE_PERSONAJE_XRECOVERY el personaje debe estar en bloqueados (porque es victima de interbloqueo)
-	pj = quitarPersonajeColaxId(planner->personajesListos, personaje.id);
-	if (pj == NULL)
-		pj = quitarPersonajeColaxId(planner->personajesBloqueados, personaje.id);
 
-	planner->personajeEjecutando = NULL;
+	switch(header.tipo) {
+
+		case MUERTE_PERSONAJE_XENEMIGO:
+			pj = quitarPersonajeColaxId(planner->personajesListos, personaje.id);
+			if (pj != NULL && planner->personajeEjecutando->id == pj->id)
+				planner->personajeEjecutando = NULL;
+			break;
+
+		case MUERTE_PERSONAJE_XRECOVERY:
+			pj = quitarPersonajeColaxId(planner->personajesBloqueados, personaje.id);
+			break;
+	}
 
 	// quitar personaje de listas compartidas
 	moverPersonajeAFinAnormal(pj->id, planner->nivel.nombre);
 
+	// enviar Msj al personaje
 	log_debug(LOGGER, "recibirMuertePersonajeNivel2Plan: Enviando mensaje de MUERTE_PERSONAJE al personaje %s ('%c') del %s ", personaje.nombre, personaje.id, personaje.nivel);
 	if ((ret = enviar_header( pj->fd, &header)) != EXITO) {
 		log_error(LOGGER, "ERROR en recibirMuertePersonajeNivel2Plan al enviar_header MUERTE_PERSONAJE al personaje ");
 		return WARNING;
 	}
+
+	quitar_descriptor(pj->fd, master, &maxDesc);
 
 	return ret;
 }
@@ -740,21 +755,17 @@ int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planific
 int enviarMsjTurnoConcedido(t_personaje *personaje, char* nivel) {
 	int ret;
 	header_t header;
-	//char* buffer_header = malloc(sizeof(header_t));
 
-	//memset(&header, '\0', sizeof(header_t));
 	initHeader(&header);
 	header.tipo=TURNO_CONCEDIDO;
 	header.largo_mensaje=0;
 
-//	memset(buffer_header, '\0', sizeof(header_t));
-//	memcpy(buffer_header, &header, sizeof(header_t));
-
 	log_info(LOGGER, "%s: Envio mensaje de TURNO_CONCEDIDO a %s (fd: %d)...", nivel, personaje->nombre, personaje->fd);
 
-	ret =  enviar_header(personaje->fd, &header);
-//	ret =  enviar(personaje->fd, buffer_header, sizeof(header_t));
-//	free(buffer_header);
+	if ((ret =  enviar_header(personaje->fd, &header)) != EXITO ) {
+		log_error(LOGGER, "ERROR en enviarMsjTurnoConcedido al enviar_header TURNO_CONCEDIDO al personaje ");
+		return ret;
+	}
 
 	return ret;
 }
