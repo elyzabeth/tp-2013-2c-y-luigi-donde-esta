@@ -80,6 +80,7 @@ t_personaje* quitarPersonajeNuevoxFD(int32_t fdPersonaje);
 t_personaje* quitarPersonajeNuevoxNivelxId (char* nivel, char idPersonaje);
 t_personaje* quitarPersonajeEnJuegoxFD(int32_t fdPersonaje);
 t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje);
+t_personaje* quitarPersonajeFinalizadoxNivelxId (char* nivel, char idPersonaje);
 //t_personaje* quitarPersonajexFD(int32_t fdPersonaje);
 
 t_personaje* moverPersonajexFDAFinAnormal(int32_t fdPersonaje);

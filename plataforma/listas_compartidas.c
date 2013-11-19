@@ -155,6 +155,21 @@ t_personaje* quitarPersonajeEnJuegoxNivelxId (char* nivel, char idPersonaje) {
 }
 
 
+t_personaje* quitarPersonajeFinalizadoxNivelxId (char* nivel, char idPersonaje) {
+
+	pthread_mutex_lock (&mutexListaPersonajesFinalizados);
+	t_personaje *personaje;
+
+	bool _buscar_xnivel_xid(t_personaje *p) {
+		return (strcasecmp(p->nivel, nivel)==0 && p->id == idPersonaje);
+	}
+	personaje = list_remove_by_condition(listaPersonajesFinalizados, (void*)_buscar_xnivel_xid);
+	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
+	imprimirListaPersonajesFinalizados();
+
+	return personaje;
+}
+
 
 t_personaje* moverPersonajexFDAFinAnormal(int32_t fdPersonaje) {
 
@@ -190,13 +205,16 @@ void moverPersonajeAFinalizados(char idPersonaje, char *nivel) {
 }
 
 void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
-	//TODO!!!
+	//TODO buscar tambien en lista de finalizados!!!
 	t_personaje *personaje = NULL;
 
 	personaje = quitarPersonajeNuevoxNivelxId(nivel, idPersonaje);
 
 	if (personaje == NULL)
 		personaje = quitarPersonajeEnJuegoxNivelxId(nivel, idPersonaje);
+
+	if (personaje == NULL)
+			personaje = quitarPersonajeFinalizadoxNivelxId(nivel, idPersonaje);
 
 	if (personaje != NULL)
 		agregarPersonajeFinAnormal(personaje);

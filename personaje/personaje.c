@@ -368,8 +368,10 @@ void manejoSIGTERM() {
 
 		printf("\n\nKnock, knock, Neo...\n\n");
 		sleep(2);
-		printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe.\n");
-		printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n");
+		printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe....\n");
+		sleep(4);
+		printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n...\n");
+		sleep(3);
 		printf("Remember that all I'am offering is the truth. Nothing more. \n");
 		printf("\nThis is your last chance. After this there is no turning back... \n\n Choose blue or red pill b/r: ");
 		printf("\n(traducción: Desea reiniciar el juego? s/n:) ");
@@ -379,16 +381,17 @@ void manejoSIGTERM() {
 
 		if(respuesta == 's' || respuesta == 'b') {
 			REINTENTOS++;
-			log_info(LOGGER, "VOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
+			log_info(LOGGER, "\n\nVOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
 
-			// TODO llamar funcion que reinicie el juego
+			// llamar funcion que reinicie el juego
 			inicializarVariablesGlobales();
 
 			imprimirVidasyReintentos();
+			sleep(2);
 
 
 		} else {
-			log_info(LOGGER, "SALIENDO DE MATRIX....\n\n CERRANDO PROCESO PERSONAJE");
+			log_info(LOGGER, "\n\nSALIENDO DE MATRIX....\n\n CERRANDO PROCESO PERSONAJE");
 
 			finalizarPersonaje();
 

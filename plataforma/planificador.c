@@ -696,7 +696,7 @@ int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *mast
 	quitarPersonajeColaxId(planner->personajesBloqueados, personaje.id);
 	planner->personajeEjecutando = NULL;
 
-	// quitar personaje de listas compartidas
+	// TODO quitar personaje de TODAS las listas compartidas
 	moverPersonajeAFinAnormal(personaje.id, planner->nivel.nombre);
 
 	return ret;

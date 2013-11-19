@@ -331,12 +331,13 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 	log_info(LOGGER, "\n\n\nORQUESTADOR recibirPlanNivelesConcluido espero %d segundos... \n\n", espera);
 	sleep(espera);
 
-	log_info(LOGGER, "\n\nORQUESTADOR: Zapatilla de goma, el que no finalizó, se embroma, punto y coma!!\n", espera);
+	log_info(LOGGER, "\n\n\nORQUESTADOR: Zapatilla de goma, el que no finalizó, se embroma, punto y coma!!\n\n");
+	sleep(2);
+
+	imprimirListaPersonajesFinalizados ();
 
 	// Si todos los personajes concluyeron sus planes
 	// Lanzar el proceso Koopa.
-	imprimirListaPersonajesFinalizados ();
-
 	if ( list_size(listaPersonajesEnJuego)== 0 && list_size(listaPersonajesNuevos) == 0 ) {
 		log_info(LOGGER, "\n\n\nTODOS LOS PERSONAJES CONCLUYERON SUS PLANES DE NIVELES...\n\nEJECUTO PROCESO KOOPAA!!!!!");
 		// TODO lanzar proceso Koopa!
