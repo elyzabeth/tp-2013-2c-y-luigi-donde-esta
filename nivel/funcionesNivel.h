@@ -50,6 +50,8 @@ t_list *listaPersonajesEnJuego;
 t_list *listaPersonajesBloqueados;
 t_list *listaPersonajesFinalizados;
 t_queue *listaPersonajesEnNivel;
+t_queue *listaPersonajesMuertosxRecovery;
+t_queue *listaPersonajesMuertosxEnemigo;
 t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
@@ -61,6 +63,8 @@ pthread_mutex_t mutexListaPersonajesJugando;
 pthread_mutex_t mutexListaPersonajesBloqueados;
 pthread_mutex_t mutexListaPersonajesFinalizados;
 pthread_mutex_t mutexListaPersonajesEnNivel;
+pthread_mutex_t mutexListaPersonajesMuertosxRecovery;
+pthread_mutex_t mutexListaPersonajesMuertosxEnemigo;
 pthread_mutex_t mutexListaRecursos;
 pthread_mutex_t mutexRecursosxPersonajes;
 

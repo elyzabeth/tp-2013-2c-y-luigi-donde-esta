@@ -129,6 +129,8 @@ void inicializarNivel () {
 	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
 	pthread_mutex_init (&mutexListaPersonajesFinalizados, NULL);
 	pthread_mutex_init (&mutexListaPersonajesEnNivel, NULL);
+	pthread_mutex_init (&mutexListaPersonajesMuertosxRecovery, NULL);
+	pthread_mutex_init (&mutexListaPersonajesMuertosxEnemigo, NULL);
 	pthread_mutex_init (&mutexListaRecursos, NULL);
 	pthread_mutex_init (&mutexRecursosxPersonajes, NULL);
 
@@ -138,6 +140,8 @@ void inicializarNivel () {
 	listaPersonajesBloqueados = list_create();
 	listaPersonajesFinalizados = list_create();
 	listaPersonajesEnNivel = queue_create();
+	listaPersonajesMuertosxRecovery = queue_create();
+	listaPersonajesMuertosxEnemigo = queue_create();
 	recursosxPersonajes = dictionary_create();
 
 	listaRecursos = configNivelRecursos();
@@ -234,6 +238,8 @@ void finalizarNivel () {
 	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPersonajesFinalizados, (void*)destruirPersonaje);
 	queue_destroy_and_destroy_elements(listaPersonajesEnNivel, (void*)destruirPersonaje);
+	queue_destroy_and_destroy_elements(listaPersonajesMuertosxRecovery, (void*)destruirPersonaje);
+	queue_destroy_and_destroy_elements(listaPersonajesMuertosxEnemigo, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 	dictionary_destroy_and_destroy_elements(recursosxPersonajes, (void*)destruirVecRecursos);
 
@@ -247,6 +253,8 @@ void finalizarNivel () {
 	pthread_mutex_destroy(&mutexListaPersonajesBloqueados);
 	pthread_mutex_destroy(&mutexListaPersonajesFinalizados);
 	pthread_mutex_destroy(&mutexListaPersonajesEnNivel);
+	pthread_mutex_destroy(&mutexListaPersonajesMuertosxRecovery);
+	pthread_mutex_destroy(&mutexListaPersonajesMuertosxEnemigo);
 	pthread_mutex_destroy(&mutexListaRecursos);
 	pthread_mutex_destroy(&mutexRecursosxPersonajes);
 

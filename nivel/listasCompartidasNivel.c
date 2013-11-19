@@ -78,6 +78,17 @@ void agregarPersonajeEnNivel(t_personaje *personaje) {
 	pthread_mutex_unlock (&mutexListaPersonajesEnNivel);
 }
 
+void agregarPersonajeMuertoxRecovery(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxRecovery);
+	queue_push(listaPersonajesMuertosxRecovery, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxRecovery);
+}
+
+void agregarPersonajeMuertoxEnemigo(t_personaje *personaje) {
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
+	queue_push(listaPersonajesMuertosxEnemigo, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxEnemigo);
+}
 
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
@@ -168,6 +179,24 @@ int32_t obternerCantPersonajesEnNivel() {
 	pthread_mutex_unlock (&mutexListaPersonajesEnNivel);
 	return cant;
 }
+
+
+t_personaje* quitarPersonajeMuertoxRecovery() {
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxRecovery);
+	t_personaje *personaje = NULL;
+	personaje = queue_pop(listaPersonajesMuertosxRecovery);
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxRecovery);
+	return personaje;
+}
+
+t_personaje* quitarPersonajeMuertoxEnemigo() {
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
+	t_personaje *personaje = NULL;
+	personaje = queue_pop(listaPersonajesMuertosxEnemigo);
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxEnemigo);
+	return personaje;
+}
+
 
 t_personaje* quitarPersonajeEnNivel(char simboloPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesEnNivel);

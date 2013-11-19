@@ -130,7 +130,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
 	}
 
 	else{ //No hay personajes en el nivel
-
+		movimientoLfinalizado = 0; // TODO QUITAR ESTOOO!!!
 		if (movimientoLfinalizado){
 			while (!posValida){
 				estimarMovimientoL(hiloEnemigo, posX, posY);
