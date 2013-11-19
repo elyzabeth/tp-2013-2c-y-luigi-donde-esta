@@ -153,14 +153,15 @@ void GenerarPlanDeNiveles(t_config *config) {
 		int32_t cantObjetivos = 0;
 		t_objetivosxNivel *objxniv;
 
-		//objxniv = (t_objetivosxNivel*)calloc(1, sizeof(t_objetivosxNivel));
 		objxniv = crearObjetivosxNivel();
 		strcpy(objxniv->nivel, nivel);
 		sprintf(key, "obj[%s]", nivel );
 
-		// Quito los corchetes de la expresion "[F,H,F,M]"
-		//quitarCorchetes(objetivos, config_get_string_value(config, key));
-		//recursos = string_split(objetivos, ",");
+		// TODO Dos instancias del mismo recurso de manera consecutiva en el objetivo de un nivel se considera un error de sintaxis
+		// Ejemplo: obj[Nivel8]=[F,F,M] (error!)
+		// 			obj[Nivel8]=[F,M,F,M,F,M] (ok!)
+
+		// Quito los corchetes de la expresion "[F,H,F,M] y lo divido
 		recursos = string_get_string_as_array(config_get_string_value(config, key));
 
 		void _add_resource(char *rec) {

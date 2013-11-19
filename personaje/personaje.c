@@ -149,8 +149,6 @@ void finalizarHilosPersonaje() {
 
 	list_iterate(listaHilosxNivel, (void*)_finalizar_hilo);
 
-	//list_clean_and_destroy_elements(listaHilosxNivel, (void*)destruirEstructuraHiloPersonaje);
-
 }
 
 void esperarHilosxNivel() {
@@ -164,31 +162,58 @@ void esperarHilosxNivel() {
 
 }
 
+
+void crearHiloxNivel(t_objetivosxNivel *oxn, t_hilo_personaje *hiloPersonaje) {
+
+	hiloPersonaje = crearEstructuraHiloPersonaje(oxn);
+
+	list_add(listaHilosxNivel, hiloPersonaje);
+
+	log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
+	log_debug(LOGGER, "%s de %s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->personaje.nivel, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
+
+	// Creo el hilo para el nivel
+	pthread_create (&(hiloPersonaje->tid), NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+
+}
+
+
 void levantarHilosxNivel() {
 	int i;
 	int cant = queue_size(planDeNiveles);
-	t_objetivosxNivel *oxn;
-	t_hilo_personaje *hiloPersonaje;
+	t_objetivosxNivel *oxn = NULL;
+	t_hilo_personaje *hiloPersonaje = NULL;
 
 	for (i = 0; i < cant; i++) {
 
 		oxn = queue_pop(planDeNiveles);
-
-		hiloPersonaje = crearEstructuraHiloPersonaje(oxn);
-
-		list_add(listaHilosxNivel, hiloPersonaje);
-
-		log_debug(LOGGER, "Hilo para nivel %s", oxn->nivel);
-		log_debug(LOGGER, "%s de %s pipe: %d y %d", hiloPersonaje->personaje.nombre, hiloPersonaje->personaje.nivel, hiloPersonaje->fdPipe[0], hiloPersonaje->fdPipe[1]);
-
-		// Creo el hilo para el nivel
-		pthread_create (&(hiloPersonaje->tid), NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
-
 		queue_push(planDeNiveles, oxn);
+
+		crearHiloxNivel( oxn, hiloPersonaje );
 
 	}
 
 }
+
+
+void levantarHiloxNivel(char *nivel) {
+	int i;
+	int cant = queue_size(planDeNiveles);
+	t_objetivosxNivel *oxn = NULL;
+	t_hilo_personaje *hiloPersonaje = NULL;
+
+	for (i = 0; i < cant; i++) {
+
+		oxn = queue_pop(planDeNiveles);
+		queue_push(planDeNiveles, oxn);
+
+		if ( strcasecmp(oxn->nivel, nivel) == 0 )
+			crearHiloxNivel ( oxn, hiloPersonaje );
+
+	}
+
+}
+
 
 t_hilo_personaje* crearEstructuraHiloPersonaje(t_objetivosxNivel *oxn) {
 	t_hilo_personaje *hiloPersonaje;

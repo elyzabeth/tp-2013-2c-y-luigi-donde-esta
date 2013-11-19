@@ -7,7 +7,9 @@
 
 #include "personaje.h"
 
-
+void initProximoObjetivo ( t_proximoObjetivo *proximoObjetivo );
+void setearProximoObjetivo ( t_proximoObjetivo *proximoObjetivo, t_hilo_personaje* hiloPxN );
+int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *sock, fd_set *master, int *maxDesc );
 
 void* personajexNivel (t_hilo_personaje* hiloPxN) {
 
@@ -22,16 +24,14 @@ void* personajexNivel (t_hilo_personaje* hiloPxN) {
 	header_t header;
 	t_proximoObjetivo proximoObjetivo;
 
-	memset(&proximoObjetivo, 0, sizeof(t_proximoObjetivo));
-
-	proximoObjetivo.simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
-	proximoObjetivo.posicion.x=0;
-	proximoObjetivo.posicion.y=0;
-
 	idProcesoHilo = getpid();
 	//system("clear");
 
 	log_info(LOGGER,"\n\n\n************** Iniciando Personaje '%s' del nivel %s (PID: %d) ***************\n", personaje.nombre, hiloPxN->personaje.nivel, idProcesoHilo);
+
+
+	initProximoObjetivo(&proximoObjetivo);
+	setearProximoObjetivo(&proximoObjetivo, hiloPxN);
 
 	/***************** ME CONECTO Y ARMO MENSAJE DE PRESENTACION *******/
 	log_info(LOGGER,"************** CONECTANDOSE  ***************\n");
@@ -40,15 +40,12 @@ void* personajexNivel (t_hilo_personaje* hiloPxN) {
 	FD_ZERO(&master);
 
 	// Agrego descriptor del Pipe con Nivel.
-	// TODO PIERDO LOS SOCKETS PIPE !!!! CORREGIR ESTE BUG!!!!
 	log_info(LOGGER,"%s de %s - agregar_descriptor hiloPxN->fdPipe[0]: '%d' \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel, hiloPxN->fdPipe[0]);
 	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
 
 	agregar_descriptor(sock, &master, &max_desc);
 
-	if (enviarMsjNuevoPersonaje(sock) != EXITO)
-	{
-		log_error(LOGGER,"Error al enviar header NUEVO_PERSONAJE %s \n\n", hiloPxN->personaje.nivel);
+	if (enviarMsjNuevoPersonaje(sock, hiloPxN) != EXITO) {
 		fin = true;
 	}
 
@@ -125,13 +122,22 @@ void* personajexNivel (t_hilo_personaje* hiloPxN) {
 							fin=true;
 							break;
 
+							case MUERTE_PERSONAJE_XENEMIGO: log_info(LOGGER,"MUERTE_PERSONAJE_XENEMIGO en %s", hiloPxN->personaje.nivel);
+							fin = muertePersonaje(MUERTE_POR_ENEMIGO, &proximoObjetivo, hiloPxN, &sock, &master, &max_desc);
+							break;
+
+							case MUERTE_PERSONAJE_XRECOVERY: log_info(LOGGER,"MUERTE_PERSONAJE_XRECOVERY en %s ", hiloPxN->personaje.nivel);
+							fin = muertePersonaje(MUERTE_POR_INTERBLOQUEO, &proximoObjetivo, hiloPxN, &sock, &master, &max_desc);
+							break;
+
 							case OTRO: log_info(LOGGER, "que otro?? %s", hiloPxN->personaje.nivel);
 							break;
 
+							default: log_error(LOGGER, "\n\n Personaje '%c': ERROR mensaje NO RECONOCIDO (%d) !!\n",  hiloPxN->personaje.id, header.tipo);
 						}
 
 					} else {
-						log_debug(LOGGER, "Actividad en el socket %d", i);
+						log_debug(LOGGER, "\n\n SOCKET NO RECONOCIDO!! Actividad en el socket %d \n\n", i);
 					}
 
 				}
@@ -148,6 +154,15 @@ void* personajexNivel (t_hilo_personaje* hiloPxN) {
 	pthread_exit(NULL);
 }
 
+void setearProximoObjetivo ( t_proximoObjetivo *proximoObjetivo, t_hilo_personaje* hiloPxN ) {
+	proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+	proximoObjetivo->posicion.x = 0;
+	proximoObjetivo->posicion.y = 0;
+}
+
+void initProximoObjetivo ( t_proximoObjetivo *proximoObjetivo ) {
+	memset(proximoObjetivo, 0, sizeof(t_proximoObjetivo));
+}
 
 t_hilo_personaje* quitarHiloPersonajexTid (int32_t tid) {
 
@@ -175,7 +190,7 @@ int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master) {
 	return ret;
 }
 
-int enviarMsjNuevoPersonaje( int sock ) {
+int enviarMsjNuevoPersonaje( int sock, t_hilo_personaje *hiloPxN ) {
 
 	header_t header;
 	int ret;
@@ -186,7 +201,9 @@ int enviarMsjNuevoPersonaje( int sock ) {
 
 	log_debug(LOGGER,"enviarMsjNuevoPersonaje: NUEVO_PERSONAJE sizeof(header): %d, largo mensaje: %d \n", sizeof(header), header.largo_mensaje);
 
-	ret =  enviar_header(sock, &header);
+	if ( (ret =  enviar_header(sock, &header)) != EXITO ) {
+		log_error(LOGGER,"enviarMsjNuevoPersonaje: Error al enviar header NUEVO_PERSONAJE %s \n\n", hiloPxN->personaje.nivel);
+	}
 
 	return ret;
 }
@@ -264,7 +281,6 @@ int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObje
 
 	log_debug(LOGGER, "recibirUbicacionRecursoPlanificador: Llego: %s (%c) posicion (%d, %d).", caja.RECURSO, caja.SIMBOLO, caja.POSX, caja.POSY);
 
-	// TODO hacer algo con la info que llega!
 	proximoObjetivo->posicion.x = caja.POSX;
 	proximoObjetivo->posicion.y = caja.POSY;
 
@@ -344,6 +360,7 @@ int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
 
 	 if ((ret = enviar_header(sock, &header)) != EXITO){
 		 log_error(LOGGER,"enviarMsjMuertePersonajePlan: ERROR al enviar MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+		 return WARNING;
 	 }
 
 	if (enviar_personaje(sock, &yo) != EXITO)
@@ -355,11 +372,38 @@ int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
 	return ret;
 }
 
+int enviarMsjMovimientoRealizado (int sock, t_hilo_personaje *hiloPxN) {
+	int ret;
+	header_t header;
+	t_personaje yo;
 
+	yo = hiloPxN->personaje;
+
+	initHeader(&header);
+	header.tipo = MOVIMIENTO_REALIZADO;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarMsjMovimientoRealizado: Envio header_t MOVIMIENTO_REALIZADO (size:%d)", sizeof(header_t));
+	if ( (ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar header MOVIMIENTO_REALIZADO\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarMsjMovimientoRealizado: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if ((ret = enviar_personaje(sock, &yo)) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjMovimientoRealizado: Error al enviar t_personaje de MOVIMIENTO_REALIZADO\n\n");
+		return WARNING;
+	}
+
+
+	return ret;
+}
 
 int realizarMovimiento(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
-	header_t header;
-	int ret;
+	//header_t header;
+	//int ret;
 	int flag = false;
 
 	if (hiloPxN->moverPorX || hiloPxN->personaje.posActual.y == proximoObjetivo->posicion.y) {
@@ -384,19 +428,22 @@ int realizarMovimiento(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_pers
 
 	hiloPxN->moverPorX = !hiloPxN->moverPorX;
 
-	log_debug(LOGGER, "Informar MOVIMIENTO_REALIZADO (%d, %d)", hiloPxN->personaje.posActual.x, hiloPxN->personaje.posActual.y);
+	log_debug(LOGGER, "Informar MOVIMIENTO_REALIZADO (%d, %d) al %s", hiloPxN->personaje.posActual.x, hiloPxN->personaje.posActual.y, hiloPxN->personaje.nivel);
+
 	// Informar movimiento realizado
-	initHeader(&header);
-	header.tipo = MOVIMIENTO_REALIZADO;
-	header.largo_mensaje = sizeof(t_personaje);
 
-	if (enviar_header(sock, &header) != EXITO){
-		log_error(LOGGER, "Error al enviar header MOVIMIENTO_REALIZADO");
-	}
-
-	ret = enviar_personaje(sock, &hiloPxN->personaje);
-
-	return ret;
+//	initHeader(&header);
+//	header.tipo = MOVIMIENTO_REALIZADO;
+//	header.largo_mensaje = sizeof(t_personaje);
+//
+//	if (enviar_header(sock, &header) != EXITO){
+//		log_error(LOGGER, "Error al enviar header MOVIMIENTO_REALIZADO");
+//	}
+//
+//	ret = enviar_personaje(sock, &hiloPxN->personaje);
+//
+//	return ret;
+	return EXITO;
 }
 
 int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
@@ -423,6 +470,7 @@ int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo
 		// Calcular proximo movimiento, avanzar y notificar al Planificador con un mensaje.
 		log_debug(LOGGER, "Debo realizar proximo movimiento...");
 		realizarMovimiento(sock, proximoObjetivo, hiloPxN);
+		enviarMsjMovimientoRealizado(sock, hiloPxN);
 	}
 
 	return EXITO;
@@ -448,9 +496,11 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
 	} else if (hiloPxN->objetivosConseguidos < hiloPxN->objetivos.totalObjetivos) {
 
 		// Todavia quedan recursos por conseguir.
-		proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
-		proximoObjetivo->posicion.x = 0;
-		proximoObjetivo->posicion.y = 0;
+		setearProximoObjetivo(proximoObjetivo, hiloPxN);
+
+//		proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+//		proximoObjetivo->posicion.x = 0;
+//		proximoObjetivo->posicion.y = 0;
 
 	}
 
@@ -462,23 +512,61 @@ int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_h
  * En caso de tener vidas disponibles, el Personaje se descontará una vida, volverá a conectarse
  * al hilo Orquestador y le notificará su intención de iniciar nuevamente el Nivel en que estaba jugando.
  */
-void muertePersonaje(MOTIVO_MUERTE motivo) {
-	//TODO hacer lo necesario antes de morir, informar el motivo de muerte por pantalla y al planificador/orquestador
-	decrementarVida();
+int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *sock, fd_set *master, int *maxDesc) {
+	int32_t vidas;
+
+	//  informar el motivo de muerte por pantalla
 	switch(motivo){
 		case MUERTE_POR_ENEMIGO:
-			log_info(LOGGER, "Muerte por enemigo");
+			log_info(LOGGER, "\n\n MUERTE POR ENEMIGO!! en %s \n", hiloPxN->personaje.nivel);
+			hiloPxN->estado = MUERTE_PERSONAJE_XENEMIGO;
 			break;
 		case MUERTE_POR_INTERBLOQUEO:
-			log_info(LOGGER, "Muerte por interbloqueo");
+			log_info(LOGGER, "\n\n MUERTE POR INTERBLOQUEO!! en %s \n", hiloPxN->personaje.nivel);
+			hiloPxN->estado = MUERTE_PERSONAJE_XRECOVERY;
 			break;
 //		case MUERTE_POR_SIGKILL:
 //			break;
 //		case MUERTE_POR_SIGTERM:
 //			break;
-		default: log_info(LOGGER, "Motivo de muerte no valido"); break;
+		default: log_info(LOGGER, "\n\n Motivo de muerte no valido!! en %s\n", hiloPxN->personaje.nivel); break;
 	}
-	// TODO llamar funcion para reiniciar el juego
+
+	imprimirVidasyReintentos();
+
+	//TODO hacer lo necesario antes de morir
+	vidas = decrementarVida();
+
+	if (vidas >= 0) {
+		// TODO si todavia me quedan vidas, llamar funciones para reiniciar el nivel!
+
+		// reinicio contador de objetivos conseguidos a cero
+		hiloPxN->objetivosConseguidos = 0;
+
+		// seteo proximo objetivo
+		setearProximoObjetivo(proximoObjetivo, hiloPxN);
+
+		// Me desconecto de plataforma
+		close(*sock);
+		quitar_descriptor(*sock, master, maxDesc);
+
+		// Me vuelvo a conectar a plataforma para que me reciba el orquestador
+		log_info(LOGGER,"************** CONECTANDOSE A PLATAFORMA ***************\n");
+		conectar(personaje.ip_orquestador, personaje.puerto_orquestador, sock);
+		agregar_descriptor(*sock, master, maxDesc);
+
+		// y envio mensaje de nuevoPersonaje.
+		if (enviarMsjNuevoPersonaje(*sock, hiloPxN) != EXITO) {
+			return true;
+		}
+
+	} else {
+		// TODO que hago si no me quedan vidas???? FINALIZO EL HILO?
+		log_info(LOGGER, "\n\n YA NO ME QUEDAN VIDAS PARA CONTINUAR!!!! - personaje del %s \n", hiloPxN->personaje.nivel);
+		return true;
+	}
+
+	return false;
 
 }
 
