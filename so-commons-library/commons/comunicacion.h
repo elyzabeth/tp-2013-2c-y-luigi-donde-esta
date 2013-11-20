@@ -48,6 +48,7 @@
 #define MUERTE_PERSONAJE_XENEMIGO		0x28
 #define MUERTE_PERSONAJE_XRECOVERY		0x29
 #define NIVEL_INEXISTENTE		0x30
+#define PERSONAJE_DESBLOQUEADO	0x31
 
 
 
@@ -70,6 +71,7 @@ int aceptar_conexion(int *listener, int *nuevo_sock);
 
 int enviar_header (int sock, header_t *header);
 int recibir_header(int sock, header_t *header, fd_set *master/*por si se desconecta*/, int *seDesconecto);
+int recibir_header_simple(int sock, header_t *header);
 int enviar_nivel(int sock, t_nivel *nivel);
 int recibir_nivel(int sock, t_nivel *nivel, fd_set *master, int *seDesconecto);
 int enviar_personaje(int sock, t_personaje *personaje);

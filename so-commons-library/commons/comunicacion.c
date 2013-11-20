@@ -153,6 +153,27 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 
 }
 
+int recibir_header_simple(int sock, header_t *header)
+{
+	int ret;
+	char *buffer = NULL;
+
+	buffer = calloc(1, sizeof(header_t));
+
+	ret = recibir(sock, buffer, sizeof(header_t));
+
+	if (ret != EXITO)
+		return ret;
+
+	memset(header, '\0', sizeof(header_t));
+	memcpy(header, buffer, sizeof(header_t));
+
+	free(buffer);
+
+	return EXITO;
+
+}
+
 int enviar_nivel(int sock, t_nivel *nivel) {
 	int ret;
 	char *buffer_payload = calloc(1,sizeof(t_nivel));
