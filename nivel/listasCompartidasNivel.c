@@ -229,11 +229,12 @@ t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje) {
 }
 
 t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
+	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	t_personaje *personaje;
 	bool _remove_x_id (t_personaje *p) {
 		return (p->id == simboloPersonaje);
 	}
-	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+
 	personaje = list_remove_by_condition(listaPersonajesBloqueados, (void*)_remove_x_id);
 	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
 

@@ -53,6 +53,8 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 //	rnd(&x, MAXCOLS);
 //	rnd(&y, MAXROWS);
+	enemy->enemigo.posicionActual.x = 11;
+	enemy->enemigo.posicionActual.y = 16;
 	rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
 	rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
 

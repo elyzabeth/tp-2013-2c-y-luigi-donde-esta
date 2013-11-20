@@ -86,7 +86,7 @@ void principal ();
 
 void inicializarNivel ();
 void finalizarNivel ();
-void finalizarPersonajeNivel(t_personaje *personaje);
+void finalizarPersonajeNivel(int sock, t_personaje *personaje);
 int crearNotifyFD();
 int agregarFDPipeEscuchaEnemigo(fd_set *listaDesc, int *maxDesc);
 
@@ -110,6 +110,7 @@ void gui_borrarItem(char id);
 // funciones listas compartidas
 int32_t obternerCantPersonajesEnJuego();
 void moverPersonajeABloqueados(char simboloPersonaje);
+t_personaje* moverPersonajeAEnJuego(char simboloPersonaje);
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
 void agregarPersonajeABloqueadosNivel(t_personaje *personaje);
 void agregarPersonajeAFinalizadosNivel(t_personaje *personaje);
@@ -138,6 +139,9 @@ int enviarMsjPorPipe (int32_t fdPipe, char msj);
 int enviarMsjAInterbloqueo (char msj);
 int enviarMSJNuevoNivel(int sock);
 int enviarMsjCambiosConfiguracion(int sock);
+int enviarMsjRecursoConcedido (int sock, t_caja caja);
+int enviarMsjRecursoDenegado (int sock);
+int enviarMsjRecursoInexistente (int sock);
 int enviarMsjMuertexRecovery (int sock);
 int enviarMsjMuertexEnemigo (int sock);
 int tratarNuevoPersonaje(int sock, header_t header, fd_set *master);
