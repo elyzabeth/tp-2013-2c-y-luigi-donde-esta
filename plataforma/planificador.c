@@ -593,14 +593,20 @@ int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t
 	// Buscar en la cola de bloqueados al personaje que pidio el recurso.
 	personaje = moverPersonajeBloqueadoAListo(planner, caja.SIMBOLO);
 
-	if (personaje == NULL){
-		log_error(LOGGER, "\n\n%s WARNING recibirRecursoConcedido NO se encontro ningun personaje bloqueado por el recurso '%c'", planner->nivel.nombre, caja.SIMBOLO);
-		return WARNING;
+	if (personaje != NULL){
+		// Envio mensaje de recurso concedido al personaje
+		log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", personaje->recurso, personaje->nombre, personaje->nivel);
+		ret = enviar_header(personaje->fd, &header);
+		header.id[0] = personaje->id;
+
+	} else {
+		log_warning(LOGGER, "\n\n%s WARNING recibirRecursoConcedido NO se encontro ningun personaje bloqueado por el recurso '%c'", planner->nivel.nombre, caja.SIMBOLO);
+		header.id[0] = '\0';
 	}
 
-	// Envio mensaje de recurso concedido al personaje
-	log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", personaje->recurso, personaje->nombre, personaje->nivel);
-	ret = enviar_header(personaje->fd, &header);
+	// TODO informo al nivel el personaje que se desbloqueo???
+	header.tipo = PERSONAJE_DESBLOQUEADO;
+	ret = enviar_header(planner->nivel.fdSocket, &header);
 
 	return ret;
 }
