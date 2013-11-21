@@ -99,37 +99,43 @@ void principal () {
 							switch(header.tipo) {
 
 								case NIVEL_CONECTADO:
-									log_info(LOGGER, "Llego mensaje NIVEL_CONECTADO (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' NIVEL_CONECTADO (fd:%d)", header.tipo, i);
 									break;
 
 								case NUEVO_PERSONAJE:
-									log_info(LOGGER, "Llego mensaje NUEVO_PERSONAJE (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' NUEVO_PERSONAJE (fd:%d)", header.tipo, i);
 									tratarNuevoPersonaje(i, header, &master);
 									break;
 
 								case SOLICITUD_UBICACION:
-									log_info(LOGGER, "Llego mensaje SOLICITUD_UBICACION (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' SOLICITUD_UBICACION (fd:%d)", header.tipo, i);
 									tratarSolicitudUbicacion(i, header, &master);
 									break;
 
 								case SOLICITUD_RECURSO:
-									log_info(LOGGER, "Llego mensaje SOLICITUD_RECURSO (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' SOLICITUD_RECURSO (fd:%d)", header.tipo, i);
 									tratarSolicitudRecurso(i, header, &master);
 									break;
 
 								case MOVIMIENTO_REALIZADO:
-									log_info(LOGGER, "Llego mensaje MOVIMIENTO_REALIZADO (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' MOVIMIENTO_REALIZADO (fd:%d)", header.tipo, i);
 									tratarMovimientoRealizado(i, header, &master);
 									break;
 
 								case PLAN_NIVEL_FINALIZADO:
-									log_info(LOGGER, "Llego mensaje PLAN_NIVEL_FINALIZADO (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' PLAN_NIVEL_FINALIZADO (fd:%d)", header.tipo, i);
 									tratarPlanNivelFinalizado (i, header, &master);
 									break;
 
 								case MUERTE_PERSONAJE:
-									log_info(LOGGER, "Llego mensaje MUERTE_PERSONAJE (fd:%d)", i);
+									log_info(LOGGER, "Llego mensaje '%d' MUERTE_PERSONAJE (fd:%d)", header.tipo, i);
 									tratarMuertePersonaje (i, header, &master);
+									break;
+
+								case PERSONAJE_DESBLOQUEADO:
+									log_info(LOGGER, "Llego mensaje '%d' PERSONAJE_DESBLOQUEADO (fd:%d)", header.tipo, i);
+									// TODO HACER ALGO CON ESTE MENSAJE??
+									desbloquearPersonaje(i, header, &master);
 									break;
 
 								default: log_error(LOGGER, "Llego mensaje '%d' NO RECONOCIDO (fd:%d)", header.tipo, i);

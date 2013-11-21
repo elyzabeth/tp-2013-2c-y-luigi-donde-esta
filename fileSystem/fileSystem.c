@@ -307,6 +307,23 @@ static int grasa_mkdir (const char *path, mode_t mode) {
 	return 0;
 }
 
+/** File open operation
+ *
+ * No creation (O_CREAT, O_EXCL) and by default also no
+ * truncation (O_TRUNC) flags will be passed to open(). If an
+ * application specifies O_TRUNC, fuse first calls truncate()
+ * and then open(). Only if 'atomic_o_trunc' has been
+ * specified and kernel version is 2.6.24 or later, O_TRUNC is
+ * passed on to open.
+ *
+ * Unless the 'default_permissions' mount option is given,
+ * open should check if the operation is permitted for the
+ * given flags. Optionally open may also return an arbitrary
+ * filehandle in the fuse_file_info structure, which will be
+ * passed to all file operations.
+ *
+ * Changed in version 2.2
+ */
 static int grasa_open(const char *path, struct fuse_file_info *fi)
 {
 //	GFile *fileNode;
@@ -321,7 +338,7 @@ static int grasa_open(const char *path, struct fuse_file_info *fi)
 
 	log_debug(LOGGER, "grasa_open: %s", path);
 
-	if ((fi->flags & 3) != O_RDONLY)
+	if ((fi->flags & 3) == O_RDONLY )
 		return -EACCES;
 
 	return 0;
@@ -362,6 +379,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 static int grasa_mknod (const char *path, mode_t mode, dev_t dev){
 	log_debug(LOGGER, "grasa_mknod: %s", path);
+
 	return 0;
 }
 

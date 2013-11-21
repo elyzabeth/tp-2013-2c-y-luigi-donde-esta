@@ -241,6 +241,23 @@ t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
 	return personaje;
 }
 
+t_personaje* actualizarPosicionPJEnjuego(char idPersonaje, t_posicion posicion) {
+
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	t_personaje *personaje;
+	bool _busca_x_id (t_personaje *p) {
+		return (p->id == idPersonaje);
+	}
+	personaje = list_find(listaPersonajesEnJuego, (void*)_busca_x_id);
+
+	if (personaje != NULL)
+		personaje->posActual = posicion;
+
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+
+	return personaje;
+}
+
 t_queue* clonarListaPersonajesEnNivel() {
 
 	pthread_mutex_lock (&mutexListaPersonajesEnNivel);

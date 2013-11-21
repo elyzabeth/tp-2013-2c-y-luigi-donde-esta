@@ -22,7 +22,7 @@ int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
 void* enemigo (t_hiloEnemigo *enemy);
 int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 
-void checarPosicionPersonajes(t_hiloEnemigo *enemy);
+void verificarPosicionPersonajes(t_hiloEnemigo *enemy);
 
 //t_posicion posProhibidas array[]
 
@@ -65,8 +65,9 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 		FD_ZERO (&read_fds);
 		read_fds = master;
-		timeout.tv_sec = sleepEnemigos * 0.001; /// retardo en segundos timeout
-		timeout.tv_usec = 0; //retardo en microsegundos timeout
+		//timeout.tv_sec = sleepEnemigos * 0.001;
+		timeout.tv_sec = 0; // timeout en segundos
+		timeout.tv_usec = sleepEnemigos * 1000; //timeout en microsegundos
 
 		ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout);
 		if(ret == -1) {
@@ -84,7 +85,7 @@ void* enemigo (t_hiloEnemigo *enemy) {
 			rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
 			rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
 
-			checarPosicionPersonajes(enemy);
+			verificarPosicionPersonajes(enemy);
 
 			//gui_moverPersonaje(id, x, y );
 			gui_moverPersonaje(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y);
@@ -120,7 +121,7 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	pthread_exit(NULL);
 }
 
-void checarPosicionPersonajes(t_hiloEnemigo *enemy) {
+void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
 
@@ -128,6 +129,7 @@ void checarPosicionPersonajes(t_hiloEnemigo *enemy) {
 	int i;
 
 	void _comparaCoordPJEnemigo(t_personaje *p) {
+		log_info(LOGGER, " checarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
 		if (calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) == 0)
 		{
 			enviarMsjPorPipe(enemy->fdPipeE2N[1], MUERTE_PERSONAJE_XENEMIGO);

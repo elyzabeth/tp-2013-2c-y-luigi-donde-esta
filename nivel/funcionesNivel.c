@@ -100,7 +100,7 @@ void agregarEnemigos() {
 
 		// Creo el hilo para el enemigo
 		pthread_create (&enemy->tid, NULL, (void*) enemigo, (t_hiloEnemigo*)enemy);
-		log_info(LOGGER, "agregarEnemigos: idHiloEnemigo: %u", enemy->tid);
+		log_debug(LOGGER, "agregarEnemigos: idHiloEnemigo: %u", enemy->tid);
 		list_add(listaEnemigos, enemy);
 		idEnemigo++;
 	}
@@ -166,12 +166,46 @@ void inicializarNivel () {
 
 }
 
+int desbloquearPersonaje (int sock, header_t header, fd_set *master) {
+	t_personaje *pjDesbloqueado = NULL;
+	t_caja *recurso = NULL;
+	int ret = 0;
+
+	// Me llega en el header la info: id[0]=idPersonaje, id[1]=simboloRecurso id[2]='S'/'\0'(decrementarInstancias)
+	log_info(LOGGER, "\n\ndesbloquearPersonaje: %c por recurso: %c \n\n", header.id[0], header.id[1]);
+
+	recurso = obtenerRecurso(header.id[1]);
+
+	if ( header.id[0] != '\0' ) {
+		pjDesbloqueado = moverPersonajeAEnJuego(header.id[0]);
+
+		if (pjDesbloqueado == NULL)
+			return ret;
+
+		pjDesbloqueado->recurso = recurso->SIMBOLO;
+
+
+		// TODO agregar recurso asignado al listado de recursos por personaje
+		incrementarRecursoxPersonaje(pjDesbloqueado, pjDesbloqueado->recurso);
+
+		// NO Decremento el recurso concedido eso lo hice en tratarSolicitudRecurso
+		//  a menos que el desbloqueo sea por liberacion de recursos en ese caso debo decrementar
+		if (header.id[2] == 'S') {
+			recurso->INSTANCIAS--;
+			gui_restarRecurso(recurso->SIMBOLO);
+			gui_dibujar();
+		}
+	}
+
+	return ret;
+}
+
 int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 	t_vecRecursos *vec;
 	t_caja *recurso;
 	t_caja caja;
-	header_t header;
-	t_personaje *pjDesbloqueado = NULL;
+	//header_t header;
+	//t_personaje *pjDesbloqueado = NULL;
 	int i, ret;
 
 	log_info(LOGGER, "%s Liberando recursos del personaje %s", NOMBRENIVEL, personaje->nombre);
@@ -192,21 +226,21 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 		recurso->INSTANCIAS++;
 
 		// informo al planificador los recursos liberados
-		if ( (ret=enviarMsjRecursoConcedido(sock, caja)) != EXITO ) {
-			log_error(LOGGER,"%s liberarRecursosPersonaje: ERROR al enviar Msj Recurso Concedido\n\n", NOMBRENIVEL);
+		if ( (ret=enviarMsjRecursoLiberado(sock, caja)) != EXITO ) {
+			log_error(LOGGER,"%s liberarRecursosPersonaje: ERROR al llamar la funcion enviarMsjRecursoLiberado \n\n", NOMBRENIVEL);
 		}
 
-		ret = recibir_header_simple(sock, &header);
-		if ( ret == EXITO && header.tipo == PERSONAJE_DESBLOQUEADO && header.id[0] != '\0' ) {
-			pjDesbloqueado = moverPersonajeAEnJuego(header.id[0]);
-			pjDesbloqueado->recurso = recurso->SIMBOLO;
-
-			// TODO agregar recurso asignado al listado de recursos por personaje
-			recurso->INSTANCIAS--;
-			incrementarRecursoxPersonaje(pjDesbloqueado, pjDesbloqueado->recurso);
-			gui_restarRecurso(recurso->SIMBOLO);
-			gui_dibujar();
-		}
+		//ret = recibir_header_simple(sock, &header);
+//		if ( ret == EXITO && header.tipo == PERSONAJE_DESBLOQUEADO && header.id[0] != '\0' ) {
+//			pjDesbloqueado = moverPersonajeAEnJuego(header.id[0]);
+//			pjDesbloqueado->recurso = recurso->SIMBOLO;
+//
+//			// TODO agregar recurso asignado al listado de recursos por personaje
+//			recurso->INSTANCIAS--;
+//			incrementarRecursoxPersonaje(pjDesbloqueado, pjDesbloqueado->recurso);
+//			gui_restarRecurso(recurso->SIMBOLO);
+//			gui_dibujar();
+//		}
 
 	}
 
@@ -510,6 +544,31 @@ int enviarMsjCambiosConfiguracion(int sock) {
 	return ret;
 }
 
+
+int enviarMsjRecursoLiberado (int sock, t_caja caja) {
+	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = RECURSO_LIBERADO;
+	header.largo_mensaje = sizeof(t_caja);
+
+	log_info(LOGGER, "%s enviarMsjRecursoLiberado: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, sock, sizeof(header), header.largo_mensaje);
+
+	if ((ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"%s enviarMsjRecursoLiberado: Error al enviar header RECURSO_LIBERADO\n\n", NOMBRENIVEL);
+		return WARNING;
+	}
+
+	if ((ret = enviar_caja(sock, &caja)) != EXITO) {
+		log_error(LOGGER,"%s enviarMsjRecursoLiberado: ERROR al enviar t_caja de RECURSO_LIBERADO\n\n", NOMBRENIVEL);
+	}
+
+	return ret;
+}
+
+
 int enviarMsjRecursoConcedido (int sock, t_caja caja) {
 	int ret;
 	header_t header;
@@ -736,9 +795,10 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	}
 
 	log_debug(LOGGER,"%s tratarSolicitudRecurso: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
+	moverPersonajeABloqueados(personaje.id);
+
 	recurso = obtenerRecurso(personaje.recurso);
 
-	//initHeader(&header);
 	if (recurso->INSTANCIAS > 0) {
 
 		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_CONCEDIDO");
@@ -749,7 +809,7 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 		enviarMsjRecursoConcedido(sock, caja);
 
 		recurso->INSTANCIAS--;
-		incrementarRecursoxPersonaje(&personaje, personaje.recurso);
+		//incrementarRecursoxPersonaje(&personaje, personaje.recurso);
 		gui_restarRecurso(recurso->SIMBOLO);
 		gui_dibujar();
 
@@ -758,7 +818,6 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 		log_info(LOGGER, "tratarSolicitudRecurso: RECURSO_DENEGADO");
 
 		enviarMsjRecursoDenegado(sock);
-		moverPersonajeABloqueados(personaje.id);
 	}
 
 	return ret;
@@ -778,6 +837,10 @@ int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 
 	log_debug(LOGGER, "%s Movimiento realizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
 	//log_debug(LOGGER, "%s GUIITEMS: %d", NOMBRENIVEL, list_size(GUIITEMS));
+
+	// Actualizar posicion de personaje en lista compartida.
+	actualizarPosicionPJEnjuego(personaje.id, personaje.posActual);
+
 	gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 
 	return ret;
