@@ -19,6 +19,8 @@ t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX,
 	nuevoPersonaje->fd = fd;
 	strcpy(nuevoPersonaje->nivel, nivel);
 	nuevoPersonaje->recurso = '\0';
+	nuevoPersonaje->criterio = 0;
+	nuevoPersonaje->rd = 0;
 
 	return nuevoPersonaje;
 }
@@ -36,6 +38,7 @@ t_personaje* crearPersonajeDesdePersonaje (t_personaje personaje) {
 	nuevoPersonaje->fd = personaje.fd;
 	nuevoPersonaje->recurso = personaje.recurso;
 	nuevoPersonaje->criterio = personaje.criterio;
+	nuevoPersonaje->rd = personaje.rd;
 
 	return nuevoPersonaje;
 }
@@ -60,6 +63,16 @@ t_personaje* crearPersonajeVacio () {
 
 void initPersonje(t_personaje *personaje) {
 	memset(personaje, '\0', sizeof(t_personaje));
+}
+
+void reiniciarPersonje(t_personaje *personaje) {
+
+	personaje->posActual.x = 0;
+	personaje->posActual.y = 0;
+	personaje->fd = 0;
+	personaje->recurso = '-';
+	personaje->criterio = 0;
+	personaje->rd = 0;
 }
 
 /**

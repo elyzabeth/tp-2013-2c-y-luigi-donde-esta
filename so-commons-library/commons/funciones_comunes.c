@@ -25,7 +25,7 @@ int cambiar_nombre_proceso(char **argv,int argc,char *nombre) {
  * Recibe las coordenadas del punto y del objetivo
  */
 int32_t calcularDistancia (int32_t posX, int32_t posY, int32_t objX, int32_t objY) {
-	return abs((objX+objY)-(posX+posY));
+	return abs((objX-posX)) + abs((objY-posY));
 }
 
 int32_t calcularDistanciaCoord (t_posicion pos1, t_posicion pos2) {
