@@ -540,6 +540,13 @@ int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_
 	if (vidas >= 0) {
 		// TODO si todavia me quedan vidas, llamar funciones para reiniciar el nivel!
 
+		// reinicio posicion actual a (0,0) y recurso a '-'
+//		hiloPxN->personaje.posActual.x = 0;
+//		hiloPxN->personaje.posActual.y = 0;
+//		hiloPxN->personaje.recurso = '-';
+		reiniciarPersonje(&(hiloPxN->personaje));
+
+
 		// reinicio contador de objetivos conseguidos a cero
 		hiloPxN->objetivosConseguidos = 0;
 
