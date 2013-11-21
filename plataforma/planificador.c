@@ -22,6 +22,7 @@ int recibirSolicitudUbicacion(int fdPersonaje, header_t header, fd_set *master, 
 int recibirUbicacionRecursoNivel( header_t header, fd_set *master, t_planificador *planner );
 int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
+int recibirRecursoLiberado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoDenegado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoInexistente( header_t header, fd_set *master, t_planificador *planner );
@@ -116,7 +117,7 @@ void* planificador(t_planificador *planner) {
 					} else {
 						// si NO es un mensaje de plataforma puede ser un nivel o un personaje
 
-						log_info(LOGGER, "PLANIFICADOR %s: NUEVO MENSAJE en socket %d", planner->nivel.nombre, i);
+						log_debug(LOGGER, "PLANIFICADOR %s: NUEVO MENSAJE en socket %d", planner->nivel.nombre, i);
 						initHeader(&header);
 						recibir_header(i, &header, &master, &se_desconecto);
 
@@ -183,6 +184,10 @@ void* planificador(t_planificador *planner) {
 
 							case RECURSO_DENEGADO: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_DENEGADO", planner->nivel.nombre);
 								recibirRecursoDenegado(i, header, &master, planner);
+								break;
+
+							case RECURSO_LIBERADO: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_LIBERADO", planner->nivel.nombre);
+								recibirRecursoLiberado(i, header, &master, planner);
 								break;
 
 							case RECURSO_INEXISTENTE: log_info(LOGGER, "PLANIFICADOR %s: RECURSO_INEXISTENTE", planner->nivel.nombre);
@@ -327,7 +332,7 @@ t_personaje* quitarPersonajeColaxFD(t_queue *colaPersonajes, int32_t fdPersonaje
 
 t_personaje* moverPersonajeListoABloqueado( t_planificador *planner, char idPersonaje ) {
 	t_personaje *personaje;
-	log_info(LOGGER, "moverPersonajeListoABloqueado '%s': '%c'", planner->nivel.nombre, idPersonaje);
+	log_debug(LOGGER, "moverPersonajeListoABloqueado '%s': '%c'", planner->nivel.nombre, idPersonaje);
 
 	personaje = quitarPersonajeColaxId(planner->personajesListos, idPersonaje);
 	if (NULL != personaje) {
@@ -342,7 +347,7 @@ t_personaje* moverPersonajeListoABloqueado( t_planificador *planner, char idPers
 
 t_personaje* moverPersonajeBloqueadoAListo( t_planificador *planner, char simboloRecurso ) {
 	t_personaje *personaje;
-	log_info(LOGGER, "moverPersonajeBloqueadoAListo '%s': '%c'", planner->nivel.nombre, simboloRecurso);
+	log_debug(LOGGER, "moverPersonajeBloqueadoAListo '%s': '%c'", planner->nivel.nombre, simboloRecurso);
 
 	personaje = quitarPersonajeColaxRecurso(planner->personajesBloqueados, simboloRecurso);
 	if (NULL != personaje) {
@@ -387,20 +392,24 @@ t_personaje* proximoPersonajeRR(t_planificador *planner) {
 	return personaje;
 }
 
+/**
+ *  Shortest Remaining Distance First - Algoritmo no-expropiativo de planificación que define que el
+ * próximo personaje a ser planificado es aquel cuya distancia total al siguiente recurso es más corta.
+*/
 t_personaje* proximoPersonajeSRDF(t_planificador *planner) {
 	t_personaje *personaje=NULL, *aux=NULL;
-	int32_t i, rd = 1000;
+	int32_t i, srd = 1000;
 
 	// TODO falta agregar elegir personaje segun SRDF (no-expropiativo)
 	for(i=0; i < queue_size(planner->personajesListos); i++) {
 		aux = queue_pop(planner->personajesListos);
 		queue_push(planner->personajesListos, aux);
-		if (aux->criterio < rd) {
+		if (aux->rd < srd) {
 			personaje = aux;
-			rd = aux->criterio;
+			srd = aux->rd;
 		}
 	}
-
+	personaje->criterio = personaje->rd;
 	return personaje;
 }
 
@@ -458,9 +467,9 @@ int recibirUbicacionRecursoNivel( header_t header, fd_set *master, t_planificado
 
 	log_debug(LOGGER, "recibirUbicacionRecurso: Llego: %s (%c) posicion (%d, %d).", caja.RECURSO, caja.SIMBOLO, caja.POSX, caja.POSY);
 
-	// TODO actualizar valor criterio si es SRDF
-	if (strcasecmp(planner->nivel.algoritmo, "SRDF") == 0)
-		planner->personajeEjecutando->criterio = calcularDistancia(planner->personajeEjecutando->posActual.x,planner->personajeEjecutando->posActual.y, caja.POSX, caja.POSY);
+	// TODO actualizar valor rd (remaining distance)
+	//if (strcasecmp(planner->nivel.algoritmo, "SRDF") == 0)
+	planner->personajeEjecutando->rd = calcularDistancia(planner->personajeEjecutando->posActual.x,planner->personajeEjecutando->posActual.y, caja.POSX, caja.POSY);
 
 	// Enviar Ubicacion al personaje en Juego...
 	ret = enviar_header(planner->personajeEjecutando->fd, &header);
@@ -565,7 +574,7 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 	ret = recibir_personaje(fdPersonaje, &personaje, master, &se_desconecto);
 	log_debug(LOGGER, "PLANIFICADOR %s: recibirMovimientoRealizado: Llego: %s (%c) al %s recurso: '%c' se movio a posicion (%d, %d)", planner->nivel.nombre, personaje.nombre, personaje.id, personaje.nivel, personaje.recurso, personaje.posActual.x, personaje.posActual.y);
 
-	// TODO hacer algo con la info que llega!
+	// Cuando llega el MSJ de MOVIMIENTO_REALIZADO le resto 1 "quantum" y actualizo su posicion
 	if (planner->personajeEjecutando->id == personaje.id) {
 		planner->personajeEjecutando->posActual = personaje.posActual;
 		planner->personajeEjecutando->criterio--;
@@ -576,6 +585,11 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 
 	return ret;
 
+}
+
+int recibirRecursoLiberado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
+	header.id[2] = 'S';
+	return recibirRecursoConcedido ( fdPersonaje, header, master, planner );
 }
 
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
@@ -593,19 +607,21 @@ int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t
 	// Buscar en la cola de bloqueados al personaje que pidio el recurso.
 	personaje = moverPersonajeBloqueadoAListo(planner, caja.SIMBOLO);
 
-	if (personaje != NULL){
-		// Envio mensaje de recurso concedido al personaje
-		log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", personaje->recurso, personaje->nombre, personaje->nivel);
-		ret = enviar_header(personaje->fd, &header);
-		header.id[0] = personaje->id;
-
-	} else {
+	if (personaje == NULL){
 		log_warning(LOGGER, "\n\n%s WARNING recibirRecursoConcedido NO se encontro ningun personaje bloqueado por el recurso '%c'", planner->nivel.nombre, caja.SIMBOLO);
-		header.id[0] = '\0';
+		return WARNING;
 	}
+
+	// Envio mensaje de recurso concedido al personaje
+	log_debug(LOGGER, "recibirRecursoConcedido: Enviando mensaje de RECURSO_CONCEDIDO '%c' al personaje %s del nivel %s", personaje->recurso, personaje->nombre, personaje->nivel);
+	ret = enviar_header(personaje->fd, &header);
 
 	// TODO informo al nivel el personaje que se desbloqueo???
 	header.tipo = PERSONAJE_DESBLOQUEADO;
+	header.id[0] = personaje->id;
+	header.id[1] = personaje->recurso;
+	header.largo_mensaje = 0;
+
 	ret = enviar_header(planner->nivel.fdSocket, &header);
 
 	return ret;

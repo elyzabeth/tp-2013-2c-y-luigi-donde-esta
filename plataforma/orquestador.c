@@ -246,7 +246,7 @@ void nuevoPersonaje(int fdPersonaje, fd_set *master, int *max_desc) {
 			log_debug(LOGGER, "nuevoPersonaje: Llego: %s, %c, %s", personaje->nombre, personaje->id, personaje->nivel);
 			personaje->fd = fdPersonaje;
 			// Cuando se conecta un personaje nuevo le asigno RD por default para SRDF
-			personaje->criterio = configPlatRemainingDistance();
+			personaje->rd = configPlatRemainingDistance();
 
 			// Verifico si existe el nivel solicitado y su estado
 			if ( existeNivel(personaje->nivel) && (obtenerEstadoNivel(personaje->nivel) == CORRIENDO)) {
