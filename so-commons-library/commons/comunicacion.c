@@ -84,7 +84,8 @@ int conectar(char ip[15+1], int puerto, int *sock)
 int aceptar_conexion(int *listener, int *nuevo_sock)
 {
 	struct sockaddr_in dirRemota;
-	size_t dirLong;
+	//size_t dirLong;
+	socklen_t dirLong;
 	dirLong = sizeof(dirRemota);
 
 	if ((*nuevo_sock = accept(*listener, (struct sockaddr *)&dirRemota, &dirLong)) == -1)

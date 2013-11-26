@@ -48,7 +48,7 @@ typedef struct personaje_s
 typedef struct hilo {
 	t_personaje personaje;
 	t_objetivosxNivel objetivos;
-	int32_t tid;
+	pthread_t tid;
 	int32_t fdPipe[2];
 } t_hilo_personaje;
 
