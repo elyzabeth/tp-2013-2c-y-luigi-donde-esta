@@ -8,6 +8,8 @@
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
 
+#define FUSE_USE_VERSION 26
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +29,7 @@
 #include "commons/log.h"
 #include "commons/string.h"
 
-#define FUSE_USE_VERSION 26
+
 
 #define GFILEBYTABLE 1024
 #define GFILEBYBLOCK 1

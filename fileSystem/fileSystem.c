@@ -44,6 +44,24 @@ void mapearDatos (int fd) {
 }
 
 
+GFile* getGrasaChildNode (const char *path, uint8_t tipo, int *posicion, int nroBloquePadre) {
+	int i, encontrado=-1;
+	char *subpath = strrchr(path, '/');
+
+	for(i=0; i < 1024 && encontrado < 0; i++) {
+		if (strcmp(subpath+1, NODOS[i]->fname) == 0 && NODOS[i]->state == tipo && NODOS[i]->parent_dir_block == nroBloquePadre) {
+			encontrado = i;
+		}
+	}
+
+	*posicion = encontrado;
+
+	if (encontrado == -1)
+		return NULL;
+
+	return NODOS[encontrado];
+}
+
 GFile* getGrasaNode (const char *path, uint8_t tipo, int *posicion) {
 	int i, encontrado=-1;
 	char *subpath = strrchr(path, '/');
@@ -147,17 +165,28 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	GFile *NodoPadre;
 	char *pathCopia = strdup(path);
 	char **subpath = string_split(pathCopia, "/");
+	char *tree[50];
+	int level=0, bloquePadre=0, pos;
 
 	Nodo = buscarPrimerNodoLibre(&posicion);
 	int i=0;
 
 	void _getParentBlkNumber(char *dir) {
 		int pos;
-		NodoPadre = getGrasaDirNode(dir, &pos);
-		log_debug(LOGGER, " %d )crearNuevoNodo: %s", i++, dir);
+		tree[level++] = dir;
+		//NodoPadre = getGrasaDirNode(dir, &pos);
+		log_debug(LOGGER, " %d ) crearNuevoNodo: %s", i++, dir);
 	}
 
 	string_iterate_lines(subpath, _getParentBlkNumber);
+
+	for(i =0; i < level-1; i++){
+		NodoPadre = getGrasaChildNode(tree[i], DIRECTORIO, &pos, bloquePadre);
+		if (NodoPadre != NULL)
+			bloquePadre = pos+1;
+	}
+
+	// TODO SI no existe el directorio del archivo lo creo??
 
 
 	string_iterate_lines(subpath, (void*) free);
@@ -338,8 +367,8 @@ static int grasa_open(const char *path, struct fuse_file_info *fi)
 
 	log_debug(LOGGER, "grasa_open: %s", path);
 
-	if ((fi->flags & 3) == O_RDONLY )
-		return -EACCES;
+//	if ((fi->flags & 3) == O_RDONLY )
+//		return -EACCES;
 
 	return 0;
 }
@@ -352,7 +381,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 	(void) fi;
 	int posicion;
-	size_t len;
+	//size_t len;
 	GFile *fileNode;
 	size_t copiado = 0;
 
@@ -362,7 +391,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 		return -ENOENT;
 	}
 
-	len = fileNode->file_size;
+	//len = fileNode->file_size;
 
 	log_info(LOGGER, "\n\ngrasa_read: LLega: offset %ld - size: %u - size: %zu", offset, size, size);
 
@@ -376,6 +405,11 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 }
 
+int grasa_truncate (const char *path, off_t offset) {
+	log_debug(LOGGER, "grasa_truncate: %s", path);
+	return 0;
+}
+
 
 static int grasa_mknod (const char *path, mode_t mode, dev_t dev){
 	log_debug(LOGGER, "grasa_mknod: %s", path);
@@ -385,10 +419,13 @@ static int grasa_mknod (const char *path, mode_t mode, dev_t dev){
 
 int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
 	log_debug(LOGGER, "grasa_create: %s", path);
+	crearNuevoNodo(path, fi);
+	//int bloque_padre = 0;
+
 	return 0;
 }
 
-//int grasa_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+
 static int grasa_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	pthread_mutex_lock (&mutexGrasaWrite);
 	int posicion;
@@ -425,7 +462,8 @@ static struct fuse_operations grasa_oper = {
 		.mkdir = grasa_mkdir,
 		.open=grasa_open,
 		.write = grasa_write,
-		.mknod=grasa_mknod
+		.mknod=grasa_mknod,
+		.truncate = grasa_truncate
 		//.destroy = grasa_destroy
 };
 
