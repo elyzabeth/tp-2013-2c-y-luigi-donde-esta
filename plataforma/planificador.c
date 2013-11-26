@@ -578,6 +578,7 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 	if (planner->personajeEjecutando->id == personaje.id) {
 		planner->personajeEjecutando->posActual = personaje.posActual;
 		planner->personajeEjecutando->criterio--;
+		planner->personajeEjecutando->rd--;
 	}
 
 	// Enviar MovimientoRealizado al NIVEL...
