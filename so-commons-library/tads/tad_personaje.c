@@ -19,6 +19,8 @@ t_personaje* crearPersonaje (char nombre[MAXLENNOMBRE+1], char id, int32_t posX,
 	nuevoPersonaje->fd = fd;
 	strcpy(nuevoPersonaje->nivel, nivel);
 	nuevoPersonaje->recurso = '\0';
+	nuevoPersonaje->criterio = 0;
+	nuevoPersonaje->rd = 0;
 
 	return nuevoPersonaje;
 }
@@ -36,6 +38,7 @@ t_personaje* crearPersonajeDesdePersonaje (t_personaje personaje) {
 	nuevoPersonaje->fd = personaje.fd;
 	nuevoPersonaje->recurso = personaje.recurso;
 	nuevoPersonaje->criterio = personaje.criterio;
+	nuevoPersonaje->rd = personaje.rd;
 
 	return nuevoPersonaje;
 }
@@ -62,6 +65,16 @@ void initPersonje(t_personaje *personaje) {
 	memset(personaje, '\0', sizeof(t_personaje));
 }
 
+void reiniciarPersonje(t_personaje *personaje) {
+
+	personaje->posActual.x = 0;
+	personaje->posActual.y = 0;
+	personaje->fd = 0;
+	personaje->recurso = '-';
+	personaje->criterio = 0;
+	personaje->rd = 0;
+}
+
 /**
  * @NAME: destruirPersonaje
  * @DESC: libera el espacio resservado para el personaje
@@ -71,7 +84,7 @@ void destruirPersonaje (t_personaje * personaje){
 }
 
 void imprimirPersonaje (t_personaje* p, t_log *LOGGER) {
-	log_info(LOGGER, "\r- %s -> Personaje: '%s' - simbolo: '%c' - recurso: '%c' - posicion: (%d, %d) - socket: '%d' - ", p->nivel, p->nombre, p->id, p->recurso, p->posActual.x,p->posActual.y, p->fd);
+	log_info(LOGGER, "\r- %s -> Personaje: '%s' ('%c') - recurso: '%c' - posicion: (%d, %d) - socket: '%d' - ", p->nivel, p->nombre, p->id, p->recurso, p->posActual.x,p->posActual.y, p->fd);
 }
 
 

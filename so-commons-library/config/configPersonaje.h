@@ -35,6 +35,9 @@ typedef struct {
 void levantarArchivoConfiguracionPersonaje ();
 void destruirConfigPersonaje ();
 
+t_objetivosxNivel* crearObjetivosxNivel();
+void destruirObjetivosxNivel(t_objetivosxNivel *objxniv);
+
 const char * configPersonajeNombre();
 char configPersonajeSimbolo();
 int32_t configPersonajeVidas();
