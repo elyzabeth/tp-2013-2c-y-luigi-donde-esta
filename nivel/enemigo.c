@@ -4,11 +4,13 @@
  * Created on: Oct 11, 2013
  * Author: elizabeth
  */
-#include <stdlib.h>
-#include <time.h>
+
+//#include <stdlib.h>
+//#include "tads/tad_enemigo.h"
+//#include <commons/collections/list.h>
+
 #include "funcionesNivel.h"
-#include "tads/tad_enemigo.h"
-#include <commons/collections/list.h>
+
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo);
 void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo,int32_t* posX,int32_t* posY);
 t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
@@ -21,9 +23,10 @@ void* enemigo (t_hiloEnemigo *enemy);
 int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 t_dictionary *listaPosicionesProhibidas;
 
+void verificarPosicionPersonajes(t_hiloEnemigo *enemy);
 //t_posicion posProhibidas array[]
 
-
+t_dictionary* listaPosicionesProhibidas; // = configNivelRecursos();
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -34,11 +37,9 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	fd_set read_fds;
 	int max_desc = 0;
 	int i, ret;
-	int x=10, y=15, j=5, k=5, t=0;
+	//int x=10, y=15;
 	int fin = false;
 	struct timeval timeout;
-
-
 
 	log_info(LOGGER, "Enemigo '%c' Iniciado.", id);
 
@@ -50,20 +51,26 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	// Agrego descriptor del Pipe con Nivel.
 	agregar_descriptor(enemy->fdPipe[0], &master, &max_desc);
 
-	rnd(&x, MAXCOLS);
-	rnd(&y, MAXROWS);
-	gui_crearEnemigo(id, x, y);
+//	rnd(&x, MAXCOLS);
+//	rnd(&y, MAXROWS);
+	enemy->enemigo.posicionActual.x = (enemy->tid)%MAXCOLS;
+	enemy->enemigo.posicionActual.y = (enemy->tid)%MAXROWS;
+
+	rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
+	rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
+
+	enemy->enemigo.posicionEleSiguiente.x = enemy->enemigo.posicionActual.x;
+	enemy->enemigo.posicionEleSiguiente.y = enemy->enemigo.posicionActual.y;
+
+	gui_crearEnemigo(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y);
 	gui_dibujar();
-	// PARA QUE EL ENEMIGO INICIE EN POSICION RANDOM
-	enemy->enemigo.posicionActual.x = x;
-	enemy->enemigo.posicionActual.y = y;
 
 	while (!fin) {
-
 		FD_ZERO (&read_fds);
 		read_fds = master;
-		timeout.tv_sec = sleepEnemigos * 0.001; /// retardo en segundos timeout
-		timeout.tv_usec = 0; //retardo en microsegundos timeout
+		//timeout.tv_sec = sleepEnemigos * 0.001;
+		timeout.tv_sec = 0; // timeout en segundos
+		timeout.tv_usec = sleepEnemigos * 1000; //timeout en microsegundos
 
 		ret = select(max_desc+1, &read_fds, NULL, NULL, &timeout);
 		if(ret == -1) {
@@ -76,17 +83,19 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 			//TODO agregar logica del enemigo
 			// Cambiar este movimiento aleatorio por el que corresponde
+//			rnd(&x, MAXCOLS);
+//			rnd(&y, MAXROWS);
 
-			if (t == 0){
-			estimarMovimientoL(enemy, &j, &k);
-				t=5;}
-			moverDeUnoHacia(enemy, &j, &k); // TEST --- OK
-			//enemy->enemigo.posicionActual.x = j;
-			//enemy->enemigo.posicionActual.y = k;
-			//gui_moverPersonaje(id, j,k);
-			gui_moverPersonaje(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y );
+//			rnd(&(enemy->enemigo.posicionActual.x), MAXCOLS);
+//			rnd(&(enemy->enemigo.posicionActual.y), MAXROWS);
+
+			moverEnemigo(enemy);
+
+			verificarPosicionPersonajes(enemy);
+
+			//gui_moverPersonaje(id, x, y );
+			gui_moverPersonaje(id, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y);
 			gui_dibujar();
-			t--;
 
 		}
 		if (ret > 0) {
@@ -118,64 +127,101 @@ void* enemigo (t_hiloEnemigo *enemy) {
 	pthread_exit(NULL);
 }
 
+void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
+	pthread_mutex_lock (&mutexListaPersonajesJugando);
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
 
+	t_personaje *personaje;
+	int i;
 
-//SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
-void moverEnemigo(t_hiloEnemigo* hiloEnemigo){
-	int32_t *posX=0, *posY=0, px, py;
-	t_personaje PJ;
-	t_posicion posicionPJ, posicionNueva;
-	int posValida=0;
-	if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
-	{
-		PJ = obternerPersonajeMasCercano(hiloEnemigo->enemigo.posicionActual);
-		pthread_mutex_unlock (&mutexListaPersonajesJugando);
-		posicionPJ = PJ.posActual;
-		posicionNueva = moverEnemigoPorEje(hiloEnemigo, posicionPJ);
-
-		if ((posicionNueva.x == posicionPJ.x)&&(posicionNueva.y == posicionPJ.y)){
-			log_info(LOGGER, "El PJ '%c' ha sido alcanzado por un enemigo:",PJ.id);
-			//NOTIFICAR AL PLANIFICADOR que el personaje perdio una vida
-			// IMPRIMIR por pantalla GUI??
+	void _comparaCoordPJEnemigo(t_personaje *p) {
+		log_info(LOGGER, " checarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
+		if (calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) == 0)
+		{
+			enviarMsjPorPipe(enemy->fdPipeE2N[1], MUERTE_PERSONAJE_XENEMIGO);
+			//agregarPersonajeMuertoxEnemigo(p);
+			queue_push(listaPersonajesMuertosxEnemigo, p);
 		}
 	}
 
-	else{ //No hay personajes en el nivel
+	list_iterate(listaPersonajesEnJuego, (void*)_comparaCoordPJEnemigo);
 
+	bool _remove_x_id (t_personaje *p) {
+		return (p->id == personaje->id);
+	}
+
+	for (i=0; i < queue_size(listaPersonajesMuertosxEnemigo); i++) {
+		personaje = queue_pop(listaPersonajesMuertosxEnemigo);
+		queue_push(listaPersonajesMuertosxEnemigo, personaje);
+
+		list_remove_by_condition(listaPersonajesEnJuego, (void*)_remove_x_id);
+	}
+
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxEnemigo);
+	pthread_mutex_unlock (&mutexListaPersonajesJugando);
+
+}
+
+//SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
+void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
+	int32_t posX=0, posY=0;
+	t_personaje PJ;
+	t_posicion posicionPJ;
+	int posValida=0;
+
+	log_debug(LOGGER, "moverEnemigo: 1");
+
+	if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
+	{
+		PJ = obternerPersonajeMasCercano(hiloEnemigo->enemigo.posicionActual);
+		//pthread_mutex_unlock (&mutexListaPersonajesJugando);
+		posicionPJ = PJ.posActual;
+		moverEnemigoPorEje(hiloEnemigo, posicionPJ);
+
+//		if ((posicionNueva.x == posicionPJ.x)&&(posicionNueva.y == posicionPJ.y)){
+//			log_info(LOGGER, "El PJ '%c' ha sido alcanzado por un enemigo:",PJ.id);
+//			//NOTIFICAR AL PLANIFICADOR que el personaje perdio una vida
+//			// IMPRIMIR por pantalla GUI??
+//		}
+	}
+
+	else{ //No hay personajes en el nivel
+		log_debug(LOGGER, "moverEnemigo: 2 no hay personajes");
 		if (
 			((hiloEnemigo->enemigo.posicionActual.x) == (hiloEnemigo->enemigo.posicionEleSiguiente.x)) &&
 			((hiloEnemigo->enemigo.posicionActual.y) == (hiloEnemigo->enemigo.posicionEleSiguiente.y))
 			)
 			{
-			while (!posValida){
-				estimarMovimientoL(hiloEnemigo, posX, posY);
-				px = *posX;py = *posY;
-				posValida = validarPosicionEnemigo(hiloEnemigo, px, py);
 
+			while (!posValida) {
+				estimarMovimientoL(hiloEnemigo, &posX, &posY);
+				posValida = validarPosicionEnemigo(hiloEnemigo, posX, posY);
+				//posValida = 1;
 			}
-			hiloEnemigo->enemigo.posicionEleSiguiente.x = px;
-			hiloEnemigo->enemigo.posicionEleSiguiente.y = py;
+			hiloEnemigo->enemigo.posicionEleSiguiente.x = posX;
+			hiloEnemigo->enemigo.posicionEleSiguiente.y = posY;
 		}
 
-		moverDeUnoHacia(hiloEnemigo, posX,posY);
+		moverDeUnoHacia(hiloEnemigo, &posX, &posY);
+		//log_debug(LOGGER, "act:(%d, %d) - eleSig:(%d, %d)", hiloEnemigo->enemigo.posicionActual.x, hiloEnemigo->enemigo.posicionActual.y, hiloEnemigo->enemigo.posicionEleSiguiente.x, hiloEnemigo->enemigo.posicionEleSiguiente.y);
 	}
 }
 //PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
 //SIEMPRE SE MUEVE PRIMERO EN X
 void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
-	if ((hiloEnemigo->enemigo.posicionActual.x) != *posX) {
-			if ((hiloEnemigo->enemigo.posicionActual.x) > *posX){
+	if ((hiloEnemigo->enemigo.posicionActual.x) != hiloEnemigo->enemigo.posicionEleSiguiente.x) {
+			if ((hiloEnemigo->enemigo.posicionActual.x) > hiloEnemigo->enemigo.posicionEleSiguiente.x){
 						(hiloEnemigo->enemigo.posicionActual.x)--;
 						}
-			if ((hiloEnemigo->enemigo.posicionActual.x) < *posX){
+			if ((hiloEnemigo->enemigo.posicionActual.x) < hiloEnemigo->enemigo.posicionEleSiguiente.x){
 						(hiloEnemigo->enemigo.posicionActual.x)++;
 						}
 	}
 	else {
-		if ((hiloEnemigo->enemigo.posicionActual.y) > *posY){
+		if ((hiloEnemigo->enemigo.posicionActual.y) > hiloEnemigo->enemigo.posicionEleSiguiente.y){
 			(hiloEnemigo->enemigo.posicionActual.y)--;
 			}
-		if ((hiloEnemigo->enemigo.posicionActual.y) < *posY){
+		if ((hiloEnemigo->enemigo.posicionActual.y) < hiloEnemigo->enemigo.posicionEleSiguiente.y){
 			(hiloEnemigo->enemigo.posicionActual.y)++;
 			}
 	}
@@ -237,11 +283,12 @@ t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia)
 	return posicionNueva;
 }
 
-void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY) {
+void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* posX, int32_t* posY) {
 	*posX = hiloEnemigo->enemigo.posicionActual.x;
 	*posY = hiloEnemigo->enemigo.posicionActual.y;
 	srand(time(NULL));
-	int r = rand() % 8;
+	int r = (rand()+hiloEnemigo->tid) % 8;
+
 	switch(r) {
 	case 1:
 		(*posY)++; *posX = (*posX)+2;
@@ -321,10 +368,8 @@ int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) 
 	t_posicion pos;
 	pos.x=X;pos.y=Y;
 	int32_t pAux=posicionConItem(hiloEnemigo,pos);
-	if((Y <= MAXROWS) && (X <= MAXCOLS) && pAux){
-		if (!posicionConItem(hiloEnemigo, pos)){
-			return 1;//PosicionOK
-		}
+	if((Y <= MAXROWS) && (X <= MAXCOLS) && !pAux){
+		return 1;//PosicionOK
 	}
 	return 0;// POSICION INVALIDA
 }
