@@ -103,6 +103,8 @@ void agregarEnemigos() {
 		log_debug(LOGGER, "agregarEnemigos: idHiloEnemigo: %u", enemy->tid);
 		list_add(listaEnemigos, enemy);
 		idEnemigo++;
+
+		usleep(1000000);
 	}
 
 }
