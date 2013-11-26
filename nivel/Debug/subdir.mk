@@ -7,19 +7,22 @@ C_SRCS += \
 ../NivelMain.c \
 ../enemigo.c \
 ../funcionesNivel.c \
-../interbloqueo.c 
+../interbloqueo.c \
+../listasCompartidasNivel.c 
 
 OBJS += \
 ./NivelMain.o \
 ./enemigo.o \
 ./funcionesNivel.o \
-./interbloqueo.o 
+./interbloqueo.o \
+./listasCompartidasNivel.o 
 
 C_DEPS += \
 ./NivelMain.d \
 ./enemigo.d \
 ./funcionesNivel.d \
-./interbloqueo.d 
+./interbloqueo.d \
+./listasCompartidasNivel.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
