@@ -11,6 +11,8 @@ typedef struct {
 	int32_t PUERTO;					// PUERTO=5000
 	char KOOPA[MAXCHARLEN+1];		// KOOPA=/home/utnso/koopa
 	char SCRIPT[MAXCHARLEN+1];		// SCRIPT=/home/utnso/evaluacion.sh
+	int32_t SLEEP_KOOPA;
+	int32_t RD;						// RD=10 (remaining distance)
 	char LOG_PATH[MAXCHARLEN+1];	// LOG_PATH=/tmp/plataforma.log
 	t_log_level LOG_NIVEL;			// LOG_NIVEL=TRACE|DEBUG|INFO|WARNING|ERROR
 	int32_t LOG_CONSOLA;			// LOG_CONSOLA=0|1 (off/on)
@@ -22,6 +24,8 @@ void inicializarConfigPlat () {
 	configPlat.PUERTO = 0;
 	configPlat.KOOPA[0]='\0';
 	configPlat.SCRIPT[0]='\0';
+	configPlat.SLEEP_KOOPA=0;
+	configPlat.RD=0;
 	configPlat.LOG_PATH[0]='\0';
 	configPlat.LOG_NIVEL=0;
 	configPlat.LOG_CONSOLA=0;
@@ -59,6 +63,26 @@ const char* configPlatKoopa () {
  */
 const char* configPlatScript (){
 	return configPlat.SCRIPT;
+}
+
+/**
+ * @NAME: configPlatSleepKoopa
+ * @DESC: Devuelve Valor del campo SLEEP_KOOPA del archivo de configuracion
+ * Representa el tiempo en segundos que esperara el orquestador antes de probar si puede lanzar el proceso koopa.
+ * ej: SLEEP_KOOPA=10
+ */
+int32_t configPlatSleepKoopa () {
+	return configPlat.SLEEP_KOOPA;
+}
+
+/**
+ * @NAME: configPlatRemainingDistance
+ * @DESC: Devuelve Valor del campo RD del archivo de configuracion
+ * Representa el valor por defecto de Remaining Distance que toma el personaje nuevo.
+ * ej: RD=10
+ */
+int32_t configPlatRemainingDistance () {
+	return configPlat.RD;
 }
 
 /**
@@ -110,6 +134,8 @@ void levantarArchivoConfiguracionPlataforma() {
 
 	strcpy(configPlat.KOOPA, config_get_string_value(config, "KOOPA"));
 	strcpy(configPlat.SCRIPT, config_get_string_value(config, "SCRIPT"));
+	configPlat.SLEEP_KOOPA = config_get_int_value(config, "SLEEP_KOOPA");
+	configPlat.RD = config_get_int_value(config, "RD");
 
 	strcpy(configPlat.LOG_PATH, config_get_string_value(config, "LOG_PATH"));
 	configPlat.LOG_NIVEL = obtenerLogLevel( config_get_string_value(config, "LOG_NIVEL"));

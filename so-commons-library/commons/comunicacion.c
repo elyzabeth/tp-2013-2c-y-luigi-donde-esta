@@ -378,6 +378,56 @@ void genId(char idMsg[])
 }
 
 
+char* getStringTipo(int tipo) {
+	switch (tipo) {
+		case NUEVO_PERSONAJE: return "NUEVO_PERSONAJE";
+			break;
+		case NUEVO_NIVEL: return "NUEVO_NIVEL";
+			break;
+		case PERSONAJE_CONECTADO: return "PERSONAJE_CONECTADO";
+			break;
+		case NIVEL_CONECTADO: return "NIVEL_CONECTADO";
+			break;
+		case CONECTAR_NIVEL: return "CONECTAR_NIVEL";
+			break;
+		case SOLICITUD_UBICACION: return "SOLICITUD_UBICACION";
+			break;
+		case SOLICITUD_RECURSO: return "SOLICITUD_RECURSO";
+			break;
+		case RECURSO_CONCEDIDO: return "RECURSO_CONCEDIDO";
+			break;
+		case RECURSO_DENEGADO: return "RECURSO_DENEGADO";
+			break;
+		case TURNO_CONCEDIDO: return "TURNO_CONCEDIDO";
+			break;
+		case FINALIZAR: return "FINALIZAR";
+			break;
+		case CAMBIOS_CONFIGURACION: return "CAMBIOS_CONFIGURACION";
+			break;
+		case UBICACION_RECURSO: return "UBICACION_RECURSO";
+			break;
+		case MOVIMIENTO_REALIZADO: return "MOVIMIENTO_REALIZADO";
+			break;
+		case RECURSO_INEXISTENTE: return "RECURSO_INEXISTENTE";
+			break;
+		case PLAN_NIVEL_FINALIZADO: return "PLAN_NIVEL_FINALIZADO";
+			break;
+		case PLAN_NIVELES_CONCLUIDO: return "PLAN_NIVELES_CONCLUIDO";
+			break;
+		case MUERTE_PERSONAJE: return "MUERTE_PERSONAJE";
+			break;
+		case MUERTE_PERSONAJE_XENEMIGO: return "MUERTE_PERSONAJE_XENEMIGO";
+			break;
+		case MUERTE_PERSONAJE_XRECOVERY: return "MUERTE_PERSONAJE_XRECOVERY";
+			break;
+		case NIVEL_INEXISTENTE: return "NIVEL_INEXISTENTE";
+			break;
+		case PERSONAJE_DESBLOQUEADO: return "PERSONAJE_DESBLOQUEADO";
+			break;
+		default: return "TIPO NO RECONOCIDO";
+	}
+}
+
 /***********Señales *********/
 
 void senialMurioHijo(int senial)

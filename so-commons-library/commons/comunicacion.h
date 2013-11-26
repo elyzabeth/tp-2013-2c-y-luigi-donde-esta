@@ -36,14 +36,20 @@
 #define SOLICITUD_RECURSO		0x16
 #define RECURSO_CONCEDIDO		0x17
 #define RECURSO_DENEGADO		0x18
-#define TURNO_CONCEDIDO			0x19
-#define FINALIZAR				0x20
-#define CAMBIOS_CONFIGURACION	0x21
-#define UBICACION_RECURSO		0x22
-#define MOVIMIENTO_REALIZADO	0x23
-#define RECURSO_INEXISTENTE		0x24
-#define PLAN_NIVEL_FINALIZADO	0x25
-#define PLAN_NIVELES_CONCLUIDO	0x26
+#define RECURSO_LIBERADO		0x19
+#define RECURSO_INEXISTENTE		0x20
+#define TURNO_CONCEDIDO			0x21
+#define FINALIZAR				0x22
+#define CAMBIOS_CONFIGURACION	0x23
+#define UBICACION_RECURSO		0x24
+#define MOVIMIENTO_REALIZADO	0x25
+#define PLAN_NIVEL_FINALIZADO	0x26
+#define PLAN_NIVELES_CONCLUIDO	0x27
+#define MUERTE_PERSONAJE		0x28
+#define MUERTE_PERSONAJE_XENEMIGO		0x29
+#define MUERTE_PERSONAJE_XRECOVERY		0x30
+#define NIVEL_INEXISTENTE		0x31
+#define PERSONAJE_DESBLOQUEADO	0x32
 
 
 
@@ -77,6 +83,8 @@ int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int quitar_descriptor(int desc, fd_set *listaDesc, int *maxDesc);
 int crear_listener(int puerto, int *listener);
 void genId(char idMsg[]);
+
+char* getStringTipo(int tipo);
 
 void senialMurioHijo(int senial);
 //void senialSuspendido(int senial);
