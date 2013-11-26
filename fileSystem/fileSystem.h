@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 
 #include "commons/bitarray.h"
@@ -40,6 +41,7 @@
 #define BLKSIZE 4096 //Tamaño de bloque fijo en bytes
 
 #define TAMANIODISCO 10485760 // TODO tamaño del disco, lo debe tomar por parametro
+#define BITMAPBITS TAMANIODISCO / BLKSIZE
 
 #define BORRADO 0
 #define ARCHIVO 1
@@ -77,5 +79,6 @@ ptrGBloque blk_direct[BLKDIRECT];
 t_log* LOGGER;
 
 pthread_mutex_t mutexGrasaWrite;
+pthread_mutex_t mutexGrasaBitVector;
 
 #endif /* FILESYSTEM_H_ */
