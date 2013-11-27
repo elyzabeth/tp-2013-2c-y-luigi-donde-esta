@@ -80,5 +80,6 @@ t_log* LOGGER;
 
 pthread_mutex_t mutexGrasaWrite;
 pthread_mutex_t mutexGrasaBitVector;
+pthread_mutex_t mutexGrasaNodesTable;
 
 #endif /* FILESYSTEM_H_ */
