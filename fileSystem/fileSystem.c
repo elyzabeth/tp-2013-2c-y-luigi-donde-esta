@@ -184,8 +184,26 @@ GFile* getGrasaChildNode (const char *path, uint8_t tipo, int *posicion, int nro
 	return NODOS[encontrado];
 }
 
+GFile* getGrasaNode (const char *path, int *posicion) {
+	int i, encontrado=-1;
+	char *subpath = strrchr(path, '/');
 
-GFile* getGrasaNode (const char *path, uint8_t tipo, int *posicion) {
+	for(i=0; i < 1024 && encontrado < 0; i++) {
+		if (strcmp(subpath+1, NODOS[i]->fname) == 0) {
+			encontrado = i;
+		}
+	}
+
+	*posicion = encontrado;
+
+	if (encontrado == -1)
+		return NULL;
+
+	return NODOS[encontrado];
+}
+
+
+GFile* getGrasaNodeByType (const char *path, uint8_t tipo, int *posicion) {
 	int i, encontrado=-1;
 	char *subpath = strrchr(path, '/');
 
@@ -204,11 +222,11 @@ GFile* getGrasaNode (const char *path, uint8_t tipo, int *posicion) {
 }
 
 GFile* getGrasaDirNode (const char *path, int *posicion) {
-	return getGrasaNode(path, DIRECTORIO, posicion);
+	return getGrasaNodeByType(path, DIRECTORIO, posicion);
 }
 
 GFile* getGrasaFileNode (const char *path, int *posicion) {
-	return getGrasaNode(path, ARCHIVO, posicion);
+	return getGrasaNodeByType(path, ARCHIVO, posicion);
 }
 
 GFile* buscarNodoPadre (const char *path, int *nroBloquePadre) {
@@ -352,7 +370,7 @@ printf(" buffer: %s", buf);
 
 GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	GFile *Nodo = NULL;
-	GFile *NodoPadre = NULL;
+	//GFile *NodoPadre = NULL;
 	char *subpath = strrchr(path, '/');
 	int bloquePadre=0, pos=0;
 	struct timeval now;
@@ -360,7 +378,7 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 
 	gettimeofday(&now, NULL);
 
-	NodoPadre = buscarNodoPadre(path, &bloquePadre);
+	buscarNodoPadre(path, &bloquePadre);
 	// TODO SI no existe el directorio del archivo lo creo??
 	if (bloquePadre == -1) {
 		Nodo = NULL;
@@ -537,12 +555,13 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 
 static int grasa_mkdir (const char *path, mode_t mode) {
 	log_debug(LOGGER, "grasa_mkdir: %s", path);
-	GFile *Nodo = NULL, *nodoPadre = NULL;
+	GFile *Nodo = NULL;
+	//GFile *nodoPadre = NULL;
 	int posicion, nroBloquePadre=0;
 	char *subpath = strrchr(path, '/');
 
 	// TODO crear NODO que represente al directorio nuevo!!!!
-	nodoPadre = buscarNodoPadre(path, &nroBloquePadre);
+	buscarNodoPadre(path, &nroBloquePadre);
 
 	if (nroBloquePadre == -1) {
 		return -ENOENT;
@@ -679,6 +698,29 @@ static int grasa_utimens(const char* path, const struct timespec ts[2]) {
 	return 0;
 }
 
+int grasa_rename (const char *path, const char *newPath){
+	log_debug(LOGGER, "grasa_rename: %s -> %s", path, newPath);
+	GFile *Nodo;
+	int bloquePadre, posicion;
+	char *subpath = strrchr(newPath, '/');
+
+	Nodo = getGrasaNode(path, &posicion);
+	if (Nodo == NULL) {
+		return -ENOENT;
+	}
+
+	buscarNodoPadre(newPath, &bloquePadre);
+	if (bloquePadre == -1) {
+		Nodo = NULL;
+		return -ENOENT;
+	}
+
+	Nodo->parent_dir_block = bloquePadre;
+	strcpy(Nodo->fname, subpath+1);
+
+	return 0;
+}
+
 int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
 	log_debug(LOGGER, "grasa_create: %s", path);
 	crearNuevoNodo(path, fi);
@@ -733,7 +775,8 @@ static struct fuse_operations grasa_oper = {
 		.truncate = grasa_truncate,
 		.flush = grasa_flush,
 		.setxattr = grasa_setxattr,
-		.utimens = grasa_utimens
+		.utimens = grasa_utimens,
+		.rename = grasa_rename
 		//.destroy = grasa_destroy
 };
 
