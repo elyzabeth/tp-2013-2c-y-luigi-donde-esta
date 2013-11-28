@@ -165,7 +165,7 @@ int liberarBloquesArchivo (GFile *Nodo) {
 	return cont;
 }
 
-GFile* getGrasaChildNode (const char *path, uint8_t tipo, int *posicion, int nroBloquePadre) {
+GFile* getGrasaChildNode (const char *path, uint8_t tipo, int nroBloquePadre, int *posicion) {
 	int i, encontrado=-1;
 	const char *subpath = strrchr(path, '/');
 	if (subpath == NULL)
@@ -174,7 +174,7 @@ GFile* getGrasaChildNode (const char *path, uint8_t tipo, int *posicion, int nro
 		subpath = subpath+1;
 
 	for(i=0; i < BLKDIRECT && encontrado < 0; i++) {
-		if (strcmp(subpath, NODOS[i]->fname) == 0 && NODOS[i]->state == tipo && NODOS[i]->parent_dir_block == nroBloquePadre) {
+		if (NODOS[i]->state == tipo && NODOS[i]->parent_dir_block == nroBloquePadre && strcmp(subpath, NODOS[i]->fname) == 0) {
 			encontrado = i;
 		}
 	}
@@ -185,51 +185,6 @@ GFile* getGrasaChildNode (const char *path, uint8_t tipo, int *posicion, int nro
 		return NULL;
 
 	return NODOS[encontrado];
-}
-
-GFile* getGrasaNode (const char *path, int *posicion) {
-	int i, encontrado=-1;
-	char *subpath = strrchr(path, '/');
-
-	for(i=0; i < BLKDIRECT && encontrado < 0; i++) {
-		if (strcmp(subpath+1, NODOS[i]->fname) == 0) {
-			encontrado = i;
-		}
-	}
-
-	*posicion = encontrado;
-
-	if (encontrado == -1)
-		return NULL;
-
-	return NODOS[encontrado];
-}
-
-
-GFile* getGrasaNodeByType (const char *path, uint8_t tipo, int *posicion) {
-	int i, encontrado=-1;
-	char *subpath = strrchr(path, '/');
-
-	for(i=0; i < 1024 && encontrado < 0; i++) {
-		if (strcmp(subpath+1, NODOS[i]->fname) == 0 && NODOS[i]->state == tipo) {
-			encontrado = i;
-		}
-	}
-
-	*posicion = encontrado;
-
-	if (encontrado == -1)
-		return NULL;
-
-	return NODOS[encontrado];
-}
-
-GFile* getGrasaDirNode (const char *path, int *posicion) {
-	return getGrasaNodeByType(path, DIRECTORIO, posicion);
-}
-
-GFile* getGrasaFileNode (const char *path, int *posicion) {
-	return getGrasaNodeByType(path, ARCHIVO, posicion);
 }
 
 GFile* buscarNodoPadre (const char *path, int *nroBloquePadre) {
@@ -251,7 +206,7 @@ GFile* buscarNodoPadre (const char *path, int *nroBloquePadre) {
 	if (level > 1) {
 
 		for(i =0; i < level-1; i++) {
-			NodoPadre = getGrasaChildNode(tree[i], DIRECTORIO, &pos, *nroBloquePadre);
+			NodoPadre = getGrasaChildNode(tree[i], DIRECTORIO, *nroBloquePadre, &pos);
 
 			if (NodoPadre != NULL) {
 				*nroBloquePadre = pos+1;
@@ -268,6 +223,57 @@ GFile* buscarNodoPadre (const char *path, int *nroBloquePadre) {
 
 	return NodoPadre;
 }
+
+GFile* getGrasaNode (const char *path, int *posicion) {
+	int i, encontrado=-1, nroBloquePadre=-1;;
+	char *subpath = strrchr(path, '/');
+
+	buscarNodoPadre(path, &nroBloquePadre);
+	for(i=0; i < BLKDIRECT && encontrado < 0; i++) {
+		if (NODOS[i]->state != 0 && NODOS[i]->parent_dir_block == nroBloquePadre && strcmp(subpath+1, NODOS[i]->fname) == 0) {
+			encontrado = i;
+			break;
+		}
+	}
+
+	*posicion = encontrado;
+
+	if (encontrado == -1)
+		return NULL;
+
+	return NODOS[encontrado];
+}
+
+
+GFile* getGrasaNodeByType (const char *path, uint8_t tipo, int *posicion) {
+	int i, encontrado=-1, nroBloquePadre=-1;
+	char *subpath = strrchr(path, '/');
+
+	buscarNodoPadre(path, &nroBloquePadre);
+	for(i=0; i < BLKDIRECT && encontrado < 0; i++) {
+		if (NODOS[i]->state == tipo && NODOS[i]->parent_dir_block == nroBloquePadre && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
+			encontrado = i;
+			break;
+		}
+	}
+
+	*posicion = encontrado;
+
+	if (encontrado == -1)
+		return NULL;
+
+	return NODOS[encontrado];
+}
+
+GFile* getGrasaDirNode (const char *path, int *posicion) {
+	return getGrasaNodeByType(path, DIRECTORIO, posicion);
+}
+
+GFile* getGrasaFileNode (const char *path, int *posicion) {
+	return getGrasaNodeByType(path, ARCHIVO, posicion);
+}
+
+
 
 
 // NO se usa
@@ -378,32 +384,34 @@ size_t copiarDesdeBuffer (const char *buf, GFile *Nodo, off_t offset, size_t siz
 GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	GFile *Nodo = NULL;
 	char *subpath = strrchr(path, '/');
-	int bloquePadre=0, pos=0;
+	int nroBloquePadre=0, pos=0;
 	struct timeval now;
-	//ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
 
 	gettimeofday(&now, NULL);
 
-	buscarNodoPadre(path, &bloquePadre);
+	buscarNodoPadre(path, &nroBloquePadre);
 	// TODO SI no existe el directorio del archivo lo creo??
-	if (bloquePadre == -1) {
+	if (nroBloquePadre == -1) {
 		Nodo = NULL;
 		return Nodo;
 	}
 
 	Nodo = reservarNodoArchivo(&pos);
+	if (Nodo == NULL)
+		return Nodo;
 
 	//Nodo->state = ARCHIVO;
 	strcpy(Nodo->fname, subpath+1);
 	Nodo->c_date = now.tv_sec;
 	Nodo->m_date = now.tv_sec;
 	Nodo->file_size = 0;
-	Nodo->parent_dir_block = bloquePadre;
+	Nodo->parent_dir_block = nroBloquePadre;
 
 	// TODO inicializar arreglo Nodo->blk_indirect ??
 	// pongo en 0 cada posicion del arreglo
 	initBlkIndirect (Nodo);
-	// Busco primer bloque libre
+
+	// Busco primer bloque libre ???
 	Nodo->blk_indirect[0] = reservarPrimerBloqueLibre();
 	// "blanqueo" el bloque
 	initBloque(Nodo->blk_indirect[0]);
@@ -411,6 +419,7 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	printf( "bloque libre: %u", Nodo->blk_indirect[0]);
 
 	// TODO ya Reservo un bloque de datos????
+	//ptrGBloque (*directBlk)[BLKDIRECT] = NULL;
 	//directBlk = (ptrGBloque(*)[BLKDIRECT])(getBlockAddress(Nodo->blk_indirect[0]));
 	//directBlk[0] = reservarPrimerBloqueLibre();
 
@@ -421,6 +430,9 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 
 // FIN FUNCIONES AUXILIARES
 // ----------------------------------------------------------------------------------------------
+
+
+
 
 /*
  * @DESC
@@ -438,15 +450,17 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
  */
 static int grasa_getattr(const char *path, struct stat *stbuf) {
 	log_debug(LOGGER, "grasa_getattr: %s", path);
-	//int res = 0;
-	int i=0, encontrado=-1, nroBloquePadre=-1;
-	char *subpath = strrchr(path, '/');
+
+	GFile *Nodo = NULL;
+	int posicion;
+	//int i=0, nroBloquePadre=-1, res = 0, encontrado=-1;
+	//char *subpath = strrchr(path, '/');
 
 	memset(stbuf, 0, sizeof(struct stat));
 
 	//Si path es igual a "/" nos estan pidiendo los atributos del punto de montaje
 	if (strcmp(path, "/") == 0) {
-		encontrado = i;
+		//encontrado = i;
 		stbuf->st_mode = 0755|S_IFDIR;
 		stbuf->st_nlink = 2;
 		stbuf->st_uid = 1001;
@@ -456,40 +470,64 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 		// TODO buscar nodo padre para diferenciar directorios y archivos
 		// con mismo nombre en distintos directorios.
-		buscarNodoPadre(path, &nroBloquePadre);
-		if ( nroBloquePadre == -1 )
+//		buscarNodoPadre(path, &nroBloquePadre);
+//		if ( nroBloquePadre == -1 )
+//			return -ENOENT;
+
+		Nodo = getGrasaNode(path, &posicion);
+		if (posicion == -1)
 			return -ENOENT;
 
-		for(i=0; i < 1024; i++) {
+		stbuf->st_ctim.tv_sec = Nodo->c_date;
+		stbuf->st_mtim.tv_sec = Nodo->m_date;
+		stbuf->st_size = Nodo->file_size;
+		stbuf->st_uid = 1001;
+		stbuf->st_gid = 1001;
 
-			if (NODOS[i]->state != BORRADO && nroBloquePadre == NODOS[i]->parent_dir_block && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
+		if (Nodo->state == 2) {
+			stbuf->st_mode = S_IFDIR | 0755;
+			stbuf->st_nlink = 2;
+			stbuf->st_size = BLKSIZE;
 
-				encontrado = i;
-
-				stbuf->st_ctim.tv_sec = NODOS[i]->c_date;
-				stbuf->st_mtim.tv_sec = NODOS[i]->m_date;
-				stbuf->st_size = NODOS[i]->file_size;
-				stbuf->st_uid = 1001;
-				stbuf->st_gid = 1001;
-
-				if (NODOS[i]->state == 2) {
-					stbuf->st_mode = S_IFDIR | 0755;
-					stbuf->st_nlink = 2;
-					//stbuf->st_size = BLKLEN;
-
-				} else if (NODOS[i]->state == 1) {
-					stbuf->st_mode = S_IFREG | 0777;
-					stbuf->st_nlink = 1;
-				}
-
-				// TODO debo cortar ciclo cuando lo encuentro???
-				break;
-			}
+		} else if (Nodo->state == 1) {
+			stbuf->st_mode = S_IFREG | 0777;
+			stbuf->st_nlink = 1;
 		}
 	}
 
-	if (encontrado==-1)
-		return -ENOENT;
+//----------------------------------------------
+
+//		for(i=0; i < 1024; i++) {
+//
+//			if (NODOS[i]->state != BORRADO && nroBloquePadre == NODOS[i]->parent_dir_block && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
+//
+//				encontrado = i;
+//
+//				stbuf->st_ctim.tv_sec = NODOS[i]->c_date;
+//				stbuf->st_mtim.tv_sec = NODOS[i]->m_date;
+//				stbuf->st_size = NODOS[i]->file_size;
+//				stbuf->st_uid = 1001;
+//				stbuf->st_gid = 1001;
+//
+//				if (NODOS[i]->state == 2) {
+//					stbuf->st_mode = S_IFDIR | 0755;
+//					stbuf->st_nlink = 2;
+//					//stbuf->st_size = BLKLEN;
+//
+//				} else if (NODOS[i]->state == 1) {
+//					stbuf->st_mode = S_IFREG | 0777;
+//					stbuf->st_nlink = 1;
+//				}
+//
+//				// TODO debo cortar ciclo cuando lo encuentro???
+//				break;
+//			}
+//		}
+
+//	}
+
+//	if (encontrado==-1)
+//		return -ENOENT;
 
 	return 0;
 }
@@ -521,9 +559,12 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 	(void) offset;
 	(void) fi;
 	int i, encontrado=-1;
+	//int nroBloquePadre=-1;
 	struct stat *stbuf;
 	uint32_t directorio = 0;
-	char *subpath = strrchr(path, '/');
+	//char *subpath = strrchr(path, '/');
+	GFile *Nodo = NULL;
+	int posicion;
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
@@ -533,39 +574,45 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 	if (strcmp(path, "/")==0) {
 		directorio = 0;
 	} else {
-		for(i=0; i < 1024; i++) {
-			if (strcmp(subpath+1, NODOS[i]->fname) == 0 && NODOS[i]->state != 0) {
-				encontrado = i;
-				directorio = i+1;
-			}
-		}
+//		buscarNodoPadre(path, &nroBloquePadre);
+//		for(i=0; i < BLKDIRECT; i++) {
+//			if (NODOS[i]->state != 0 && NODOS[i]->parent_dir_block == nroBloquePadre && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
+//				encontrado = i;
+//				directorio = i+1;
+//			}
+//		}
+		Nodo = getGrasaNode(path, &posicion);
+		if (posicion == -1)
+			return -ENOENT;
+
+		directorio = posicion+1;
 	}
 
-	if (encontrado==-1)
-		return -ENOENT;
 
-	for(i=0; i < 1024; i++) {
+	for(i=0; i < BLKDIRECT; i++) {
 		if (NODOS[i]->parent_dir_block == directorio && NODOS[i]->state != 0) {
 			stbuf = malloc(sizeof(struct stat));
 			memset(stbuf, 0, sizeof(struct stat));
+
+			stbuf->st_ctim.tv_sec = NODOS[i]->c_date;
+			stbuf->st_mtim.tv_sec = NODOS[i]->m_date;
+			stbuf->st_uid = 1001;
+			stbuf->st_gid = 1001;
+
 			if (NODOS[i]->state == 2) {
 				stbuf->st_mode = 0755|S_IFDIR;
 				stbuf->st_nlink = 2;
 				stbuf->st_size = BLKSIZE;
-				stbuf->st_uid = 1001;
-				stbuf->st_gid = 1001;
+
 			} else if (NODOS[i]->state == 1) {
 				stbuf->st_mode = 0444 | S_IFREG;
 				stbuf->st_nlink = 1;
 				stbuf->st_size = NODOS[i]->file_size;
-				stbuf->st_uid = 1001;
-				stbuf->st_gid = 1001;
 			}
 
 			filler(buf, NODOS[i]->fname, stbuf, 0);
 		}
 	}
-
 
 	return 0;
 }
@@ -577,18 +624,30 @@ static int grasa_mkdir (const char *path, mode_t mode) {
 	//GFile *nodoPadre = NULL;
 	int posicion, nroBloquePadre=0;
 	char *subpath = strrchr(path, '/');
+	struct timeval now;
 
-	// crear NODO que represente al directorio nuevo!!!!
+	gettimeofday(&now, NULL);
+
+	// Busco id directorio padre
 	buscarNodoPadre(path, &nroBloquePadre);
-
 	if (nroBloquePadre == -1) {
 		return -ENOENT;
 	}
 
+	// crear NODO que represente al nuevo directorio
 	Nodo = reservarNodoDirectorio(&posicion);
-	Nodo->parent_dir_block = nroBloquePadre;
+	if (Nodo == NULL)
+		return -ENOSPC;
+
 	strncpy(Nodo->fname, subpath+1, GFILENAMELENGTH);
+	Nodo->parent_dir_block = nroBloquePadre;
+	Nodo->c_date = now.tv_sec;
+	Nodo->m_date = now.tv_sec;
 	Nodo->file_size = BLKSIZE;
+	// TODO inicializar arreglo Nodo->blk_indirect ??
+	// pongo en 0 cada posicion del arreglo
+	// initBlkIndirect (Nodo);
+	Nodo->blk_indirect[0] = 0;
 
 	imprimirTablaINodos();
 	return 0;
@@ -741,10 +800,12 @@ int grasa_rename (const char *path, const char *newPath){
 	return 0;
 }
 
-int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
+static int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
 	log_debug(LOGGER, "grasa_create: %s", path);
-	crearNuevoNodo(path, fi);
-	//int bloque_padre = 0;
+
+	GFile *Nodo = crearNuevoNodo(path, fi);
+	if (Nodo == NULL)
+		return -ENOSPC;
 
 	return 0;
 }
@@ -754,15 +815,12 @@ static int grasa_write (const char *path, const char *buf, size_t size, off_t of
 	pthread_mutex_lock (&mutexGrasaWrite);
 	int posicion;
 	GFile *fileNode;
-	size_t copiado = 0;
+	//size_t copiado = 0;
 
 	log_debug(LOGGER, "grasa_write: %s", path);
 
 	fileNode = getGrasaFileNode(path, &posicion);
-
-	// El archivo no existe -> Crear uno nuevo nodo.
 	if ( posicion < 0 ) {
-		//fileNode = crearNuevoNodo(path,fi);
 		return -ENOENT;
 	}
 
@@ -816,7 +874,8 @@ int main (int argc, char**argv) {
 	pthread_mutex_init (&mutexGrasaBitVector, NULL);
 	pthread_mutex_init (&mutexGrasaNodesTable, NULL);
 
-	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_DEBUG);
+	//LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_DEBUG);
+	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_INFO);
 	log_info(LOGGER, "INICIALIZANDO FILESYSTEM ");
 
 	if ((fd = open("./disk.bin", O_RDWR, 0777)) == -1)
@@ -829,13 +888,14 @@ int main (int argc, char**argv) {
 
 	// printf("bitarray_test_bit %d: %d\n", 1027, bitarray_test_bit(bitvector, 1027));
 	int i;
-	bitarray_set_bit(bitvector, 0);
-	bitarray_clean_bit(bitvector, 1);
+//	bitarray_set_bit(bitvector, 0);
+//	bitarray_set_bit(bitvector, 1);
 
 	for (i = 2552; i <= BITMAPBITS; i++)
 		printf("\nbitarray_test_bit %d: %d", i, bitarray_test_bit(bitvector, i));
 
 	bitarray_set_bit(bitvector, BITMAPBITS-1);
+	printf("\n bitarray_get_max_bit:  %d", bitarray_get_max_bit(bitvector));
 
 	imprimirTablaINodos();
 
@@ -850,6 +910,8 @@ int main (int argc, char**argv) {
 	munmap(BITMAP, BLKSIZE*HEADER.size_bitmap);
 	munmap(FNodo, BLKSIZE*GFILEBYTABLE);
 	munmap(DATOS, TAMANIODISCO);
+
+	bitarray_destroy(bitvector);
 
 	pthread_mutex_destroy(&mutexGrasaWrite);
 	pthread_mutex_destroy(&mutexGrasaBitVector);
