@@ -380,7 +380,7 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	char *subpath = strrchr(path, '/');
 	int bloquePadre=0, pos=0;
 	struct timeval now;
-	ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
+	//ptrGBloque (*directBlk)[BLKDIRECT]= NULL;
 
 	gettimeofday(&now, NULL);
 
@@ -411,7 +411,7 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	printf( "bloque libre: %u", Nodo->blk_indirect[0]);
 
 	// TODO ya Reservo un bloque de datos????
-	directBlk = (ptrGBloque(*)[BLKDIRECT])(getBlockAddress(Nodo->blk_indirect[0]));
+	//directBlk = (ptrGBloque(*)[BLKDIRECT])(getBlockAddress(Nodo->blk_indirect[0]));
 	//directBlk[0] = reservarPrimerBloqueLibre();
 
 	imprimirTablaINodos();
@@ -438,8 +438,8 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
  */
 static int grasa_getattr(const char *path, struct stat *stbuf) {
 	log_debug(LOGGER, "grasa_getattr: %s", path);
-	int res = 0;
-	int i=0, encontrado=-1;
+	//int res = 0;
+	int i=0, encontrado=-1, nroBloquePadre=-1;
 	char *subpath = strrchr(path, '/');
 
 	memset(stbuf, 0, sizeof(struct stat));
@@ -454,9 +454,15 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 	} else {
 
+		// TODO buscar nodo padre para diferenciar directorios y archivos
+		// con mismo nombre en distintos directorios.
+		buscarNodoPadre(path, &nroBloquePadre);
+		if ( nroBloquePadre == -1 )
+			return -ENOENT;
+
 		for(i=0; i < 1024; i++) {
 
-			if (strcmp(subpath+1, NODOS[i]->fname) == 0 && NODOS[i]->state != 0) {
+			if (NODOS[i]->state != BORRADO && nroBloquePadre == NODOS[i]->parent_dir_block && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
 
 				encontrado = i;
 
@@ -475,14 +481,17 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 					stbuf->st_mode = S_IFREG | 0777;
 					stbuf->st_nlink = 1;
 				}
+
+				// TODO debo cortar ciclo cuando lo encuentro???
+				break;
 			}
 		}
 	}
 
 	if (encontrado==-1)
-		res = -ENOENT;
+		return -ENOENT;
 
-	return res;
+	return 0;
 }
 
 
@@ -758,13 +767,13 @@ static int grasa_write (const char *path, const char *buf, size_t size, off_t of
 	}
 
 
-	// copiarDesdeBuffer(buf, fileNode, offset, size);
+	copiarDesdeBuffer(buf, fileNode, offset, size);
 
-	while( copiado < size) {
-		log_debug(LOGGER, "\n\n grasa_write: offset %ld - size: %u - size: %zu - copiado: %u - copiado: %zu", offset, size, size, copiado, copiado);
-		//copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
-		copiado += copiarDesdeBuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
-	}
+//	while( copiado < size) {
+//		log_debug(LOGGER, "\n\n grasa_write: offset %ld - size: %u - size: %zu - copiado: %u - copiado: %zu", offset, size, size, copiado, copiado);
+//		//copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
+//		copiado += copiarDesdeBuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
+//	}
 
 
 	pthread_mutex_unlock (&mutexGrasaWrite);
@@ -807,7 +816,7 @@ int main (int argc, char**argv) {
 	pthread_mutex_init (&mutexGrasaBitVector, NULL);
 	pthread_mutex_init (&mutexGrasaNodesTable, NULL);
 
-	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 1, LOG_LEVEL_DEBUG);
+	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_DEBUG);
 	log_info(LOGGER, "INICIALIZANDO FILESYSTEM ");
 
 	if ((fd = open("./disk.bin", O_RDWR, 0777)) == -1)
