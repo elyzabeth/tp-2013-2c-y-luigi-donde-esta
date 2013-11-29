@@ -117,7 +117,7 @@ ptrGBloque reservarPrimerBloqueLibre() {
 	pthread_mutex_lock (&mutexGrasaBitVector);
 	int i;
 	int startdatablk = GFILEBYTABLE + GHEADERBLOCKS + HEADER.size_bitmap;
-	ptrGBloque bloque = 0;
+	ptrGBloque bloque = -1;
 
 	// bitmap va desde 0 a BITMAPBITS - 1 (0 representa al header and so on)
 	for(i=startdatablk; i < BITMAPBITS; i++) {
@@ -126,7 +126,8 @@ ptrGBloque reservarPrimerBloqueLibre() {
 			break;
 		}
 	}
-	bitarray_set_bit(bitvector, bloque);
+	if (bloque != -1)
+		bitarray_set_bit(bitvector, bloque);
 	pthread_mutex_unlock(&mutexGrasaBitVector);
 
 	return bloque;
@@ -361,6 +362,15 @@ size_t copiarDesdeBuffer (const char *buf, GFile *Nodo, off_t offset, size_t siz
 	log_debug(LOGGER, "\n\n copiarDesdeBuffer\n*************\n offset: %lu %zu \n indirect_block_number: %lu %zu  \n indblk_resto: %lu %zu  \n direct_block_number: %lu %zu  \n directblk_offset: %lu %zu ", offset, offset, nroBlkInd, nroBlkInd, indblk_resto, indblk_resto, nroBlkDirect, nroBlkDirect, offsetBlkDirect, offsetBlkDirect);
 	log_debug(LOGGER, "- copiarDesdeBuffer: Nodo->blk_indirect[%d]: %d %u", nroBlkInd, Nodo->blk_indirect[nroBlkInd], Nodo->blk_indirect[nroBlkInd]);
 
+	if(Nodo->blk_indirect[nroBlkInd] == 0){
+		Nodo->blk_indirect[nroBlkInd] = reservarPrimerBloqueLibre();
+		// "blanqueo" el bloque
+		if(Nodo->blk_indirect[nroBlkInd] == -1)
+			return -1;
+		initBloque(Nodo->blk_indirect[nroBlkInd]);
+	}
+
+	printf( "bloque libre: %u", Nodo->blk_indirect[nroBlkInd]);
 
 	// COMO CASTEAR a:  un puntero a arreglo de 1024 de ptrGBloque => (ptrGBloque(*)[1024])
 	// ---------------------------------------------------------------------------
@@ -370,6 +380,9 @@ size_t copiarDesdeBuffer (const char *buf, GFile *Nodo, off_t offset, size_t siz
 
 	if ((*directBlk)[nroBlkDirect] == 0)
 		(*directBlk)[nroBlkDirect] = reservarPrimerBloqueLibre();
+
+	if((*directBlk)[nroBlkDirect] == -1)
+		return -1;
 
 	memcpy( getBlockAddress((*directBlk)[nroBlkDirect]) + offsetBlkDirect, buf, size);
 
@@ -411,12 +424,12 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	// pongo en 0 cada posicion del arreglo
 	initBlkIndirect (Nodo);
 
-	// Busco primer bloque libre ???
-	Nodo->blk_indirect[0] = reservarPrimerBloqueLibre();
-	// "blanqueo" el bloque
-	initBloque(Nodo->blk_indirect[0]);
-
-	printf( "bloque libre: %u", Nodo->blk_indirect[0]);
+//	// Busco primer bloque libre ???
+//	Nodo->blk_indirect[0] = reservarPrimerBloqueLibre();
+//	// "blanqueo" el bloque
+//	initBloque(Nodo->blk_indirect[0]);
+//
+//	printf( "bloque libre: %u", Nodo->blk_indirect[0]);
 
 	// TODO ya Reservo un bloque de datos????
 	//ptrGBloque (*directBlk)[BLKDIRECT] = NULL;
@@ -558,18 +571,19 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 	log_debug(LOGGER, "grasa_readdir: %s", path);
 	(void) offset;
 	(void) fi;
-	int i, encontrado=-1;
+	int i;
+	//int encontrado=-1;
 	//int nroBloquePadre=-1;
 	struct stat *stbuf;
 	uint32_t directorio = 0;
 	//char *subpath = strrchr(path, '/');
-	GFile *Nodo = NULL;
+	//GFile *Nodo = NULL;
 	int posicion;
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 
-	encontrado =1;
+	//encontrado = 1;
 
 	if (strcmp(path, "/")==0) {
 		directorio = 0;
@@ -581,7 +595,7 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 //				directorio = i+1;
 //			}
 //		}
-		Nodo = getGrasaNode(path, &posicion);
+		getGrasaNode(path, &posicion);
 		if (posicion == -1)
 			return -ENOENT;
 
@@ -752,10 +766,7 @@ static int grasa_read (const char *path, char *buf, size_t size, off_t offset, s
 
 }
 
-int grasa_truncate (const char *path, off_t offset) {
-	log_debug(LOGGER, "grasa_truncate: %s", path);
-	return 0;
-}
+
 
 int grasa_flush (const char *path, struct fuse_file_info *fi) {
 	log_debug(LOGGER, "grasa_flush: %s", path);
@@ -801,21 +812,33 @@ int grasa_rename (const char *path, const char *newPath){
 }
 
 static int grasa_create (const char *path, mode_t mode, struct fuse_file_info *fi) {
+	pthread_mutex_lock (&mutexGrasaWrite);
 	log_debug(LOGGER, "grasa_create: %s", path);
 
 	GFile *Nodo = crearNuevoNodo(path, fi);
 	if (Nodo == NULL)
 		return -ENOSPC;
+	pthread_mutex_unlock (&mutexGrasaWrite);
 
 	return 0;
 }
 
+int grasa_truncate (const char *path, off_t offset) {
+//	pthread_mutex_lock (&mutexGrasaWrite);
+	log_debug(LOGGER, "grasa_truncate: %s", path);
+//	GFile *Nodo = crearNuevoNodo(path, NULL);
+//	if (Nodo == NULL)
+//		return -ENOSPC;
+//	pthread_mutex_unlock (&mutexGrasaWrite);
+
+	return 0;
+}
 
 static int grasa_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	pthread_mutex_lock (&mutexGrasaWrite);
 	int posicion;
 	GFile *fileNode;
-	//size_t copiado = 0;
+	size_t copiado = -1, ret;
 
 	log_debug(LOGGER, "grasa_write: %s", path);
 
@@ -824,14 +847,19 @@ static int grasa_write (const char *path, const char *buf, size_t size, off_t of
 		return -ENOENT;
 	}
 
+//	copiado = copiarDesdeBuffer(buf, fileNode, offset, size);
+//	if(copiado == -1)
+//		return -ENOSPC;
 
-	copiarDesdeBuffer(buf, fileNode, offset, size);
+	while( copiado < size) {
+		log_debug(LOGGER, "\n\n grasa_write: offset %ld - size: %u - size: %zu - copiado: %u - copiado: %zu", offset, size, size, copiado, copiado);
+		//copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
+		ret = copiarDesdeBuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
+		if(ret == -1)
+			return -ENOSPC;
+		copiado += ret;
 
-//	while( copiado < size) {
-//		log_debug(LOGGER, "\n\n grasa_write: offset %ld - size: %u - size: %zu - copiado: %u - copiado: %zu", offset, size, size, copiado, copiado);
-//		//copiado += copiarABuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
-//		copiado += copiarDesdeBuffer(buf+copiado, fileNode, offset+copiado, size - copiado);
-//	}
+	}
 
 
 	pthread_mutex_unlock (&mutexGrasaWrite);
