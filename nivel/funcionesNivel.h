@@ -57,6 +57,7 @@ t_dictionary *recursosxPersonajes;
 // Diccionario de recursos con clave=simbolo data=t_caja
 t_dictionary *listaRecursos;
 t_list *listaEnemigos;
+t_dictionary* listaPosicionesProhibidas;
 
 pthread_mutex_t mutexLockGlobalGUI;
 pthread_mutex_t mutexListaPersonajesJugando;
@@ -94,6 +95,7 @@ t_vecRecursos* crearVecRecursos();
 void destruirVecRecursos(t_vecRecursos *vecRecursos);
 void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso);
 bool posicionDentroDeLosLimites (int32_t x, int32_t y);
+bool hayOtraCajaCercaDe (int32_t x, int32_t y);
 void validarPosicionCaja(char s, int32_t x, int32_t y);
 int desbloquearPersonaje (int sock, header_t header, fd_set *master);
 

@@ -24,9 +24,9 @@ int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 t_dictionary *listaPosicionesProhibidas;
 
 void verificarPosicionPersonajes(t_hiloEnemigo *enemy);
-//t_posicion posProhibidas array[]
 
-t_dictionary* listaPosicionesProhibidas; // = configNivelRecursos();
+
+//t_dictionary* listaPosicionesProhibidas;
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -354,7 +354,7 @@ int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion)
 	int32_t hayCaja = 0;
 	void hayItemEn(char *key, t_caja *caja)
 	{
-		if (posicion.x == caja->POSX && posicion.x == caja->POSY)
+		if (posicion.x == caja->POSX && posicion.y == caja->POSY)
 		{
 			hayCaja = 1;
 		}
@@ -365,10 +365,11 @@ int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion)
 }
 
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
+	if((X=0)&&(Y=0)){return 0;}
 	t_posicion pos;
 	pos.x=X;pos.y=Y;
 	int32_t pAux=posicionConItem(hiloEnemigo,pos);
-	if((Y <= MAXROWS) && (X <= MAXCOLS) && !pAux){
+	if((Y < MAXROWS) && (X < MAXCOLS) && !pAux){
 		return 1;//PosicionOK
 	}
 	return 0;// POSICION INVALIDA

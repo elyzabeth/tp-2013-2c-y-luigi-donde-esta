@@ -34,11 +34,38 @@ t_personaje* moverPersonajeAEnJuego(char simboloPersonaje) {
 
 	return personaje;
 }
+/**
+ * @NAME: hayOtraCajaCercaDe
+ * @DESC: Valida que no exista otra caja a dos o menos posiciones de distancia para cada eje
+ */
+
+bool hayOtraCajaCercaDe(int32_t x, int32_t y){
+		int32_t hayCaja = 0;
+		int i,j;
+		while(!hayCaja){
+			for(i=-2 ;((!hayCaja)||(i>2));i++)
+			{
+				for(j=-2 ;((!hayCaja)||(j>2));j++)
+				{
+						void hayItemEn(char *key, t_caja *caja)
+						{
+							if (x+i == caja->POSX && y+j == caja->POSY)
+							{
+								if ((i!=0)||(j!=0)) {hayCaja = 1;}
+							}
+						}
+						dictionary_iterator(listaPosicionesProhibidas, (void*)hayItemEn);
+				}
+			}
+		}
+		return hayCaja;
+}
 
 /**
  * @NAME: posicionDentroDeLosLimites
  * @DESC: Valida que (x, y) sea mayor a (0, 0) y menor a los limites de la pantalla (MAXCOLS, MAXROWS)
  */
+
 bool posicionDentroDeLosLimites (int32_t x, int32_t y) {
 
 	if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
@@ -50,12 +77,12 @@ bool posicionDentroDeLosLimites (int32_t x, int32_t y) {
 
 /**
  * @NAME: validarPosicionCaja
- * @DESC: Valida que la caja de recursos que se va a agregar este dentro de los limites.
+ * @DESC: Valida que la caja de recursos que se va a agregar este dentro de los limites y que no haya otra caja cerca
  */
 void validarPosicionCaja(char s, int32_t x, int32_t y) {
 
 	//if(x < 0 || x > MAXCOLS || y < 0 || y > MAXROWS) {
-	if ( !posicionDentroDeLosLimites(x, y) ) {
+	if ( (!posicionDentroDeLosLimites(x, y)) || (hayOtraCajaCercaDe(x, y))) {
 		log_error(LOGGER, "ERROR AL CREAR CAJA '%c' POSICION (%d, %d) FUERA DE LOS LIMITES (%d, %d)", s, x, y, MAXCOLS, MAXROWS);
 		perror("ERROR AL CREAR CAJA POSICION FUERA DE LOS LIMITES");
 		finalizarNivel();
@@ -73,7 +100,7 @@ void validarPosicionCaja(char s, int32_t x, int32_t y) {
 void agregarCajasRecursos() {
 	// Diccionario de recursos con clave=simbolo data=t_caja
 	//t_dictionary *recursos = configNivelRecursos();
-
+	listaPosicionesProhibidas = configNivelRecursos();
 	void _add_box(char *simbolo, t_caja *caja) {
 		validarPosicionCaja(caja->SIMBOLO, caja->POSX, caja->POSY);
 		gui_crearCaja(caja->SIMBOLO, caja->POSX, caja->POSY, caja->INSTANCIAS);
