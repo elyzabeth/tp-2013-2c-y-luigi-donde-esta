@@ -203,7 +203,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 			hiloEnemigo->enemigo.posicionEleSiguiente.y = posY;
 		}
 		else{
-				if(3>(calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual.y,hiloEnemigo->enemigo.posicionActual.x))){
+				if(3>(calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual,hiloEnemigo->enemigo.posicionEleSiguiente))){
 					hiloEnemigo->enemigo.posicionActual.x = hiloEnemigo->enemigo.posicionEleSiguiente.x;
 					hiloEnemigo->enemigo.posicionActual.y = hiloEnemigo->enemigo.posicionEleSiguiente.y;		
 				}
