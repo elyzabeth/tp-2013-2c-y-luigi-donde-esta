@@ -249,6 +249,10 @@ t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia)
 		if (validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y)){
 			(hiloEnemigo->enemigo.posicionActual.x)++;
 		}
+		else{//nuevo
+		hiloEnemigo->enemigo.moverPorX = 1;
+			(hiloEnemigo->enemigo.posicionActual.y)++;
+		}
 
 	}else{
 		(posicionNueva.x)--;
