@@ -198,6 +198,12 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 				posValida = validarPosicionEnemigo(hiloEnemigo, posX, posY);
 				//posValida = 1;
 			}
+			else{
+				if(3>(calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual.y,hiloEnemigo->enemigo.posicionActual.x))){
+					hiloEnemigo->enemigo.posicionActual.x = hiloEnemigo->enemigo.posicionEleSiguiente.x;
+					hiloEnemigo->enemigo.posicionActual.y = hiloEnemigo->enemigo.posicionEleSiguiente.y;		
+				}
+			}
 			hiloEnemigo->enemigo.posicionEleSiguiente.x = posX;
 			hiloEnemigo->enemigo.posicionEleSiguiente.y = posY;
 		}
