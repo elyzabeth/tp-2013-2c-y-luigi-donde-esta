@@ -348,29 +348,59 @@ t_personaje obternerPersonajeMasCercano(t_posicion miPosicion)
 	return pjcercano;
 }
 
-
+/*
 int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion)
 {
-	int32_t hayCaja = 0;
-	void hayItemEn(char *key, t_caja *caja)
-	{
-		if (posicion.x == caja->POSX && posicion.x == caja->POSY)
-		{
-			hayCaja = 1;
-		}
-	}
-	dictionary_iterator(listaPosicionesProhibidas, (void*)hayItemEn);
+        int32_t hayCaja = 0;
+        void hayItemEn(char *key, t_caja *caja)
+        {
+                if (posicion.x == caja->POSX && posicion.y == caja->POSY)
+                {
+                        hayCaja = 1;
+                }
+        }
+        dictionary_iterator(listaPosicionesProhibidas, (void*)hayItemEn);
 
-	return hayCaja;
+        return hayCaja;
 }
 
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
-	t_posicion pos;
-	pos.x=X;pos.y=Y;
-	int32_t pAux=posicionConItem(hiloEnemigo,pos);
-	if((Y <= MAXROWS) && (X <= MAXCOLS) && !pAux){
-		return 1;//PosicionOK
-	}
-	return 0;// POSICION INVALIDA
+        if((X=0)&&(Y=0)){return 0;}
+        t_posicion pos;
+        pos.x=X;pos.y=Y;
+        int32_t pAux=posicionConItem(hiloEnemigo,pos);
+        if((Y < MAXROWS) && (X < MAXCOLS) && !pAux){
+                return 1;//PosicionOK
+        }
+        return 0;// POSICION INVALIDA
 }
+*/
+int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
+        if((X<=0)||(Y<=0)){return 0;}// POSICION INVALIDA
+        if((Y >= MAXROWS) || (X >= MAXCOLS)){return 0;}// POSICION INVALIDA
+        t_posicion posicionConCaja[dictionary_size(listaPosicionesProhibidas)];
+                int i;
+                for (i=0; i<dictionary_size(listaPosicionesProhibidas);i++)
+                        {
+                        posicionConCaja[i].x = 100;
+                        posicionConCaja[i].y = 100;
+                        }
+                i=0;
 
+                void hayItemEn(char *key, t_caja *caja)
+                        {
+                        posicionConCaja[i].x = caja->POSX;
+                        posicionConCaja[i].y = caja->POSY;
+                        i++;
+                        }
+                dictionary_iterator(listaPosicionesProhibidas, (void*)hayItemEn);
+        for (i=0; i<dictionary_size(listaPosicionesProhibidas);i++){
+                log_debug(LOGGER, "                posicion de la cajita :p(%d,%d)",posicionConCaja[i].x ,posicionConCaja[i].y);
+                        if((posicionConCaja[i].x == X )&& (posicionConCaja[i].y == Y)){
+
+                                return 0;// POSICION INVALIDA
+                        }
+
+                }
+        return 1;//PosicionOK
+}
