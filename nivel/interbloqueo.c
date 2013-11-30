@@ -11,7 +11,7 @@ typedef struct {
 	char cIdRecurso[2];
 	int32_t iCantAsignada;
 } t_RecursoAsignado;
-
+/*
 typedef struct {
 	char cNombreRecurso[15];
 	char cIdRecurso[2];
@@ -21,7 +21,7 @@ typedef struct {
 	int32_t iCantDisponible;
 } t_Recursos;
 #define BUFFER 1024
-/*NODO DE LISTA DE PERSONAJES EN EL NIVEL*/
+//NODO DE LISTA DE PERSONAJES EN EL NIVEL//
 
 
 
@@ -35,23 +35,27 @@ typedef struct stPersonajesNivel {
 	char cIdRecursoBloquea[2];
 	t_list * lstRecursosAsignados;
 } stPersonajesNivel;
-/*NODO DE LISTA DE PERSONAJES QUE ABANDONARON EL NIVEL*/
+*/
+//NODO DE LISTA DE PERSONAJES QUE ABANDONARON EL NIVEL
 typedef struct {
 	char cSimbolo[2];
 	t_list * lstRecursosAsignados;
 }stPersonajesOut;
 
 
-
+/*
 int32_t matAsignacion[20][20];
 int32_t matSolicitud[20][20];
 int32_t vecDisponibles[20];
+*/
 int32_t totalRecursos;
 int32_t totalPersonajes;
 
 // Prototipos de funciones del hilo
 int32_t detectarDeadlock();
 t_personaje* recovery();
+
+t_caja buscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->cIdRecursoBloquea);
 
 
 void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
@@ -79,7 +83,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	TiempoChequeoDeadlock = configNivelTiempoChequeoDeadlock();
 	RecoveryOn = configNivelRecovery();
 	hayDeadLock = 0;
-	t_Recursos * recurso;
+	t_caja * recurso;
 	t_RecursoAsignado * recursoAux;
 	char sPersonajesInterbloq[BUFFER];
 	while(!fin) {
@@ -117,9 +121,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 							for (i=0; i < dictionary_size(listaRecursos);i++)
 							{
 								recursoAux = (t_RecursoAsignado *) malloc(sizeof(t_RecursoAsignado));
-								recurso = list_get(listaRecursos,i);
-								sprintf(recursoAux->cIdRecurso,"%s", recurso->cIdRecurso);
-								recursoAux->iCantAsignada = recurso->iCantDisponible;
+								recurso = dictionary_get(listaRecursos,i);
+								sprintf(recursoAux->cIdRecurso,"%s", recurso->SIMBOLO);
+								recursoAux->iCantAsignada = recurso->INSTANCIAS;
 								list_add(listaDeRecursosTrabajados,recursoAux);
 							}
 
@@ -127,17 +131,17 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 							memset(sPersonajesInterbloq,'\0',BUFFER);
 							for (i=0; i<list_size(listaPersonajesEnNivel);i++)
 							{
-								stPersonajesNivel *personaje;
-								stPersonajesNivel = list_get(listaPersonajesEnNivel,i);
+								t_personaje *personaje;
+								t_personaje = list_get(listaPersonajesEnNivel,i);
 
 								/*VERIFICO SI EL PERSONAJE ESTÁ BLOQUEADO POR UN RECURSO*/
-								if (personaje->cIdRecursoBloquea[0] != '0')
+								if (personaje->recurso != '0')
 								{
-									if (personaje->lstRecursosAsignados != NULL)
+									if (personaje->listaRecursosAsignados != NULL)
 							//TODO			//no exite la lista de recursos asignados en el personaje
 
 									{
-										if (list_size(personaje->lstRecursosAsignados)>0)
+										if (list_size(personaje->listaRecursosAsignados)>0)
 										{
 											iFinalizados[i] = 0;
 										}
@@ -148,16 +152,16 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 									}
 
 									recurso = buscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->cIdRecursoBloquea);
-									if((iFinalizados[i] == 1) && (1 <= recurso->iCantDisponible))
+									if((iFinalizados[i] == 1) && (1 <= recurso->INSTANCIAS))
 									{
-										recurso->iCantDisponible++;
+										recurso->INSTANCIAS++;
 										iFinalizados[i] = 1;
 									}
 									else
 									{
 										iFinalizados[i] = 0;
 										hayDeadLock = 1;
-										strcat(sPersonajesInterbloq, personaje->cNombre);
+										strcat(sPersonajesInterbloq, personaje->nombre);
 										strcat(sPersonajesInterbloq,";");
 									}
 								}

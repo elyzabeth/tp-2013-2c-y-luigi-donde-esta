@@ -28,6 +28,7 @@ typedef struct personaje {
 	char recurso;
 	int32_t criterio;
 	int32_t rd;
+	t_list * lstRecursosAsignados;
 } t_personaje;
 #pragma pack(0)
 
