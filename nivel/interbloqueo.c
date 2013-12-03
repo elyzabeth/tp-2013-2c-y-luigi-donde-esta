@@ -116,6 +116,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 							}
 
 							/* CREO LISTA RECURSOS TRABAJADOS*/
+							// incialmente con todos los recursos disponibles para luego ir quitandolselos
 							t_list * listaDeRecursosTrabajados;
 							listaDeRecursosTrabajados = list_create();
 							for (i=0; i < dictionary_size(listaRecursos);i++)
@@ -139,9 +140,10 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 								{
 									if (personaje->listaRecursosAsignados != NULL)
 							//TODO			//no exite la lista de recursos asignados en el personaje
-
+// busco los RecurssosXpersonajes que esta usando
 									{
 										if (list_size(personaje->listaRecursosAsignados)>0)
+											//
 										{
 											iFinalizados[i] = 0;
 										}
@@ -150,8 +152,8 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 											iFinalizados[i] = 1;
 										}
 									}
-
-									recurso = buscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->cIdRecursoBloquea);
+// busco el recurso correspondiente al ID
+									recurso = gbuscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->cIdRecursoBloquea);
 									if((iFinalizados[i] == 1) && (1 <= recurso->INSTANCIAS))
 									{
 										recurso->INSTANCIAS++;
