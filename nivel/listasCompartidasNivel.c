@@ -156,7 +156,7 @@ t_caja* obtenerRecurso(char simboloRecurso) {
 	return caja;
 }
 
-int32_t obternerCantPersonajesEnJuego() {
+int32_t obtenerCantPersonajesEnJuego() {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	int cant=0;
 	cant = list_size(listaPersonajesEnJuego);
@@ -164,7 +164,7 @@ int32_t obternerCantPersonajesEnJuego() {
 	return cant;
 }
 
-int32_t obternerCantPersonajesBloqueados() {
+int32_t obtenerCantPersonajesBloqueados() {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	int cant=0;
 	cant = list_size(listaPersonajesBloqueados);
@@ -172,7 +172,7 @@ int32_t obternerCantPersonajesBloqueados() {
 	return cant;
 }
 
-int32_t obternerCantPersonajesEnNivel() {
+int32_t obtenerCantPersonajesEnNivel() {
 	pthread_mutex_lock (&mutexListaPersonajesEnNivel);
 	int cant=0;
 	cant = queue_size(listaPersonajesEnNivel);
@@ -205,7 +205,7 @@ t_personaje* quitarPersonajeEnNivel(char simboloPersonaje) {
 
 	for (i = 0; i < cant; i++ ) {
 		aux = queue_pop(listaPersonajesEnNivel);
-		if (personaje->id != simboloPersonaje) {
+		if (aux->id != simboloPersonaje) {
 			queue_push(listaPersonajesEnNivel, aux);
 		} else {
 			personaje = aux;

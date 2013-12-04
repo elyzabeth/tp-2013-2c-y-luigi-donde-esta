@@ -260,9 +260,9 @@ void finalizarPersonajeNivel(int sock, t_personaje *personaje) {
 	liberarRecursosPersonaje (sock, personaje);
 
 	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
-	p = quitarPersonajeEnJuegoNivel(personaje->id);
-	if (NULL == p)
-		p = quitarPersonajeBloqueadosNivel(personaje->id);
+	p = quitarPersonajeEnNivel(personaje->id);
+	quitarPersonajeEnJuegoNivel(personaje->id);
+	quitarPersonajeBloqueadosNivel(personaje->id);
 
 	if (p != NULL)
 		agregarPersonajeAFinalizadosNivel(p);
@@ -706,6 +706,7 @@ int enviarMsjMuertexEnemigo (int socketPlanificador) {
 int tratarNuevoPersonaje(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
+	t_personaje *pj;
 	t_vecRecursos *vec;
 
 	// Si llega un mensaje de NUEVO_PERSONAJE luego espero recibir un t_personaje
@@ -720,7 +721,9 @@ int tratarNuevoPersonaje(int sock, header_t header, fd_set *master) {
 
 	// TODO agregar personaje a lista de personajes en juego
 	// y a la lista GUIITEMS para graficarlo.
-	agregarPersonajeEnJuegoNivel(crearPersonajeDesdePersonaje(personaje));
+	pj = crearPersonajeDesdePersonaje(personaje);
+	agregarPersonajeEnNivel(pj);
+	agregarPersonajeEnJuegoNivel(pj);
 	gui_crearPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 	vec = crearVecRecursos();
 	agregarRecursoxPersonaje(&personaje, vec);

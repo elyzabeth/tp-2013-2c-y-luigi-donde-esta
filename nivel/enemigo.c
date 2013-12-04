@@ -20,7 +20,7 @@ void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* y);
 t_personaje obternerPersonajeMasCercano(t_posicion miPosicion);
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
 void* enemigo (t_hiloEnemigo *enemy);
-int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
+//int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
 t_dictionary *listaPosicionesProhibidas;
 
 void verificarPosicionPersonajes(t_hiloEnemigo *enemy);
@@ -135,12 +135,12 @@ void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
 	int i;
 
 	void _comparaCoordPJEnemigo(t_personaje *p) {
-		log_info(LOGGER, " checarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
+		log_info(LOGGER, " verificarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
 		if (calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) == 0)
 		{
-			enviarMsjPorPipe(enemy->fdPipeE2N[1], MUERTE_PERSONAJE_XENEMIGO);
 			//agregarPersonajeMuertoxEnemigo(p);
 			queue_push(listaPersonajesMuertosxEnemigo, p);
+			enviarMsjPorPipe(enemy->fdPipeE2N[1], MUERTE_PERSONAJE_XENEMIGO);
 		}
 	}
 
@@ -169,7 +169,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 	t_posicion posicionPJ;
 	int posValida=0;
 
-	log_debug(LOGGER, "moverEnemigo: 1");
+	//log_debug(LOGGER, "moverEnemigo: 1");
 
 	if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
 	{
@@ -186,7 +186,7 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 	}
 
 	else{ //No hay personajes en el nivel
-		log_debug(LOGGER, "moverEnemigo: 2 no hay personajes");
+		//log_debug(LOGGER, "moverEnemigo: 2 no hay personajes");
 		if (
 			((hiloEnemigo->enemigo.posicionActual.x) == (hiloEnemigo->enemigo.posicionEleSiguiente.x)) &&
 			((hiloEnemigo->enemigo.posicionActual.y) == (hiloEnemigo->enemigo.posicionEleSiguiente.y))

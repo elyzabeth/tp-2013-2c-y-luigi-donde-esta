@@ -52,6 +52,7 @@ t_list *listaPersonajesFinalizados;
 t_queue *listaPersonajesEnNivel;
 t_queue *listaPersonajesMuertosxRecovery;
 t_queue *listaPersonajesMuertosxEnemigo;
+// Diccionario de recursos asignados clave=idPersonaje data=t_vecRecursos
 t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
@@ -113,6 +114,7 @@ void gui_dibujarEnemigo(char * msj);
 int32_t obternerCantPersonajesEnJuego();
 void moverPersonajeABloqueados(char simboloPersonaje);
 t_personaje* moverPersonajeAEnJuego(char simboloPersonaje);
+void agregarPersonajeEnNivel(t_personaje *personaje);
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
 void agregarPersonajeABloqueadosNivel(t_personaje *personaje);
 void agregarPersonajeAFinalizadosNivel(t_personaje *personaje);
@@ -122,10 +124,14 @@ void agregarPersonajeMuertoxEnemigo(t_personaje *personaje);
 void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso);
 t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje);
 t_caja* obtenerRecurso(char simboloRecurso);
-t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje);
-t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje);
+int32_t obtenerCantPersonajesEnJuego();
+int32_t obtenerCantPersonajesBloqueados();
+int32_t obtenerCantPersonajesEnNivel();
 t_personaje* quitarPersonajeMuertoxRecovery();
 t_personaje* quitarPersonajeMuertoxEnemigo();
+t_personaje* quitarPersonajeEnNivel(char simboloPersonaje);
+t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje);
+t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje);
 t_personaje* actualizarPosicionPJEnjuego(char idPersonaje, t_posicion posicion);
 t_queue* clonarListaPersonajesEnNivel();
 t_list* clonarListaPersonajesEnjuego();
