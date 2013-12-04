@@ -342,6 +342,8 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 		log_info(LOGGER, "\n\n\nTODOS LOS PERSONAJES CONCLUYERON SUS PLANES DE NIVELES...\n\nEJECUTO PROCESO KOOPAA!!!!!");
 		// TODO lanzar proceso Koopa!
 
+		// execv
+
 	} else {
 
 		log_info(LOGGER, "\n\nTodavía hay personajes en juego %d o nuevos: %d", list_size(listaPersonajesEnJuego), list_size(listaPersonajesNuevos));

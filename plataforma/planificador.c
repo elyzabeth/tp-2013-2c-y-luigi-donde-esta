@@ -133,6 +133,8 @@ void* planificador(t_planificador *planner) {
 
 								// TODO informar a quien corresponda la desconeccion del nivel.
 								//informarDesconeccionAPersonajes();
+
+								quitar_descriptor(i, &master, &max_desc);
 								break;
 							} else {
 								// TODO chequear si se desconecto personaje y borrarlo de las estructuras
@@ -751,7 +753,7 @@ int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planific
 
 		case MUERTE_PERSONAJE_XENEMIGO:
 			pj = quitarPersonajeColaxId(planner->personajesListos, personaje.id);
-			if (pj != NULL && planner->personajeEjecutando->id == pj->id)
+			if (pj != NULL && planner->personajeEjecutando != NULL && planner->personajeEjecutando->id == pj->id)
 				planner->personajeEjecutando = NULL;
 			break;
 
