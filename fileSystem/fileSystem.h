@@ -40,8 +40,6 @@
 #define BLKDIRECT 1024
 #define BLKSIZE 4096 //Tamaño de bloque fijo en bytes
 
-#define TAMANIODISCO 10485760 // TODO tamaño del disco, lo debe tomar por parametro
-#define BITMAPBITS TAMANIODISCO / BLKSIZE
 
 #define BORRADO 0
 #define ARCHIVO 1
@@ -75,6 +73,11 @@ GFile *FNodo;
 GFile *NODOS[GFILEBYTABLE]; // un array de 1024 posiciones de estructuras de tipo GFile
 char *DATOS;
 ptrGBloque blk_direct[BLKDIRECT];
+
+uint32_t TAMANIODISCO; // TODO tamaño del disco, lo debe tomar por parametro
+uint32_t BITMAPBITS;
+uint32_t ADMINBLKS;
+uint32_t MAXBLK;
 
 t_log* LOGGER;
 
