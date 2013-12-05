@@ -11,7 +11,7 @@ cp nivel/E1-nivel3.conf nivel3/nivel.conf
 
 rm -r nivel8
 cp -r nivel nivel8
-cp nivel/E1-nivel8.conf nivel4/nivel.conf 
+cp nivel/E1-nivel8.conf nivel8/nivel.conf 
 
 
 cp personaje/E1-personajeMario.conf personaje/personaje.conf
