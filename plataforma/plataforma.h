@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <curses.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "commons/log.h"
 #include "commons/collections/list.h"
@@ -100,6 +101,7 @@ void imprimirPersonajePlat (t_personaje* personaje);
 void imprimirListaPersonajesNuevos();
 void imprimirListaPersonajesEnJuego();
 void imprimirListaPersonajesFinalizados();
+void imprimirListaPersonajesFinAnormal ();
 
 
 

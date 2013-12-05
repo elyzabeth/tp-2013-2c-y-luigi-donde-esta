@@ -180,6 +180,16 @@ void matarHilos() {
 	sleep(1);
 }
 
+void enviarMsjImprimirAPlanificadores(){
+	// Envio Msj IMPRIMIR a los planificadores para que impriman el contenido de sus listados
+	void _imprimir_listas(char* key, t_planificador *planner) {
+		if ( planner->estado != FINALIZADO ) {
+			enviarMsjAPlanificador(planner, IMPRIMIR );
+		}
+	}
+	dictionary_iterator(listaNiveles, (void*)_imprimir_listas);
+}
+
 /*
  * @NAME: plat_signal_callback_handler
  * @DESC: Define la funcion a llamar cuando una señal es enviada al proceso
@@ -193,7 +203,16 @@ void plat_signal_callback_handler(int signum)
 
 	case SIGUSR1: // SIGUSR1=10 ( kill -s USR1 <PID> )
 		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR1\n");
-		finalizarPlataforma();
+		imprimirListaPersonajesNuevos();
+		imprimirListaPersonajesFinAnormal();
+		imprimirListaPersonajesEnJuego();
+		imprimirListaPersonajesFinalizados();
+		//finalizarPlataforma();
+		break;
+	case SIGUSR2: // SIGUSR2=12 ( kill -s USR2 <PID> )
+		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR2\n");
+		enviarMsjImprimirAPlanificadores();
+		//finalizarPlataforma();
 		break;
 	case SIGTERM: // SIGTERM=15 ( kill <PID>)
 		log_info(LOGGER, " - LLEGO SEÑAL SIGTERM\n");

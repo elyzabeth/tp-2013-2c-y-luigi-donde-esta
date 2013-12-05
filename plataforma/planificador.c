@@ -31,7 +31,9 @@ int enviarMovimientoRealizadoNivel(header_t *header, t_personaje *personaje, t_p
 //int recibirMuertePersonajePlan(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planificador *planner );
+void imprimirColas(t_planificador *planner);
 
+extern int errno;
 
 void* planificador(t_planificador *planner) {
 
@@ -72,7 +74,7 @@ void* planificador(t_planificador *planner) {
 		// ret= 0 timeout sin actividad en los fd
 		if(ret == -1)
 		{
-			printf("PLANIFICADOR %s: ERROR en select.", planner->nivel.nombre);
+			printf(" PLANIFICADOR %s: ERROR en select (%d = %s) (ret= %d) ", planner->nivel.nombre, errno, strerror(errno), ret);
 			sleep(1);
 			continue;
 		}
@@ -106,6 +108,12 @@ void* planificador(t_planificador *planner) {
 							enviarNuevoPersonajeANivel(*personaje, header, planner);
 						}
 
+						if (header.tipo == IMPRIMIR) {
+							log_debug(LOGGER, "PLANIFICADOR  %s: mensaje recibido '%d' ES IMPRIMIR", planner->nivel.nombre, header.tipo);
+							// IMPRIMIR COLAS
+							imprimirColas(planner);
+						}
+
 						if (header.tipo == FINALIZAR) {
 							log_debug(LOGGER, "PLANIFICADOR  %s: '%d' ES FINALIZAR", planner->nivel.nombre, header.tipo);
 							//cambiarEstadoNivelaFinalizado(planner->nivel.nombre); // lo hace al final
@@ -123,7 +131,7 @@ void* planificador(t_planificador *planner) {
 
 						if(se_desconecto)
 						{
-							sleep(3);
+							//sleep(3);
 							// Si se desconecto el Nivel Informo por pantalla y finalizo el hilo.
 							if (i == planner->nivel.fdSocket) {
 								log_info(LOGGER, "PLANIFICADOR %s: Se desconecto el Nivel (socket %d)", planner->nivel.nombre, i);
@@ -136,6 +144,7 @@ void* planificador(t_planificador *planner) {
 
 								quitar_descriptor(i, &master, &max_desc);
 								break;
+
 							} else {
 								// TODO chequear si se desconecto personaje y borrarlo de las estructuras
 								// si es personaje informar al nivel para que lo borre?
@@ -362,6 +371,42 @@ t_personaje* moverPersonajeBloqueadoAListo( t_planificador *planner, char simbol
 	return personaje;
 }
 
+/**
+ * @NAME: imprimirPersonajeCola
+ * @DESC: Imprime los personajes de la cola de personajes dada.
+ * Recibe puntero de tipo t_queue (cola de personajes)
+ */
+void imprimirPersonajeCola (t_queue *colaPersonajes) {
+	int tamanio = queue_size(colaPersonajes);
+	int i;
+	t_personaje *personaje=NULL;
+
+	for (i = 0; i < tamanio; i++) {
+		personaje = queue_pop(colaPersonajes);
+		queue_push(colaPersonajes, personaje);
+		imprimirPersonajePlat(personaje);
+	}
+
+}
+
+void imprimirColas(t_planificador *planner) {
+
+	log_info(LOGGER, "\n\n-- LISTADO Personajes LISTOS en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
+	imprimirPersonajeCola(planner->personajesListos);
+	log_info(LOGGER, "\r-- FIN Listado Personajes LISTOS en Planificador de %s: (total: %d) ---\n", planner->nivel.nombre, queue_size(planner->personajesListos));
+
+
+	log_info(LOGGER, "\n\n-- LISTADO Personajes BLOQUEADOS en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
+	imprimirPersonajeCola(planner->personajesBloqueados);
+	log_info(LOGGER, "\r-- FIN Listado Personajes BLOQUEADOS en Planificador de %s: (total: %d) ---\n", planner->nivel.nombre, queue_size(planner->personajesBloqueados));
+
+	if (planner->personajeEjecutando != NULL) {
+		log_info(LOGGER, "\n\n -- Personaje En estado EJECUTANDO en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
+		imprimirPersonajePlat(planner->personajeEjecutando);
+		log_info(LOGGER, "\n\n -- FIN Personaje En estado EJECUTANDO en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
+	}
+
+}
 
 
 // ------------------------------------------------------------------------------------------------

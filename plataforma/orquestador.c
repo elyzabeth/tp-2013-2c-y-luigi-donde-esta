@@ -290,13 +290,13 @@ void nuevoNivel(int fdNivel, header_t header, fd_set *master) {
 	initNivel(&nivel);
 	recibir_nivel(fdNivel, &nivel, master, &se_desconecto);
 
+	// PRIMERO QUITO NIVELES EN ESTADO FINALIZADO
+	eliminarNivelesFinalizados();
+
 	nivel.fdSocket = fdNivel;
 	planner = crearPlanificador(nivel);
 
-	log_info(LOGGER, "ORQUESTADOR - nuevoNivel: Se conecto el Nivel %s\n", nivel.nombre);
-
-	// PRIMERO QUITO NIVELES EN ESTADO FINALIZADO
-	eliminarNivelesFinalizados();
+	log_info(LOGGER, "ORQUESTADOR - nuevoNivel: Se conecto el Nivel %s (fd: %d)\n", nivel.nombre, fdNivel);
 
 	if (!existeNivel(nivel.nombre)) {
 
@@ -342,11 +342,14 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 		log_info(LOGGER, "\n\n\nTODOS LOS PERSONAJES CONCLUYERON SUS PLANES DE NIVELES...\n\nEJECUTO PROCESO KOOPAA!!!!!");
 
 		// TODO lanzar proceso Koopa!
-		char *koopa ;
-		koopa  = string_from_format("%s %s %s", configPlatKoopa(), "/tmp/Koopa", configPlatScript() );
-		int exitKoopa = system(koopa);
+		char *koopaCommand ;
+		//koopaCommand  = string_from_format("%s %s %s", configPlatKoopa(), "/tmp/Koopa", configPlatScript() );
+		koopaCommand  = string_from_format("%s %s %s", configPlatKoopa(), configPlatFileSystem(), configPlatScript() );
+
+		int exitKoopa = system(koopaCommand);
 
 		log_info(LOGGER, "\n\n Proceso Koopa: %d", exitKoopa);
+		free(koopaCommand);
 		finalizarPlataforma();
 
 	} else {

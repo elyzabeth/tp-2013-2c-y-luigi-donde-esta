@@ -374,3 +374,10 @@ void imprimirListaPersonajesFinalizados () {
 	pthread_mutex_unlock (&mutexListaPersonajesFinalizados);
 }
 
+void imprimirListaPersonajesFinAnormal () {
+	pthread_mutex_lock (&mutexListaPersonajesFinAnormal);
+	log_info(LOGGER, "\n\n--------- LISTADO Personajes Finalizados ANORMALMENTE en Plataforma: ---\n*************************************************");
+	list_iterate(listaPersonajesFinAnormal, (void*)imprimirPersonajePlat);
+	log_info(LOGGER, "\r--------- FIN Listado Personajes Finalizados ANORMALMENTE en Plataforma (total: %d) ---\n", list_size(listaPersonajesFinAnormal));
+	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
+}
