@@ -16,13 +16,13 @@ int enviar(int sock, char *buffer, int tamano)
 
 	if ((escritos = send (sock, buffer, tamano, 0)) <= 0)
 	{
-	  printf("Error en el send\n\n");
-	  return WARNING;
+		printf("Error en el send\n\n");
+		return WARNING;
 	}
-  else if (escritos != tamano)
-  {
-	  printf("La cantidad de bytes enviados es distinta de la que se quiere enviar\n\n");
-	  return WARNING;
+	else if (escritos != tamano)
+	{
+		printf("La cantidad de bytes enviados es distinta de la que se quiere enviar\n\n");
+		return WARNING;
 	}
 
 	return EXITO;
@@ -40,18 +40,42 @@ int recibir(int sock, char *buffer, int tamano)
 	{
 
 		val = recv(sock, buffer + leidos, tamano - leidos, 0);
-	 	leidos += val;
-	  if (val < 0)
-    {
-     	printf("Error al recibir datos\n\n");
-	    return ERROR;
-	  }
-    if(val == 0)
-    {
-      /*printf("%d se desconecto\n", sock);*/
-      return WARNING;
-    }
-  }
+		leidos += val;
+		if (val < 0)
+		{
+			printf("Error al recibir datos: %d - %s\n", val, strerror(val)); //ENOTCONN ENOTSOCK
+			switch(val) {
+				// The  socket  is  marked non-blocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.  POSIX.1-2001 allows either error to be returned for this
+				// case, and does not require these constants to have the same value, so a portable application should check for both possibilities.
+				//case EAGAIN: printf(" - EAGAIN \n The  socket  is  marked non-blocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.\n\n"); break;
+				//case EWOULDBLOCK: printf("EWOULDBLOCK \n The  socket  is  marked non-blocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.\n\n"); break;
+				// The argument sockfd is an invalid descriptor.
+				case EBADF: printf("EBADF \n The argument sockfd is an invalid descriptor.\n\n"); break;
+				// A remote host refused to allow the network connection (typically because it is not running the requested service).
+				case ECONNREFUSED: printf("ECONNREFUSED \n A remote host refused to allow the network connection (typically because it is not running the requested service).\n\n"); break;
+				// The receive buffer pointer(s) point outside the process's address space.
+				case EFAULT: printf("EFAULT \n The receive buffer pointer(s) point outside the process's address space.\n\n"); break;
+				// The receive was interrupted by delivery of a signal before any data were available; see signal(7).
+				case EINTR: printf("EINTR \n The receive was interrupted by delivery of a signal before any data were available; see signal(7).\n\n"); break;
+				// Invalid argument passed.
+				case EINVAL: printf("EINVAL \n Invalid argument passed.\n\n"); break;
+				// Could not allocate memory for recvmsg().
+				case ENOMEM: printf("ENOMEM \n Could not allocate memory for recvmsg().\n\n"); break;
+				// The socket is associated with a connection-oriented protocol and has not been connected (see connect(2) and accept(2)).
+				case ENOTCONN: printf("ENOTCONN \n The socket is associated with a connection-oriented protocol and has not been connected (see connect(2) and accept(2)).\n\n"); break;
+				// The argument sockfd does not refer to a socket.
+				case ENOTSOCK: printf("ENOTSOCK \n The argument sockfd does not refer to a socket.\n\n"); break;
+
+			}
+			return ERROR;
+		}
+		// Cuando recv devuelve 0 es porque se desconecto el socket.
+		if(val == 0)
+		{
+			/*printf("%d se desconecto\n", sock);*/
+			return WARNING;
+		}
+	}
 	return EXITO;
 }
 
@@ -77,7 +101,7 @@ int conectar(char ip[15+1], int puerto, int *sock)
 		printf("Imposible conectar\n\n");
 		return ERROR;
 	}
- return EXITO;
+	return EXITO;
 
 }
 
@@ -125,8 +149,9 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 
 	ret = recibir(sock, buffer, sizeof(header_t));
 
+	// WARNING es cuando se desconecto el socket.
 	if (ret == WARNING) {
-	//	sprintf(strAux, "Se desconecto el socket: %d\n", sock);
+		//	sprintf(strAux, "Se desconecto el socket: %d\n", sock);
 		FD_CLR(sock, master);
 		close(sock);
 		*seDesconecto = TRUE;
@@ -145,8 +170,8 @@ int recibir_header(int sock, header_t *header, fd_set *master/*por si se descone
 	/* Por ejemplo si la estructua no fuera por referencia y fuera local, debes hacer asi:
 	memcpy(&header, buffer, sizeof(header_t));*/
 
-//	printf("sock: %d --- largo: %d ---- ", sock, header->largo_mensaje);
-//	printf("tipo: %d\n", header->tipo);
+	//	printf("sock: %d --- largo: %d ---- ", sock, header->largo_mensaje);
+	//	printf("tipo: %d\n", header->tipo);
 	free(buffer);
 
 	return EXITO;
@@ -324,13 +349,13 @@ int recibir_caja(int sock, t_caja *caja, fd_set *master, int *seDesconecto)
 
 int quitar_descriptor(int desc, fd_set *listaDesc, int *maxDesc)
 {
-	close(desc);
 	FD_CLR(desc, listaDesc);
+	close(desc);
 
-	if (desc == *maxDesc)
-	{
-		*maxDesc = *maxDesc-1;
-	}
+	//	if (desc == *maxDesc)
+	//	{
+	//		*maxDesc = *maxDesc-1;
+	//	}
 	return EXITO;
 }
 
@@ -348,42 +373,42 @@ int agregar_descriptor(int desc, fd_set *listaDesc, int *maxDesc)
 
 int crear_listener(int puerto, int *listener)
 {
-  struct sockaddr_in miDir;
-  int yes = 1;
-  char reintentarConex = 1;
+	struct sockaddr_in miDir;
+	int yes = 1;
+	char reintentarConex = 1;
 
-  if ((*listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-  {
-	  printf("Error al crear el Socket\n\n");
-	  return ERROR;
+	if ((*listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	{
+		printf("Error al crear el Socket\n\n");
+		return ERROR;
 	}
 
 	if (setsockopt(*listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
 	{
-    puts("Error en setsockopt()");
+		puts("Error en setsockopt()");
 		return ERROR;
 	}
-  for(;reintentarConex;)
-  {
-    miDir.sin_family = AF_INET;
- 	  miDir.sin_addr.s_addr = INADDR_ANY;
-    miDir.sin_port = htons(puerto);
-    memset(&(miDir.sin_zero), '\0', 8);
+	for(;reintentarConex;)
+	{
+		miDir.sin_family = AF_INET;
+		miDir.sin_addr.s_addr = INADDR_ANY;
+		miDir.sin_port = htons(puerto);
+		memset(&(miDir.sin_zero), '\0', 8);
 
-    if (bind(*listener, (struct sockaddr*)&miDir, sizeof(miDir)) == -1)
-    {
-     // *puerto++; tratamiento de error
-      reintentarConex = 0;
-    }
-  }
-  listen(*listener, 10);
+		if (bind(*listener, (struct sockaddr*)&miDir, sizeof(miDir)) == -1)
+		{
+			// *puerto++; tratamiento de error
+			reintentarConex = 0;
+		}
+	}
+	listen(*listener, 10);
 
-  return EXITO;
+	return EXITO;
 }
 
 void genId(char idMsg[])
 {
-  	time_t tTiempo;
+	time_t tTiempo;
 	//header_t msgId;
 
 	int x;
@@ -392,8 +417,8 @@ void genId(char idMsg[])
 	tTiempo = time(&tTiempo) + (getpid() * 20);
 	srand(tTiempo);
 
-		for (x=0;x<15;x++)
-			idMsg[x]= rand() % 25 + 97;
+	for (x=0;x<15;x++)
+		idMsg[x]= rand() % 25 + 97;
 
 	idMsg[15]='\0';
 	//strncpy(idMsg, idMsg, sizeof(idMsg));
@@ -402,51 +427,51 @@ void genId(char idMsg[])
 
 char* getStringTipo(int tipo) {
 	switch (tipo) {
-		case NUEVO_PERSONAJE: return "NUEVO_PERSONAJE";
-			break;
-		case NUEVO_NIVEL: return "NUEVO_NIVEL";
-			break;
-		case PERSONAJE_CONECTADO: return "PERSONAJE_CONECTADO";
-			break;
-		case NIVEL_CONECTADO: return "NIVEL_CONECTADO";
-			break;
-		case CONECTAR_NIVEL: return "CONECTAR_NIVEL";
-			break;
-		case SOLICITUD_UBICACION: return "SOLICITUD_UBICACION";
-			break;
-		case SOLICITUD_RECURSO: return "SOLICITUD_RECURSO";
-			break;
-		case RECURSO_CONCEDIDO: return "RECURSO_CONCEDIDO";
-			break;
-		case RECURSO_DENEGADO: return "RECURSO_DENEGADO";
-			break;
-		case TURNO_CONCEDIDO: return "TURNO_CONCEDIDO";
-			break;
-		case FINALIZAR: return "FINALIZAR";
-			break;
-		case CAMBIOS_CONFIGURACION: return "CAMBIOS_CONFIGURACION";
-			break;
-		case UBICACION_RECURSO: return "UBICACION_RECURSO";
-			break;
-		case MOVIMIENTO_REALIZADO: return "MOVIMIENTO_REALIZADO";
-			break;
-		case RECURSO_INEXISTENTE: return "RECURSO_INEXISTENTE";
-			break;
-		case PLAN_NIVEL_FINALIZADO: return "PLAN_NIVEL_FINALIZADO";
-			break;
-		case PLAN_NIVELES_CONCLUIDO: return "PLAN_NIVELES_CONCLUIDO";
-			break;
-		case MUERTE_PERSONAJE: return "MUERTE_PERSONAJE";
-			break;
-		case MUERTE_PERSONAJE_XENEMIGO: return "MUERTE_PERSONAJE_XENEMIGO";
-			break;
-		case MUERTE_PERSONAJE_XRECOVERY: return "MUERTE_PERSONAJE_XRECOVERY";
-			break;
-		case NIVEL_INEXISTENTE: return "NIVEL_INEXISTENTE";
-			break;
-		case PERSONAJE_DESBLOQUEADO: return "PERSONAJE_DESBLOQUEADO";
-			break;
-		default: return "TIPO NO RECONOCIDO";
+	case NUEVO_PERSONAJE: return "NUEVO_PERSONAJE";
+	break;
+	case NUEVO_NIVEL: return "NUEVO_NIVEL";
+	break;
+	case PERSONAJE_CONECTADO: return "PERSONAJE_CONECTADO";
+	break;
+	case NIVEL_CONECTADO: return "NIVEL_CONECTADO";
+	break;
+	case CONECTAR_NIVEL: return "CONECTAR_NIVEL";
+	break;
+	case SOLICITUD_UBICACION: return "SOLICITUD_UBICACION";
+	break;
+	case SOLICITUD_RECURSO: return "SOLICITUD_RECURSO";
+	break;
+	case RECURSO_CONCEDIDO: return "RECURSO_CONCEDIDO";
+	break;
+	case RECURSO_DENEGADO: return "RECURSO_DENEGADO";
+	break;
+	case TURNO_CONCEDIDO: return "TURNO_CONCEDIDO";
+	break;
+	case FINALIZAR: return "FINALIZAR";
+	break;
+	case CAMBIOS_CONFIGURACION: return "CAMBIOS_CONFIGURACION";
+	break;
+	case UBICACION_RECURSO: return "UBICACION_RECURSO";
+	break;
+	case MOVIMIENTO_REALIZADO: return "MOVIMIENTO_REALIZADO";
+	break;
+	case RECURSO_INEXISTENTE: return "RECURSO_INEXISTENTE";
+	break;
+	case PLAN_NIVEL_FINALIZADO: return "PLAN_NIVEL_FINALIZADO";
+	break;
+	case PLAN_NIVELES_CONCLUIDO: return "PLAN_NIVELES_CONCLUIDO";
+	break;
+	case MUERTE_PERSONAJE: return "MUERTE_PERSONAJE";
+	break;
+	case MUERTE_PERSONAJE_XENEMIGO: return "MUERTE_PERSONAJE_XENEMIGO";
+	break;
+	case MUERTE_PERSONAJE_XRECOVERY: return "MUERTE_PERSONAJE_XRECOVERY";
+	break;
+	case NIVEL_INEXISTENTE: return "NIVEL_INEXISTENTE";
+	break;
+	case PERSONAJE_DESBLOQUEADO: return "PERSONAJE_DESBLOQUEADO";
+	break;
+	default: return "TIPO NO RECONOCIDO";
 	}
 }
 
@@ -454,7 +479,7 @@ char* getStringTipo(int tipo) {
 
 void senialMurioHijo(int senial)
 {
-/*
+	/*
 
 	switch (senial)
 
@@ -463,7 +488,7 @@ void senialMurioHijo(int senial)
 	  	             break;
 	  default:       puts("la señal capturada no la tratamos");
 	  	             break;
-*/
+	 */
 }
 
 /*void senialSuspendido(int senial)
