@@ -81,6 +81,7 @@ int principal(int argc, char *argv[]);
 void inicializarPersonaje();
 void inicializarVariablesGlobales();
 void reiniciar(bool valor);
+void reinicioNivelCompleto();
 void finalizarPersonaje();
 void finalizarHilosPersonaje();
 

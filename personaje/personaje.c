@@ -382,50 +382,55 @@ int32_t decrementarVida() {
  * Personaje se cerrará, abandonando el juego.
  */
 void manejoSIGTERM() {
-	char respuesta;
+
 	int vidas_restantes = decrementarVida();
 
 	if (vidas_restantes == -1) {
-		//TODO interrumpir todos los planes de niveles
-		// llamar funcion que baje los hilos y ver que otras variables hay que reiniciar!!
-		finalizarHilosPersonaje();
-		sleep(2);
-
-		printf("\n\nKnock, knock, Neo...\n\n");
-		sleep(2);
-		printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe....\n");
-		sleep(4);
-		printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n...\n");
-		sleep(3);
-		printf("Remember that all I'am offering is the truth. Nothing more. \n");
-		printf("\nThis is your last chance. After this there is no turning back... \n\n Choose blue or red pill b/r: ");
-		printf("\n(traducción: Desea reiniciar el juego? s/n:) ");
-
-		while ((respuesta=getc(stdin)) != 's' && respuesta != 'b' && respuesta != 'n' && respuesta != 'r')
-			printf("\nPor favor ingrese 's' o 'b' para reiniciar, o ingrese 'n' o 'r' para terminar: ");
-
-		if(respuesta == 's' || respuesta == 'b') {
-			REINTENTOS++;
-			log_info(LOGGER, "\n\nVOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
-
-			// llamar funcion que reinicie el juego
-			inicializarVariablesGlobales();
-
-			imprimirVidasyReintentos();
-			sleep(2);
-
-
-		} else {
-			log_info(LOGGER, "\n\nSALIENDO DE MATRIX....\n\n CERRANDO PROCESO PERSONAJE");
-
-			finalizarPersonaje();
-
-			exit(0);
-		}
+		reinicioNivelCompleto();
 	}
 
 }
 
+void reinicioNivelCompleto() {
+
+	char respuesta;
+	// interrumpir todos los planes de niveles
+	// llamar funcion que baje los hilos y ver que otras variables hay que reiniciar!!
+	finalizarHilosPersonaje();
+	sleep(2);
+
+	printf("\n\n\n Knock, knock, Neo...\n\n");
+	sleep(2);
+	printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe....\n\n");
+	sleep(4);
+	printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n...\n");
+	sleep(3);
+	printf("Remember that all I'am offering is the truth. Nothing more. \n");
+	printf("\nThis is your last chance. After this there is no turning back... \n\n Choose blue or red pill b/r: ");
+	printf("\n(traducción: Desea reiniciar el juego? s/n:) ");
+
+	while ((respuesta=getc(stdin)) != 's' && respuesta != 'b' && respuesta != 'n' && respuesta != 'r')
+		printf("\nPor favor ingrese 's' o 'b' para reiniciar, o ingrese 'n' o 'r' para terminar: ");
+
+	if(respuesta == 's' || respuesta == 'b') {
+		REINTENTOS++;
+		log_info(LOGGER, "\n\nVOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
+
+		// llamar funcion que reinicie el juego
+		inicializarVariablesGlobales();
+
+		imprimirVidasyReintentos();
+		sleep(2);
+
+
+	} else {
+		log_info(LOGGER, "\n\nSALIENDO DE MATRIX....\n\n CERRANDO PROCESO PERSONAJE");
+
+		finalizarPersonaje();
+
+		exit(0);
+	}
+}
 
 /*
  * @NAME: per_signal_callback_handler

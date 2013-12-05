@@ -538,7 +538,7 @@ int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_
 	vidas = decrementarVida();
 
 	if (vidas >= 0) {
-		// TODO si todavia me quedan vidas, llamar funciones para reiniciar el nivel!
+		// si todavia me quedan vidas, llamar funciones para reiniciar SOLAMENTE el nivel!
 
 		// reinicio posicion actual a (0,0) y recurso a '-'
 //		hiloPxN->personaje.posActual.x = 0;
@@ -568,8 +568,12 @@ int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_
 		}
 
 	} else {
-		// TODO que hago si no me quedan vidas???? FINALIZO EL HILO?
-		log_info(LOGGER, "\n\n YA NO ME QUEDAN VIDAS PARA CONTINUAR!!!! - personaje del %s \n", hiloPxN->personaje.nivel);
+
+		log_info(LOGGER, "\n\n\n YA NO ME QUEDAN VIDAS PARA CONTINUAR!!!! - personaje %s del %s \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+
+		// TODO llamar a funcion de reinicio completo de juego
+		reinicioNivelCompleto();
+
 		return true;
 	}
 
