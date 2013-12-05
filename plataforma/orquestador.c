@@ -347,6 +347,7 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 		int exitKoopa = system(koopa);
 
 		log_info(LOGGER, "\n\n Proceso Koopa: %d", exitKoopa);
+		finalizarPlataforma();
 
 	} else {
 
