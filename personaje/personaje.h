@@ -63,7 +63,7 @@ typedef struct {
 t_log* LOGGER;
 int32_t VIDAS;
 int32_t REINTENTOS;
-
+char CONFIG_FILE[MAXCHARLEN];
 
 t_queue *planDeNiveles;
 t_list *listaHilosxNivel;

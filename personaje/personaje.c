@@ -9,6 +9,13 @@
 
 int main (int argc, char *argv[]) {
 
+	// Correr tests
+	if ( argc > 1 ){
+		strncpy(CONFIG_FILE, argv[1], MAXCHARLEN);
+	}
+
+
+	// Registro signal y signal handler
 	signal(SIGINT, per_signal_callback_handler);
 	signal(SIGQUIT, per_signal_callback_handler);
 	signal(SIGUSR1, per_signal_callback_handler);
@@ -56,7 +63,7 @@ int principal(int argc, char *argv[]) {
 void inicializarPersonaje() {
 	// TODO agregar inicializaciones necesarias
 
-	levantarArchivoConfiguracionPersonaje();
+	levantarArchivoConfiguracionPersonaje(CONFIG_FILE);
 
 	LOGGER = log_create(configPersonajeLogPath(), "PERSONAJE", configPersonajeLogConsola(), configPersonajeLogNivel() );
 	log_info(LOGGER, "INICIALIZANDO PERSONAJE '%s' ", configPersonajeNombre());
