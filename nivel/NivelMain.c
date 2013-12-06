@@ -14,7 +14,7 @@ int main (int argc, char**argv) {
 	if (argc > 1 && strcmp(argv[1], "-test")==0)
 		return correrTest();
 
-	// Registro signal and signal handler
+	// Registro signal y signal handler
 	signal(SIGINT, signal_callback_handler);
 	signal(SIGQUIT, signal_callback_handler);
 	signal(SIGUSR1, signal_callback_handler);

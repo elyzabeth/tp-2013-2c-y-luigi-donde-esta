@@ -77,6 +77,9 @@ void agregarCajasRecursos() {
 	void _add_box(char *simbolo, t_caja *caja) {
 		validarPosicionCaja(caja->SIMBOLO, caja->POSX, caja->POSY);
 		gui_crearCaja(caja->SIMBOLO, caja->POSX, caja->POSY, caja->INSTANCIAS);
+		coordProhibidas[totalCoordProhibidas].x = caja->POSX;
+		coordProhibidas[totalCoordProhibidas].y = caja->POSY;
+		totalCoordProhibidas++;
 	}
 
 	dictionary_iterator(listaRecursos, (void*)_add_box);
@@ -159,6 +162,8 @@ void inicializarNivel () {
 
 	listaRecursos = configNivelRecursos();
 
+	totalCoordProhibidas = 0;
+
 	// inicializo inotify
 	notifyFD = crearNotifyFD();
 	watchDescriptor = inotify_add_watch(notifyFD, PATH_CONFIG_NIVEL, IN_MODIFY);
@@ -214,9 +219,12 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 	vec = removerRecursoxPersonaje(personaje);
 
 	if (vec == NULL){
-		log_error(LOGGER, "\n\nliberarRecursosPersonaje: ERROR personaje %s no tiene recursos en recursosxPersonajes", personaje->nombre);
+		log_error(LOGGER, "\n\n%s liberarRecursosPersonaje: ERROR personaje %s no tiene recursos en recursosxPersonajes", NOMBRENIVEL, personaje->nombre);
 		return WARNING;
 	}
+
+	if(vec->total == 0)
+		log_debug(LOGGER, "%s liberarRecursosPersonaje: El personaje %s (%c) no tiene recursos asignados.", NOMBRENIVEL, personaje->nombre, personaje->id);
 
 	for ( i = 0; i < vec->total; i++ ) {
 
@@ -229,7 +237,7 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 
 		// informo al planificador los recursos liberados
 		if ( (ret=enviarMsjRecursoLiberado(sock, caja)) != EXITO ) {
-			log_error(LOGGER,"%s liberarRecursosPersonaje: ERROR al llamar la funcion enviarMsjRecursoLiberado \n\n", NOMBRENIVEL);
+			log_error(LOGGER,"\n\n %s liberarRecursosPersonaje: ERROR al llamar la funcion enviarMsjRecursoLiberado!!! \n\n", NOMBRENIVEL);
 		}
 
 		//ret = recibir_header_simple(sock, &header);
@@ -256,19 +264,19 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 void finalizarPersonajeNivel(int sock, t_personaje *personaje) {
 	t_personaje *p;
 
-	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
-	liberarRecursosPersonaje (sock, personaje);
+	// BORRO al personaje del listado GUIITEMS
+	gui_borrarItem(personaje->id);
 
 	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
-	p = quitarPersonajeEnNivel(personaje->id);
 	quitarPersonajeEnJuegoNivel(personaje->id);
 	quitarPersonajeBloqueadosNivel(personaje->id);
 
+	p = quitarPersonajeEnNivel(personaje->id);
 	if (p != NULL)
 		agregarPersonajeAFinalizadosNivel(p);
 
-	// BORRO al personaje del listado GUIITEMS
-	gui_borrarItem(personaje->id);
+	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
+	liberarRecursosPersonaje (sock, personaje);
 }
 
 /**
@@ -314,14 +322,19 @@ void finalizarNivel () {
 
 
 	// Libero listas dinamicas
-	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
-	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirHiloEnemigo);
-	list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
-	list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
+	//list_destroy_and_destroy_elements(listaPersonajesEnJuego, (void*)destruirPersonaje);
+	list_destroy(listaPersonajesEnJuego);
+	//list_destroy_and_destroy_elements(listaPersonajesBloqueados, (void*)destruirPersonaje);
+	list_destroy(listaPersonajesBloqueados);
+
 	list_destroy_and_destroy_elements(listaPersonajesFinalizados, (void*)destruirPersonaje);
+
 	queue_destroy_and_destroy_elements(listaPersonajesEnNivel, (void*)destruirPersonaje);
 	queue_destroy_and_destroy_elements(listaPersonajesMuertosxRecovery, (void*)destruirPersonaje);
 	queue_destroy_and_destroy_elements(listaPersonajesMuertosxEnemigo, (void*)destruirPersonaje);
+
+	list_destroy_and_destroy_elements(GUIITEMS, (void*)free);
+	list_destroy_and_destroy_elements(listaEnemigos, (void*)destruirHiloEnemigo);
 	dictionary_destroy_and_destroy_elements(listaRecursos, (void*)destruirCaja);
 	dictionary_destroy_and_destroy_elements(recursosxPersonajes, (void*)destruirVecRecursos);
 
@@ -632,73 +645,72 @@ int enviarMsjRecursoInexistente (int sock) {
 	return ret;
 }
 
-int enviarMsjMuertexRecovery (int socketPlanificador) {
+int enviarMsjMuerte (int socketPlanificador, t_personaje *personaje, char tipo) {
 	int ret;
 	header_t header;
-	t_personaje *personaje=NULL;
 	t_personaje p;
-
-	personaje = quitarPersonajeMuertoxRecovery();
-	if (personaje == NULL){
-		log_error(LOGGER,"%s enviarMsjMuertexRecovery: ERROR! al obtener t_personaje de la cola de Personajes Muertos xRecovery \n\n", NOMBRENIVEL);
-		return WARNING;
-	}
 
 	p = *personaje;
 
 	initHeader(&header);
-	header.tipo = MUERTE_PERSONAJE_XRECOVERY;
+	header.tipo = tipo;
 	header.largo_mensaje = 0;
 
-	log_info(LOGGER, "%s enviarMsjMuertexRecovery: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, socketPlanificador, sizeof(header), header.largo_mensaje);
+	log_info(LOGGER, "%s enviarMsjMuerte: %s fd:%d, sizeof(header): %d, largo mensaje: %d \n", getStringTipo(tipo), NOMBRENIVEL, socketPlanificador, sizeof(header), header.largo_mensaje);
 	if ((ret = enviar_header(socketPlanificador, &header)) != EXITO)
 	{
-		log_error(LOGGER,"%s enviarMsjMuertexRecovery: Error al enviar header MUERTE_PERSONAJE_XRECOVERY\n\n", NOMBRENIVEL);
+		log_error(LOGGER,"%s enviarMsjMuerte: Error al enviar header %s \n\n", NOMBRENIVEL, getStringTipo(tipo));
 		return WARNING;
 	}
 
 	if ((ret = enviar_personaje(socketPlanificador, &p)) != EXITO)
 	{
-		log_error(LOGGER,"%s enviarMsjMuertexRecovery: Error al enviar t_personaje MUERTE_PERSONAJE_XRECOVERY\n\n", NOMBRENIVEL);
+		log_error(LOGGER,"%s enviarMsjMuerte: Error al enviar t_personaje de %s \n\n", NOMBRENIVEL, getStringTipo(tipo));
 		return WARNING;
 	}
 
-	// TODO ver si corresponde!!!!
-	finalizarPersonajeNivel(socketPlanificador, personaje);
+	return ret;
+}
+
+
+int enviarMsjMuertexRecovery (int socketPlanificador) {
+	int ret, i;
+	t_personaje *personaje=NULL;
+
+	for(i=0; i<queue_size(listaPersonajesMuertosxRecovery); i++) {
+		personaje = quitarPersonajeMuertoxRecovery();
+
+		if (personaje == NULL){
+			log_error(LOGGER,"%s enviarMsjMuertexRecovery: ERROR! al obtener t_personaje de la cola de Personajes Muertos xRecovery \n\n", NOMBRENIVEL);
+			return WARNING;
+		}
+
+		ret = enviarMsjMuerte(socketPlanificador, personaje, MUERTE_PERSONAJE_XRECOVERY);
+
+		// TODO ver si corresponde!!!!
+		finalizarPersonajeNivel(socketPlanificador, personaje);
+	}
 
 	return ret;
 }
 
 
 int enviarMsjMuertexEnemigo (int socketPlanificador) {
-	int ret;
-	header_t header;
+	int ret, i;
 	t_personaje *personaje=NULL;
-	t_personaje p;
 
-	personaje = quitarPersonajeMuertoxEnemigo();
-	p = *personaje;
+	for(i=0; i<queue_size(listaPersonajesMuertosxEnemigo); i++) {
+		personaje = quitarPersonajeMuertoxEnemigo();
 
-	initHeader(&header);
-	header.tipo = MUERTE_PERSONAJE_XENEMIGO;
-	header.largo_mensaje = 0;
+		if (personaje == NULL){
+			log_error(LOGGER,"%s enviarMsjMuertexEnemigo: ERROR! al obtener t_personaje de la cola de Personajes Muertos xEnemigo \n\n", NOMBRENIVEL);
+			return WARNING;
+		}
 
-	log_info(LOGGER, "%s enviarMsjMuertexEnemigo: fd:%d, sizeof(header): %d, largo mensaje: %d \n", NOMBRENIVEL, socketPlanificador, sizeof(header), header.largo_mensaje);
-
-	if ((ret = enviar_header(socketPlanificador, &header)) != EXITO)
-	{
-		log_error(LOGGER,"%s enviarMsjMuertexEnemigo: Error al enviar header MUERTE_PERSONAJE_XENEMIGO\n\n", NOMBRENIVEL);
-		return WARNING;
+		ret = enviarMsjMuerte(socketPlanificador, personaje, MUERTE_PERSONAJE_XENEMIGO);
+		// TODO ver si corresponde!!!!
+		finalizarPersonajeNivel(socketPlanificador, personaje);
 	}
-
-	if ((ret = enviar_personaje(socketPlanificador, &p)) != EXITO)
-	{
-		log_error(LOGGER,"%s enviarMsjMuertexEnemigo: Error al enviar t_personaje MUERTE_PERSONAJE_XENEMIGO\n\n", NOMBRENIVEL);
-		return WARNING;
-	}
-
-	// TODO ver si corresponde!!!!
-	finalizarPersonajeNivel(socketPlanificador, personaje);
 
 	return ret;
 }
@@ -869,7 +881,10 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 	return ret;
 }
 
-
+/**
+ *  tratarMuertePersonaje
+ *  logica de cuando llega Msj de MUERTE_PERSONAJE desde el planificador.
+ */
 int tratarMuertePersonaje(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
@@ -881,12 +896,15 @@ int tratarMuertePersonaje(int sock, header_t header, fd_set *master) {
 		return ret;
 	}
 
+	log_debug(LOGGER,"%s tratarMuertePersonaje: MUERTE_PERSONAJE de %s (%c) nivel: \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.nivel);
 	//gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
 	finalizarPersonajeNivel(sock, &personaje);
 
 	return ret;
 }
 
+
+// No se usa...
 int tratarMuertePersonajexEnemigo (int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;

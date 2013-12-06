@@ -82,6 +82,9 @@ typedef struct {
 	int32_t total;
 } t_vecRecursos;
 
+t_posicion coordProhibidas[100];
+int32_t totalCoordProhibidas;
+
 int correrTest();
 void principal ();
 

@@ -12,10 +12,12 @@
 // Porque se acceden concurrentemente desde varios hilos.
 void gui_borrarItem(char id) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
+	ITEM_NIVEL* itm;
     bool _search_by_id(ITEM_NIVEL* item) {
         return item->id == id;
     }
-    free(list_remove_by_condition(GUIITEMS, (void*) _search_by_id));
+    itm = list_remove_by_condition(GUIITEMS, (void*) _search_by_id);
+    if (itm != NULL) free(itm);
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
@@ -148,7 +150,7 @@ t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje) {
 
 t_caja* obtenerRecurso(char simboloRecurso) {
 	pthread_mutex_lock (&mutexListaRecursos);
-	t_caja* caja = NULL;
+	t_caja *caja = NULL;
 	char simbolo[2] = {0};
 	simbolo[0] = simboloRecurso;
 	caja = dictionary_get(listaRecursos, simbolo);
