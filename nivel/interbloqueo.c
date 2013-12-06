@@ -49,12 +49,14 @@ int32_t totalPersonajes;
 
 // Prototipos de funciones del hilo
 //int32_t detectarDeadlock();
-t_personaje* recovery();
+void recovery(t_queue* colaPJInterbloqueados);
+t_caja* buscaRecursoXIdRecursoDD(t_list* list,char IdRecurso);
+t_vecRecursos* obtenerRecursoxPersonaje(t_personaje *personaje);
 
 //t_caja buscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->cIdRecursoBloquea);
 //bool personajeConRecursoAsignado(t_pesonaje);
 
-void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
+void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo) {
 	header_t header;
 	fd_set master;
 	fd_set read_fds;
@@ -69,21 +71,18 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	int32_t hayDeadLock;
 
 	log_info(LOGGER, "HILO DE DETECCION DE INTERBLOQUEO: Iniciado.");
-	  t_dictionary* listaRecursoXPersonaje = clonarListaRecursosxPersonaje();
-	  t_list* listaPersonajesBloqueados = clonarListaPersonajesBloqueados();
-	  t_dictionary* listaRecursosClonados = clonarDiccionarioRecursos();
+
 	FD_ZERO(&master);
 	FD_ZERO(&read_fds);
 
 	// Agrego descriptor de comunicacion con plataforma por pipe
-	agregar_descriptor(hiloInterbloqueo.fdPipe[0], &master, &max_desc);
+	// TODO agregar_descriptor(hiloInterbloqueo.fdPipe[0], &master, &max_desc);
 
 	TiempoChequeoDeadlock = configNivelTiempoChequeoDeadlock();
 	RecoveryOn = configNivelRecovery();
 	hayDeadLock = 0;
 	t_caja * recurso;
 	t_RecursoAsignado * recursoAux;
-	char stringPersonajesInterbloqueados[BUFFER];
 	while(!fin) {
 
 		FD_ZERO (&read_fds);
@@ -98,21 +97,29 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 		} else if (ret == 0) {
 
 			// Aca va la logica de interbloqueo
+			//t_dictionary* listaRecursoXPersonaje = clonarListaRecursosxPersonaje();
+			//t_list* listaPersonajesBloqueados = clonarListaPersonajesBloqueados();
+			t_dictionary* listaRecursosClonados = configNivelRecursos();
+			t_queue* colaPersonajesEnNivel = clonarListaPersonajesEnNivel();
+			t_vecRecursos * recursosDelPersonaje;
 			log_info(LOGGER, "Incio deteccion de interbloqueo...");
-				if ( listaPersonajesEnNivel == NULL)
+				if ( colaPersonajesEnNivel == NULL)
 						{
 							log_debug(LOGGER,"HILO DD: No hay personajes en el nivel. No hay DD");
 						}
 						else
 						{
-							int iFinalizados[queue_size(listaPersonajesEnNivel)];
+							int iFinalizados[queue_size(colaPersonajesEnNivel)];
 							int i;
+							t_queue * colaPersonajesInterBloqueados;
+							t_queue * colaPersonajesInterBloqueadosAMatar;
+							colaPersonajesInterBloqueados = queue_create();
+							colaPersonajesInterBloqueadosAMatar = queue_create();
 							/* CARGO VECTOR FINALIZADOS*/
-							for (i=0; i<queue_size(listaPersonajesEnNivel);i++)
+							for (i=0; i<queue_size(colaPersonajesEnNivel);i++)
 							{
 								iFinalizados[i] = 0;
 							}
-
 							/* CREO LISTA RECURSOS TRABAJADOS*/
 							// incialmente con todos los recursos disponibles para luego ir quitandolselos
 							t_list * listaDeRecursosTrabajados;
@@ -121,7 +128,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 							{
 								recursoAux = (t_RecursoAsignado *) malloc(sizeof(t_RecursoAsignado));
 								recurso = caja;
-								sprintf(recursoAux->cIdRecurso,"%s", recurso->SIMBOLO);
+								sprintf(recursoAux->cIdRecurso,"%c", recurso->SIMBOLO);
 								recursoAux->iCantAsignada = recurso->INSTANCIAS;
 								list_add(listaDeRecursosTrabajados,recursoAux);
 							}
@@ -130,17 +137,16 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 							/*LIMPIO BUFFER Y EJECUTO ALGORITMO*/
 
-							memset(stringPersonajesInterbloqueados,'\0',BUFFER);
-							for (i=0; i<list_size(listaPersonajesEnNivel);i++)
+
+							for (i=0; i<queue_size(colaPersonajesEnNivel);i++)
 							{
 								t_personaje *personaje;
-								t_personaje = queue_pop(listaPersonajesEnNivel);
-							/*VERIFICO SI EL PERSONAJE ESTÁ BLOQUEADO POR UN RECURSO*/
+								personaje = queue_pop(colaPersonajesEnNivel);
+								/*VERIFICO SI EL PERSONAJE ESTÁ BLOQUEADO POR UN RECURSO*/
 								if (personaje->recurso != '0')
 								{
-									t_vecRecursos recursosDelPersonaje = obtenerRecursoxPersonaje(t_personaje *personaje);
-									if (recursosDelPersonaje != NULL)
-							//			//no exite la lista de recursos asignados en el personaje
+									recursosDelPersonaje = obtenerRecursoxPersonaje(personaje);
+									if (recursosDelPersonaje->total == 0)
 // busco los RecurssosXpersonajes que esta usando
 									{
 										if ((sizeof (recursosDelPersonaje) / sizeof (t_vecRecursos) )>0)
@@ -149,10 +155,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 										}
 										else
 										{
-											iFinalizados[i] = 1;
+											iFinalizados[i] = 1;//para cada pj que este bloqueado y con recursos asigandos
 										}
 									}
-// busco el recurso correspondiente al ID
 									recurso = buscaRecursoXIdRecursoDD(listaDeRecursosTrabajados,personaje->recurso);
 									if((iFinalizados[i] == 1) && (1 <= recurso->INSTANCIAS))
 									{
@@ -163,63 +168,37 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 									{
 										iFinalizados[i] = 0;
 										hayDeadLock = 1;
-										strcat(stringPersonajesInterbloqueados, personaje->nombre);
-										strcat(stringPersonajesInterbloqueados,";");
+										queue_push(colaPersonajesInterBloqueados, personaje);
 									}
 								}
 							}
+
 
 						if(hayDeadLock == 1)
 							{
 								if(RecoveryOn == 1)
 								{
-								enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
-
-								int iTamanioMsj;
-						//		tipo_header_ipc header;
-
-								char** cadenaPersonajes = string_split(stringPersonajesInterbloqueados, ";");
-								if (cadenaPersonajes[1] == NULL)//habia uno solo
+								//TODO enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
+									if (queue_size(colaPersonajesInterBloqueados) == 1)
 									{
-										log_info(LOGGER,"HILO DD: El personaje %s se encuentra en estado de STARVATION",cadenaPersonajes[0]);
+									log_info(LOGGER,"HILO DD: El personaje %s se encuentra en estado de STARVATION",colaPersonajesInterBloqueados);
 									}
 								else
 									{
 										log_info(LOGGER,"HILO DD: Hay DEADLOCK entre los personajes:");
-										int dd = 0;
-										while (cadenaPersonajes[dd] != NULL)
+										t_personaje * personaje;
+										while (!queue_is_empty(colaPersonajesInterBloqueados))
 										{
-											log_info(LOGGER,"HILO DD:  ------------------------->   %s",cadenaPersonajes[dd]);
-											dd++;
+											personaje = queue_pop(colaPersonajesInterBloqueados);
+											log_info(LOGGER,"HILO DD:  ------------------------->   %s",personaje->nombre);
+											queue_push(colaPersonajesInterBloqueadosAMatar,personaje);
 										}
-
 									}
-								free(cadenaPersonajes);
 								//EJECUTAR EL RECOVERY DESDE NIVEL
+								recovery(colaPersonajesInterBloqueadosAMatar);
+								queue_clean(colaPersonajesInterBloqueados);
 
-								recovery(stringPersonajesInterbloqueados);
-
-
-
-
-								/*log_trace(LOGGER,"HILO DD: Buffer a enviar en PEDIDO_RECOVERY a ORQUESTADOR: %s", sPersonajesInterbloq);
-								armaheaderipc(&header, PEDIDO_RECOVERY, strlen(sPersonajesInterbloq));
-								iTamanioMsj = sizeof(header);
-								if (sendall(iSockOrquestador, (char *)&header, &iTamanioMsj) != 0)
-									{
-										log_error(logger, "HILO DD: Error al enviar PEDIDO_RECOVERY header a ORQUESTADOR");
-									}
-								else
-									{
-										log_debug(logger, "HILO DD: Envio PEDIDO_RECOVERY header a ORQUESTADOR, tipo: %x", PEDIDO_RECOVERY);
-
-										//ENVIO MENSAJE
-										if(sendall(iSockOrquestador, sPersonajesInterbloq, &header.payloadlength) != 0)
-										{
-											log_error(logger, "HILO DD: Error al enviar PEDIDO_RECOVERY mensaje a ORQUESTADOR");
-										}
-										log_debug(logger, "HILO DD: Envio PEDIDO_RECOVERY mensaje a ORQUESTADOR");
-									}*/
+								queue_clean(colaPersonajesInterBloqueadosAMatar);
 								}
 							else
 								{
@@ -230,10 +209,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 							{
 								log_info(LOGGER, "HILO DD: No hay DEADLOCK");
 							}
-							/*VACIO LA LISTA PARA EL PROXIMO CHEQUEO*/
-							borraListaDeadLock(listaDeRecursosTrabajados);
+						//LIBERO LA LISTA Y LOS ELEMENTOS
+						list_clean(listaDeRecursosTrabajados);
 						}
-						//pthread_mutex_unlock(&semMutex);
 					}
 
 			else {
@@ -241,9 +219,10 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 			for(i = 0; i <= max_desc; i++)
 			{
-				if (FD_ISSET(i, &read_fds) && (i == hiloInterbloqueo.fdPipe[0]) ) {
+				//TODO if (FD_ISSET(i, &read_fds) && (i == hiloInterbloqueo.fdPipe[0]) )
+				{
 					log_info(LOGGER, "INTERBLOQUEO: Recibo mensaje desde Nivel por Pipe");
-					read (hiloInterbloqueo.fdPipe[0], &header, sizeof(header_t));
+				//TODO	read (hiloInterbloqueo.fdPipe[0], &header, sizeof(header_t));
 
 					log_debug(LOGGER, "INTERBLOQUEO: mensaje recibido '%d'", header.tipo);
 
@@ -251,7 +230,7 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 						log_debug(LOGGER, "INTERBLOQUEO: '%d' ES FINALIZAR", header.tipo);
 						fin = true;
 						//FD_CLR(hiloInterbloqueo.fdPipe[0], &master);
-						quitar_descriptor(hiloInterbloqueo.fdPipe[0], &master, &max_desc);
+				//TODO			quitar_descriptor(hiloInterbloqueo.fdPipe[0], &master, &max_desc);
 						break;
 					}
 				}
@@ -269,19 +248,24 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 
 
 
-
-
-
-t_caja* buscaRecursoXIdRecursoDD(t_list* list,char* IdRecurso)
+t_caja* buscaRecursoXIdRecursoDD(t_list* list,char IdRecurso)
 {
 	bool esMismoRecursoAux(t_caja *recurso)
 	{
-		return (!strcmp(recurso->SIMBOLO, IdRecurso));
+		return (!strcmp(&recurso->SIMBOLO, &IdRecurso));
 	}
 	return list_find(list, (void*)esMismoRecursoAux);
 }
 
-
+void recovery(t_queue * colaPersonajesInterBloqueadosAMatar){
+	t_personaje * personaje;
+	personaje = queue_pop(colaPersonajesInterBloqueadosAMatar);
+	quitarPersonajeBloqueadosNivel(personaje->id);
+	pthread_mutex_lock (&mutexListaPersonajesMuertosxRecovery);
+	queue_push(listaPersonajesMuertosxRecovery, personaje);
+	pthread_mutex_unlock (&mutexListaPersonajesMuertosxRecovery);
+	log_info(LOGGER," RECOVERY: Se mato el personaje--->   %s",personaje->nombre);
+}
 
 
 //	int32_t T[20];
