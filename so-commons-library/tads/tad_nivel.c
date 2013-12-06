@@ -25,4 +25,6 @@ void destruirNivel (t_nivel *nivel) {
 	free(nivel);
 }
 
-
+void imprimirNivel (t_nivel *n, t_log *LOGGER) {
+	log_info(LOGGER, "\r -- Nivel -> nombre: '%s' - algoritmo: '%s' - quantum: %d - retardo: %d - socket: '%d' - ", n->nombre, n->algoritmo, n->quantum, n->retardo, n->fdSocket);
+}

@@ -26,5 +26,6 @@ typedef struct nivel {
 t_nivel * crearNivel ( char * nombre, int32_t fdNivel);
 void initNivel(t_nivel *nivel);
 void destruirNivel (t_nivel *nivel);
+void imprimirNivel (t_nivel *n, t_log *LOGGER);
 
 #endif /* TAD_NIVEL_H_ */

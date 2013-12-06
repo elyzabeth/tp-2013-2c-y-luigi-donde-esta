@@ -135,7 +135,7 @@ void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
 	int i;
 
 	void _comparaCoordPJEnemigo(t_personaje *p) {
-		log_info(LOGGER, " verificarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
+		//log_debug(LOGGER, " verificarPosicionPersonajes: p(%d, %d) - e(%d, %d): dist=%d", p->posActual.x, p->posActual.y, enemy->enemigo.posicionActual.x, enemy->enemigo.posicionActual.y, calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) );
 		if (calcularDistanciaCoord(p->posActual, enemy->enemigo.posicionActual) == 0)
 		{
 			//agregarPersonajeMuertoxEnemigo(p);
@@ -385,32 +385,19 @@ int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) 
         return 0;// POSICION INVALIDA
 }
 */
+
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
         if((X<=0)||(Y<=0)){return 0;}// POSICION INVALIDA
         if((Y >= MAXROWS) || (X >= MAXCOLS)){return 0;}// POSICION INVALIDA
-        t_posicion posicionConCaja[dictionary_size(listaPosicionesProhibidas)];
-                int i;
-                for (i=0; i<dictionary_size(listaPosicionesProhibidas);i++)
-                        {
-                        posicionConCaja[i].x = 100;
-                        posicionConCaja[i].y = 100;
-                        }
-                i=0;
+        int i;
 
-                void hayItemEn(char *key, t_caja *caja)
-                        {
-                        posicionConCaja[i].x = caja->POSX;
-                        posicionConCaja[i].y = caja->POSY;
-                        i++;
-                        }
-                dictionary_iterator(listaPosicionesProhibidas, (void*)hayItemEn);
-        for (i=0; i<dictionary_size(listaPosicionesProhibidas);i++){
-                log_debug(LOGGER, "                posicion de la cajita :p(%d,%d)",posicionConCaja[i].x ,posicionConCaja[i].y);
-                        if((posicionConCaja[i].x == X )&& (posicionConCaja[i].y == Y)){
+        for (i=0; i<totalCoordProhibidas; i++) {
+        	log_debug(LOGGER, "    posicion de la cajita: (%d,%d) - enemigo: (%d,%d)",coordProhibidas[i].x ,coordProhibidas[i].y, X, Y);
 
-                                return 0;// POSICION INVALIDA
-                        }
+        	if((coordProhibidas[i].x == X ) && (coordProhibidas[i].y == Y)) {
+				return 0;// POSICION INVALIDA
+			}
+		}
 
-                }
         return 1;//PosicionOK
 }
