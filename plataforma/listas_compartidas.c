@@ -349,6 +349,13 @@ void imprimirPersonajePlat (t_personaje* personaje) {
 		log_error(LOGGER, "\n\nimprimirPersonajePlat: ERROR al imprimir personaje NULL!!\n");
 }
 
+void imprimirNivelPlat(char *key, t_nivel *nivel) {
+	if (nivel != NULL) {
+		// llamar funcion imprimir del tad nivel
+		imprimirNivel(nivel, LOGGER);
+	} else
+		log_error(LOGGER, "\n\nimprimirNivelPlat: ERROR al imprimir nivel NULL!!\n");
+}
 
 void imprimirListaPersonajesNuevos () {
 	pthread_mutex_lock (&mutexListaPersonajesNuevos);
@@ -381,3 +388,14 @@ void imprimirListaPersonajesFinAnormal () {
 	log_info(LOGGER, "\r--------- FIN Listado Personajes Finalizados ANORMALMENTE en Plataforma (total: %d) ---\n", list_size(listaPersonajesFinAnormal));
 	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
 }
+
+
+void imprimirListadoNiveles(){
+	pthread_mutex_lock(&mutexListaNiveles);
+	log_info(LOGGER, "\n\n--------- LISTADO de NIVELES en Plataforma: ---\n*************************************************");
+	dictionary_iterator(listaNiveles, (void*)imprimirNivelPlat);
+	log_info(LOGGER, "\n\n--------- FIN LISTADO de NIVELES en Plataforma: ---\n*************************************************");
+	pthread_mutex_unlock(&mutexListaNiveles);
+}
+
+

@@ -7,6 +7,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, plat_signal_callback_handler);
 	signal(SIGQUIT, plat_signal_callback_handler);
 	signal(SIGUSR1, plat_signal_callback_handler);
+	signal(SIGUSR2, plat_signal_callback_handler);
 	signal(SIGTERM, plat_signal_callback_handler);
 
 	/********************* Carga de Parametros desde archivo y seteos ***************************/
@@ -185,6 +186,7 @@ void enviarMsjImprimirAPlanificadores(){
 	void _imprimir_listas(char* key, t_planificador *planner) {
 		if ( planner->estado != FINALIZADO ) {
 			enviarMsjAPlanificador(planner, IMPRIMIR );
+			sleep(2);
 		}
 	}
 	dictionary_iterator(listaNiveles, (void*)_imprimir_listas);
@@ -203,6 +205,7 @@ void plat_signal_callback_handler(int signum)
 
 	case SIGUSR1: // SIGUSR1=10 ( kill -s USR1 <PID> )
 		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR1\n");
+		imprimirListadoNiveles();
 		imprimirListaPersonajesNuevos();
 		imprimirListaPersonajesFinAnormal();
 		imprimirListaPersonajesEnJuego();
@@ -217,21 +220,27 @@ void plat_signal_callback_handler(int signum)
 	case SIGTERM: // SIGTERM=15 ( kill <PID>)
 		log_info(LOGGER, " - LLEGO SEÑAL SIGTERM\n");
 		finalizarPlataforma();
+		// Termino el programa
+		exit(signum);
 		break;
 	case SIGINT: // SIGINT=2 (ctrl-c)
 		log_info(LOGGER, " - LLEGO SEÑAL SIGINT\n");
 		finalizarPlataforma();
+		// Termino el programa
+		exit(signum);
 		break;
 	case SIGKILL: // SIGKILL=9 ( kill -9 <PID>)
 		log_info(LOGGER, " - LLEGO SEÑAL SIGKILL\n");
 		finalizarPlataforma();
+		// Termino el programa
+		exit(signum);
 		break;
 	case SIGQUIT: // SIGQUIT=3 (ctrl-4 o kill -s QUIT <PID>)
 		log_info(LOGGER, " - LLEGO SEÑAL SIGQUIT\n");
 		finalizarPlataforma();
+		// Termino el programa
+		exit(signum);
 		break;
 	}
 
-	// Termino el programa
-	exit(signum);
 }

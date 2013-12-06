@@ -98,10 +98,12 @@ t_planificador* quitarDeListaNiveles(char *nivel);
 t_planificador* cambiarEstadoNivelaFinalizado (char* nivel);
 t_planificador* cambiarEstadoNivelaCorriendo (char* nivel);
 void imprimirPersonajePlat (t_personaje* personaje);
+void imprimirNivelPlat(char *key, t_nivel *nivel);
 void imprimirListaPersonajesNuevos();
 void imprimirListaPersonajesEnJuego();
 void imprimirListaPersonajesFinalizados();
 void imprimirListaPersonajesFinAnormal ();
+void imprimirListadoNiveles();
 
 
 

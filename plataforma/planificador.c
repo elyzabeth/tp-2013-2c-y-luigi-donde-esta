@@ -404,7 +404,10 @@ void imprimirColas(t_planificador *planner) {
 		log_info(LOGGER, "\n\n -- Personaje En estado EJECUTANDO en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
 		imprimirPersonajePlat(planner->personajeEjecutando);
 		log_info(LOGGER, "\n\n -- FIN Personaje En estado EJECUTANDO en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
+	} else {
+		log_info(LOGGER, "\n\n -- NO HAY Personaje En estado EJECUTANDO en Planificador de %s: ---\n*************************************************", planner->nivel.nombre);
 	}
+
 
 }
 
