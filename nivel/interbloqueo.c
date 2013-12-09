@@ -25,7 +25,7 @@ char interbloqueados[MAXPER];
 
 // Prototipos de funciones del hilo
 int32_t detectarDeadlock();
-t_personaje* recovery();
+t_personaje* recovery(int32_t cantInterbloqueados);
 
 int initMatrices();
 int imprimirMatrices();
@@ -67,7 +67,6 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 	RecoveryOn = configNivelRecovery();
 	hayDeadLock = 0;
 
-
 	while(!fin) {
 
 		FD_ZERO (&read_fds);
@@ -84,7 +83,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueoo) {
 			// Aca va la logica de interbloqueo
 			hayDeadLock = detectarDeadlock();
 
+			log_info(LOGGER, "hayDeadLock: %d  - RecoveryOn: %d \n\n", hayDeadLock, RecoveryOn);
 			if (hayDeadLock && RecoveryOn) {
+				log_info(LOGGER, "Hay interbloqueo y el recovery esta activado...\n\n");
 				recovery(hayDeadLock);
 			}
 
@@ -151,7 +152,7 @@ int32_t detectarDeadlock() {
 	llenarMatSolicitud(listaPJBloqueados);
 
 
-	log_info(LOGGER, "\n\n INTERBLOQUEO: %d, %d", totalPersonajes, totalRecursos);
+	log_info(LOGGER, "\n\n INTERBLOQUEO: totalPersonajes: %d, totalRecursos: %d", totalPersonajes, totalRecursos);
 	imprimirMatrices();
 	// 1) Se marca cada proceso que tenga una fila de la matriz de Asignacion completamente a cero
 	// Tomo listado de personajes en Nivel que no tengan asignado ningun recurso, y lo marco
@@ -164,13 +165,19 @@ int32_t detectarDeadlock() {
 	//    y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
 	marcarNoBloqueados();
 
+	imprimirMatrices();
 	// Existe un interbloqueo si y solo si hay procesos sin marcar al final del algoritmo
 	hayDeadLock = contarPersonajesSinMarcar();
+
+	if (hayDeadLock > 0){
+		log_info(LOGGER, "HAY INTERBLOQUEO:");
+	}
 
 	queue_destroy_and_destroy_elements(listaPJEnNivel, (void*)destruirPersonaje);
 	list_destroy_and_destroy_elements(listaPJBloqueados, (void*)destruirPersonaje);
 	dictionary_destroy_and_destroy_elements(recursosxPJ, (void*)destruirVecRecursos);
 	dictionary_destroy_and_destroy_elements(dicRecursos, (void*)destruirCaja);
+
 
 	return hayDeadLock;
 
@@ -179,7 +186,7 @@ int32_t detectarDeadlock() {
 
 t_personaje* recovery(int32_t cantInterbloqueados) {
 	pthread_mutex_lock (&mutexListaPersonajesEnNivel);
-	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
+	//pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	pthread_mutex_lock (&mutexListaPersonajesMuertosxRecovery);
 	log_info(LOGGER, "Incio proceso de recovery deadlock... cantidad Personajes INTERBLOQUEADOS: %d", cantInterbloqueados);
 	t_personaje *personaje = NULL, *aux = NULL;
@@ -193,28 +200,40 @@ t_personaje* recovery(int32_t cantInterbloqueados) {
 
 	totalPersonajesEnNivel = queue_size(listaPersonajesEnNivel);
 
-	for (i =0; i < totalPersonajesEnNivel; i++) {
+	log_debug(LOGGER, "\n\n totalPersonajesEnNivel: %d \n\nInterbloqueados: \n\n", totalPersonajesEnNivel);
+	for (i=0; i < cantInterbloqueados; i++){
+		log_debug(LOGGER,"\r     personaje: %c                                                  ", interbloqueados[i]);
+	}
+
+	for (i=0; i < totalPersonajesEnNivel; i++) {
 		aux = queue_pop(listaPersonajesEnNivel);
 		queue_push(listaPersonajesEnNivel, aux);
 
+		log_debug(LOGGER, "RECOVERY %s (%c) esta interbloqueado?", aux->nombre, aux->id);
 		if (encontreVictima == 0) {
 			for(j=0; j<cantInterbloqueados; j++) {
+				log_debug(LOGGER, "RECOVERY %c == %c ", aux->id, interbloqueados[j]);
 				if(aux->id == interbloqueados[j]) {
+					log_debug(LOGGER, "RECOVERY %c == %c: %d ", aux->id, interbloqueados[j], aux->id == interbloqueados[j]);
 					personaje = aux;
 					quitarPersonajeBloqueadosNivel(personaje->id);
 					queue_push(listaPersonajesMuertosxRecovery, personaje);
 					encontreVictima = 1;
+					break;
 				}
 			}
 		}
 	}
 
-	if (encontreVictima == 1){
+	log_debug(LOGGER, "RECOVERY encontreVictima: %d ", encontreVictima);
+
+	if (encontreVictima == 1) {
+		log_debug(LOGGER, "RECOVERY Encontre victima: %s (%c)", personaje->nombre, personaje->id);
 		enviarMsjPorPipe(hiloInterbloqueo.fdPipeI2N[1], MUERTE_PERSONAJE_XRECOVERY);
 	}
 
 	pthread_mutex_unlock (&mutexListaPersonajesMuertosxRecovery);
-	pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
+	//pthread_mutex_unlock (&mutexListaPersonajesBloqueados);
 	pthread_mutex_unlock (&mutexListaPersonajesEnNivel);
 
 	return personaje;
@@ -243,17 +262,46 @@ int initMatrices() {
 
 int imprimirMatrices() {
 	int i,j;
+	char a[50] = {0};
+	char r[50] = {0};
 
+	log_debug(LOGGER, "\n\n vecDisponibles \n");
 	for (i=0; i < totalPersonajes; i++){
-		for (j=0; j < totalRecursos; j++){
-			log_debug(LOGGER, "\n\n imprimirMatrices[%d][%d]:  %d ", i, j, matAsignacion[i][j]);
-		}
+		r[i] = vecRecursos[i];
+		log_debug(LOGGER,"\r     recurso: %c disponible: %d                                                  ", vecRecursos[i], vecDisponibles[i]);
 	}
 
+	log_debug(LOGGER, "\r                                                                             \n\n");
+	log_debug(LOGGER, "\r  copia T de vecDisponibles                                                  \n");
+	for (i=0; i < totalPersonajes; i++){
+		log_debug(LOGGER,"\r     recurso: %c disponible: %d                                                  ", vecRecursos[i], T[i]);
+	}
+
+	log_debug(LOGGER, "\r                                                                             \n\n");
+	log_debug(LOGGER, "\r matAsignacion                                                  \n");
+	log_debug(LOGGER,"\r     %s                                                  ", r);
 	for (i=0; i < totalPersonajes; i++){
 		for (j=0; j < totalRecursos; j++){
-			log_debug(LOGGER, "\n\n imprimirMatrices[%d][%d]:  %d ", i, j,  matSolicitud[i][j]);
+			a[j] = matAsignacion[i][j]+48;
 		}
+		log_debug(LOGGER,"\r     %s                                                  ", a);
+	}
+
+	log_debug(LOGGER, "\r                                                                             \n\n");
+	log_debug(LOGGER, "\r matSolicitud                                                  \n");
+	log_debug(LOGGER,"\r     %s                                                  ", r);
+	for (i=0; i < totalPersonajes; i++){
+		for (j=0; j < totalRecursos; j++){
+			//log_debug(LOGGER, "\r     matSolicitud[%d][%d]:  %d \n", i, j,  matSolicitud[i][j]);
+			a[j] = matSolicitud[i][j]+48;
+		}
+		log_debug(LOGGER,"\r     %s                                                  ", a);
+	}
+
+	log_debug(LOGGER, "\r                                                                             \n\n");
+	log_debug(LOGGER, "\r vecPersonajesEnNivel                                                  \n");
+	for (i=0; i < totalPersonajes; i++){
+		log_debug(LOGGER,"\r     personaje: %c marca: %d                                                  ", vecPersonajesEnNivel[i][0], vecPersonajesEnNivel[i][1]);
 	}
 
 	return 0;
@@ -270,7 +318,7 @@ int obtenerPosPersonaje(char p) {
 
 int obtenerPosRecurso(char r) {
 	int i;
-	for (i = 0; i < totalPersonajes; i++)
+	for (i = 0; i < totalRecursos; i++)
 		if (vecRecursos[i] == r)
 			return i;
 	return -1;
@@ -379,7 +427,7 @@ int copiarDisponiblesAT(){
 
 
 int marcarNoBloqueados() {
-	int i, k;
+	int i, k, solicitudMIDisp;
 	int continuar = true;
 
 	// 3) Se busca un indice i tal que el proceso i no este marcado actualmente
@@ -392,20 +440,27 @@ int marcarNoBloqueados() {
 
 			// Se busca un indice i tal que el proceso i no este marcado actualmente
 			if (vecPersonajesEnNivel[i][1] == 0) {
+				solicitudMIDisp = 1;
 
+				// y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
+				// Toda la fila debe cumplir este requerimiento!
 				for (k=0; k < totalRecursos; k++) {
-					// y la fila i-esima de S(olicitud) sea menor o igual a T (disponibles).
-					if (matSolicitud[i][k] <= T[k]) {
-						// 4) Si se encuentra una fila que lo cumpla, se marca el proceso i
-						vecPersonajesEnNivel[i][1] = 1;
+					solicitudMIDisp = solicitudMIDisp && (matSolicitud[i][k] <= T[k]);
+				}
 
-						// y se suma la fila correspondiente de la matriz de Asignacion a T
-						// Es decir, Se ejecuta Tk = Tk + Aik, para 1 <= k <= m.
+				if (solicitudMIDisp) {
+					// 4) Si se encuentra una fila que lo cumpla, se marca el proceso i
+					vecPersonajesEnNivel[i][1] = 1;
+
+					// y se suma la fila correspondiente de la matriz de Asignacion a T
+					// Es decir, Se ejecuta Tk = Tk + Aik, para 1 <= k <= m.
+					for (k=0; k < totalRecursos; k++) {
 						T[k] += matAsignacion[i][k];
-
-						// A continuacion se vuelve al tercer paso
-						continuar = true;
 					}
+
+					// A continuacion se vuelve al tercer paso
+					continuar = true;
+					break;
 				}
 			}
 		}

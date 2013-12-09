@@ -289,9 +289,13 @@ void GenerarListaRecursos(t_config *config) {
 
 
 
-void levantarArchivoConfiguracionNivel () {
+void levantarArchivoConfiguracionNivel (char *CONFIG_FILE) {
 	t_config *config;
-	config = config_create(PATH_CONFIG_NIVEL);
+
+	if (CONFIG_FILE == NULL || strlen(CONFIG_FILE)==0 )
+		config = config_create(PATH_CONFIG_NIVEL);
+	else
+		config = config_create(CONFIG_FILE);
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s\n", PATH_CONFIG_NIVEL);
@@ -331,9 +335,14 @@ void levantarArchivoConfiguracionNivel () {
 	config_destroy(config);
 }
 
-void levantarCambiosArchivoConfiguracionNivel () {
+void levantarCambiosArchivoConfiguracionNivel (char *CONFIG_FILE) {
 	t_config *config;
-	config = config_create(PATH_CONFIG_NIVEL);
+	//config = config_create(PATH_CONFIG_NIVEL);
+
+	if (CONFIG_FILE == NULL || strlen(CONFIG_FILE)==0 )
+		config = config_create(PATH_CONFIG_NIVEL);
+	else
+		config = config_create(CONFIG_FILE);
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s ", PATH_CONFIG_NIVEL);

@@ -70,6 +70,11 @@ void gui_dibujarEnemigo(char * msj) {
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
+void gui_dibujarMsj(char * msj) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+	nivel_gui_dibujar(GUIITEMS, msj);
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
 
 // Funciones sincronizadas para acceder a listas compartidas
 // **********************************************************
@@ -220,7 +225,7 @@ t_personaje* quitarPersonajeEnNivel(char simboloPersonaje) {
 
 t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _remove_x_id (t_personaje *p) {
 		return (p->id == simboloPersonaje);
 	}
@@ -232,7 +237,7 @@ t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje) {
 
 t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _remove_x_id (t_personaje *p) {
 		return (p->id == simboloPersonaje);
 	}
@@ -246,7 +251,7 @@ t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
 t_personaje* actualizarPosicionPJEnjuego(char idPersonaje, t_posicion posicion) {
 
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _busca_x_id (t_personaje *p) {
 		return (p->id == idPersonaje);
 	}

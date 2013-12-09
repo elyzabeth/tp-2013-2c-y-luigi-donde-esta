@@ -10,9 +10,14 @@
 
 int main (int argc, char**argv) {
 
-	// Correr tests
-	if (argc > 1 && strcmp(argv[1], "-test")==0)
-		return correrTest();
+//	// Correr tests
+//	if (argc > 1 && strcmp(argv[1], "-test")==0)
+//		return correrTest();
+
+	// Copiar nombre archivo configuracion
+	if ( argc > 1 ){
+		strncpy(CONFIG_FILE, argv[1], MAXCHARLEN);
+	}
 
 	// Registro signal y signal handler
 	signal(SIGINT, signal_callback_handler);
@@ -44,9 +49,6 @@ void principal () {
 	id_proceso = getpid();
 	log_info(LOGGER,"************** Iniciando Nivel '%s' (PID: %d) ***************\n", NOMBRENIVEL, id_proceso);
 
-	// Lanzo Hilo de Interbloqueo
-	pthread_create (&hiloInterbloqueo.tid, NULL, (void*) interbloqueo, NULL);
-
 
 	// Conectar con proceso Plataforma
 	conectar(configNivelPlataformaIp(), configNivelPlataformaPuerto(), &sockPlataforma);
@@ -68,6 +70,9 @@ void principal () {
 
 	// Agrego fd del pipe con hilos enemigos
 	agregarFDPipeEscuchaEnemigo(&master, &max_desc);
+
+	// Lanzo Hilo de Interbloqueo
+	pthread_create (&hiloInterbloqueo.tid, NULL, (void*) interbloqueo, NULL);
 
 	while(!fin) {
 		FD_ZERO (&read_fds);
@@ -134,7 +139,6 @@ void principal () {
 
 								case PERSONAJE_DESBLOQUEADO:
 									log_info(LOGGER, "Llego mensaje '%d' PERSONAJE_DESBLOQUEADO (fd:%d)", header.tipo, i);
-									// TODO HACER ALGO CON ESTE MENSAJE??
 									desbloquearPersonaje(i, header, &master);
 									break;
 
@@ -147,7 +151,8 @@ void principal () {
 
 						log_info(LOGGER, "Hubo un cambio en el archivo de configuracion (fd:%d)", i);
 						read(notifyFD, buffer, BUF_LEN);
-						levantarCambiosArchivoConfiguracionNivel();
+						//levantarCambiosArchivoConfiguracionNivel();
+						levantarCambiosArchivoConfiguracionNivel(CONFIG_FILE);
 						log_info(LOGGER, "Nuevos Valores: algoritmo=%s - quantum=%d - retardo=%d", configNivelAlgoritmo(), configNivelQuantum(), configNivelRetardo());
 
 						enviarMsjCambiosConfiguracion(sockPlataforma);

@@ -42,7 +42,7 @@ int32_t notifyFD;
 t_log* LOGGER;
 //char NOMBRENIVEL[20+1];
 char NOMBRENIVEL[MAXCHARLEN+1];
-
+char CONFIG_FILE[MAXCHARLEN];
 
 int MAXROWS, MAXCOLS;
 t_list *GUIITEMS;
@@ -71,8 +71,8 @@ pthread_mutex_t mutexRecursosxPersonajes;
 
 typedef struct {
 	pthread_t tid;
-	int32_t fdPipe[2];
-	int32_t fdPipeI2N[2];
+	int32_t fdPipe[2];	 // fdPipe[0] de lectura del interbloqueo / fdPipe[1] de escritura del nivel
+	int32_t fdPipeI2N[2];// fdPipe[0] de lectura del nivel / fdPipe[1] de escritura del interbloqueo
 } t_hiloInterbloqueo;
 
 t_hiloInterbloqueo hiloInterbloqueo;
@@ -111,11 +111,12 @@ void gui_moverPersonaje (char id, int x, int y);
 void gui_restarRecurso (char id);
 void gui_sumarRecurso (char id);
 void gui_dibujar();
-void gui_dibujarEnemigo(char * msj);
+void gui_dibujarEnemigo(char *msj);
+void gui_dibujarMsj(char *msj);
 
 // funciones listas compartidas
 int32_t obternerCantPersonajesEnJuego();
-void moverPersonajeABloqueados(char simboloPersonaje);
+void moverPersonajeABloqueados(char simboloPersonaje, char recurso);
 t_personaje* moverPersonajeAEnJuego(char simboloPersonaje);
 void agregarPersonajeEnNivel(t_personaje *personaje);
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje);

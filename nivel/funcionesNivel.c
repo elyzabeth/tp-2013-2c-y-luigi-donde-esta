@@ -14,18 +14,21 @@ int correrTest() {
 }
 
 
-void moverPersonajeABloqueados(char simboloPersonaje) {
+void moverPersonajeABloqueados(char simboloPersonaje, char recurso) {
 	t_personaje *personaje;
 
 	personaje = quitarPersonajeEnJuegoNivel(simboloPersonaje);
 
-	if (personaje != NULL)
+	if (personaje != NULL){
+		// Actualizo el recurso por el cual se bloquea
+		personaje->recurso = recurso;
 		agregarPersonajeABloqueadosNivel(personaje);
+	}
 
 }
 
 t_personaje* moverPersonajeAEnJuego(char simboloPersonaje) {
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 
 	personaje = quitarPersonajeBloqueadosNivel(simboloPersonaje);
 
@@ -128,7 +131,7 @@ void inicializarNivelGui() {
 
 void inicializarNivel () {
 	// Levanto archivo de configuracion
-	levantarArchivoConfiguracionNivel();
+	levantarArchivoConfiguracionNivel(CONFIG_FILE);
 	strncpy(NOMBRENIVEL, configNivelNombre(), 20);
 
 	// Creo LOGGER
@@ -140,6 +143,7 @@ void inicializarNivel () {
 	pipe(hiloInterbloqueo.fdPipe);
 	pipe(hiloInterbloqueo.fdPipeI2N);
 
+	// Inicializo semaforos
 	pthread_mutex_init (&mutexLockGlobalGUI, NULL);
 	pthread_mutex_init (&mutexListaPersonajesJugando, NULL);
 	pthread_mutex_init (&mutexListaPersonajesBloqueados, NULL);
@@ -166,7 +170,10 @@ void inicializarNivel () {
 
 	// inicializo inotify
 	notifyFD = crearNotifyFD();
-	watchDescriptor = inotify_add_watch(notifyFD, PATH_CONFIG_NIVEL, IN_MODIFY);
+	if (CONFIG_FILE == NULL || strlen(CONFIG_FILE)==0 )
+		watchDescriptor = inotify_add_watch(notifyFD, PATH_CONFIG_NIVEL, IN_MODIFY);
+	else
+		watchDescriptor = inotify_add_watch(notifyFD, CONFIG_FILE, IN_MODIFY);
 
 	//inicializar NIVEL-GUI
 	inicializarNivelGui();
@@ -197,11 +204,12 @@ int desbloquearPersonaje (int sock, header_t header, fd_set *master) {
 
 		// NO Decremento el recurso concedido eso lo hice en tratarSolicitudRecurso
 		//  a menos que el desbloqueo sea por liberacion de recursos en ese caso debo decrementar
-		if (header.id[2] == 'S') {
-			recurso->INSTANCIAS--;
-			gui_restarRecurso(recurso->SIMBOLO);
-			gui_dibujar();
-		}
+		// Desbloquear SOLO deberia desbloquear no debe tocar recursos.
+//		if (header.id[2] == 'S') {
+//			recurso->INSTANCIAS--;
+//			gui_restarRecurso(recurso->SIMBOLO);
+//			gui_dibujar();
+//		}
 	}
 
 	return ret;
@@ -233,12 +241,17 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 		recurso = obtenerRecurso(vec->recurso[i]);
 		caja = *recurso;
 		gui_sumarRecurso(vec->recurso[i]);
+		gui_dibujar();
 		recurso->INSTANCIAS++;
 
 		// informo al planificador los recursos liberados
 		if ( (ret=enviarMsjRecursoLiberado(sock, caja)) != EXITO ) {
 			log_error(LOGGER,"\n\n %s liberarRecursosPersonaje: ERROR al llamar la funcion enviarMsjRecursoLiberado!!! \n\n", NOMBRENIVEL);
 		}
+
+//		if ( (ret=enviarMsjRecursoConcedido(sock, caja)) != EXITO ) {
+//			log_error(LOGGER,"\n\n %s liberarRecursosPersonaje: ERROR al llamar la funcion enviarMsjRecursoConcedido!!! \n\n", NOMBRENIVEL);
+//		}
 
 		//ret = recibir_header_simple(sock, &header);
 //		if ( ret == EXITO && header.tipo == PERSONAJE_DESBLOQUEADO && header.id[0] != '\0' ) {
@@ -262,18 +275,20 @@ int liberarRecursosPersonaje (int sock, t_personaje *personaje) {
 
 
 void finalizarPersonajeNivel(int sock, t_personaje *personaje) {
-	t_personaje *p;
+	t_personaje *p=NULL;
 
 	// BORRO al personaje del listado GUIITEMS
 	gui_borrarItem(personaje->id);
+	gui_dibujar();
 
 	// QUITO AL PERSONAJE DE LISTADOS DINAMICOS
 	quitarPersonajeEnJuegoNivel(personaje->id);
 	quitarPersonajeBloqueadosNivel(personaje->id);
 
 	p = quitarPersonajeEnNivel(personaje->id);
-	if (p != NULL)
+	if (p != NULL){
 		agregarPersonajeAFinalizadosNivel(p);
+	}
 
 	// LIBERO LOS RECURSOS ASIGNADOS AL PERSONAJE
 	liberarRecursosPersonaje (sock, personaje);
@@ -451,9 +466,9 @@ void destruirVecRecursos(t_vecRecursos *vecRecursos) {
 	free(vecRecursos);
 }
 
-void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso) {
-	vecRecursos->recurso[vecRecursos->total++] = recurso;
-}
+//void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso) {
+//	vecRecursos->recurso[vecRecursos->total++] = recurso;
+//}
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -812,7 +827,7 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 	}
 
 	log_debug(LOGGER,"%s tratarSolicitudRecurso: Llego: %s, %c, recurso '%c' \n\n", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.recurso);
-	moverPersonajeABloqueados(personaje.id);
+	moverPersonajeABloqueados(personaje.id, personaje.recurso);
 
 	recurso = obtenerRecurso(personaje.recurso);
 
@@ -842,7 +857,7 @@ int tratarSolicitudRecurso(int sock, header_t header, fd_set *master) {
 
 int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
-	t_personaje personaje;
+	t_personaje personaje, *p=NULL;
 
 	// Si llega un mensaje de MOVIMIENTO_REALIZADO luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
@@ -852,13 +867,16 @@ int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 		return ret;
 	}
 
-	log_debug(LOGGER, "%s Movimiento realizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
+	log_debug(LOGGER, "%s tratarMovimientoRealizado por %s '%c': (%d, %d)", NOMBRENIVEL, personaje.nombre, personaje.id, personaje.posActual.x, personaje.posActual.y);
 	//log_debug(LOGGER, "%s GUIITEMS: %d", NOMBRENIVEL, list_size(GUIITEMS));
 
 	// Actualizar posicion de personaje en lista compartida.
-	actualizarPosicionPJEnjuego(personaje.id, personaje.posActual);
+	p = actualizarPosicionPJEnjuego(personaje.id, personaje.posActual);
 
-	gui_moverPersonaje(personaje.id, personaje.posActual.x, personaje.posActual.y);
+	if (p != NULL){
+		gui_moverPersonaje(p->id, p->posActual.x, p->posActual.y);
+		gui_dibujar();
+	}
 
 	return ret;
 }
@@ -867,6 +885,7 @@ int tratarMovimientoRealizado(int sock, header_t header, fd_set *master) {
 int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 	int ret, se_desconecto;
 	t_personaje personaje;
+	char msj[100]={0};
 
 	// Si llega un mensaje de PLAN_NIVEL_FINALIZADO luego espero recibir un t_personaje
 	if ((ret=recibir_personaje(sock, &personaje, master, &se_desconecto)) != EXITO)
@@ -875,6 +894,9 @@ int tratarPlanNivelFinalizado(int sock, header_t header, fd_set *master) {
 		// TODO cancelo o solo retorno??
 		return ret;
 	}
+
+	sprintf(msj, "%s - FINALIZO plan: %s             ", NOMBRENIVEL, personaje.nombre);
+	gui_dibujarMsj(msj);
 
 	finalizarPersonajeNivel(sock, &personaje);
 
