@@ -9,7 +9,7 @@
 
 void testNivel1 () {
 	printf("Soy testNivel1 y pruebo que configNivel->NombreNivel sea igual a 'nivel1': ");
-	levantarArchivoConfiguracionNivel();
+	levantarArchivoConfiguracionNivel(NULL);
 	CU_ASSERT_STRING_EQUAL(configNivelNombre(), "nivel1");
 }
 
