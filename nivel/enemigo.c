@@ -175,15 +175,8 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
         if (list_size(listaPersonajesEnJuego))/* hay personajes en el nivel?*/
         {
                 PJ = obternerPersonajeMasCercano(hiloEnemigo->enemigo.posicionActual);
-                //pthread_mutex_unlock (&mutexListaPersonajesJugando);
                 posicionPJ = PJ.posActual;
                 moverEnemigoPorEje(hiloEnemigo, posicionPJ);
-
-//                if ((posicionNueva.x == posicionPJ.x)&&(posicionNueva.y == posicionPJ.y)){
-//                        log_info(LOGGER, "El PJ '%c' ha sido alcanzado por un enemigo:",PJ.id);
-//                        //NOTIFICAR AL PLANIFICADOR que el personaje perdio una vida
-//                        // IMPRIMIR por pantalla GUI??
-//                }
         }
 
         else{ //No hay personajes en el nivel
@@ -202,7 +195,13 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
                         hiloEnemigo->enemigo.posicionEleSiguiente.x = posX;
                         hiloEnemigo->enemigo.posicionEleSiguiente.y = posY;
                 }
+                else{
 
+                   	if(3<(calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual,hiloEnemigo->enemigo.posicionEleSiguiente))){
+							hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+							hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+                   			}
+                }
                 moverDeUnoHacia(hiloEnemigo, &posX, &posY);
                 //log_debug(LOGGER, "act:(%d, %d) - eleSig:(%d, %d)", hiloEnemigo->enemigo.posicionActual.x, hiloEnemigo->enemigo.posicionActual.y, hiloEnemigo->enemigo.posicionEleSiguiente.x, hiloEnemigo->enemigo.posicionEleSiguiente.y);
         }
