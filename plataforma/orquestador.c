@@ -49,7 +49,7 @@ void* orquestador(t_hiloOrquestador *hiloOrquestador) {
 		FD_ZERO (&read_fds);
 		read_fds = master;
 
-		if((select(max_desc+1, &read_fds, NULL, NULL, NULL/*&tvDemora*/)) == -1)
+		if((select(max_desc+1, &read_fds, NULL, NULL, NULL)) == -1)
 		{
 			log_error(LOGGER, "ORQUESTADOR: error en el select()");
 		}
@@ -351,6 +351,7 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 		log_info(LOGGER, "\n\n Proceso Koopa: %d", exitKoopa);
 		free(koopaCommand);
 		finalizarPlataforma();
+		exit(exitKoopa);
 
 	} else {
 

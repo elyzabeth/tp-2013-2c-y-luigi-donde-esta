@@ -214,7 +214,7 @@ void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
 		personaje = quitarPersonajeEnJuegoxNivelxId(nivel, idPersonaje);
 
 	if (personaje == NULL)
-			personaje = quitarPersonajeFinalizadoxNivelxId(nivel, idPersonaje);
+		personaje = quitarPersonajeFinalizadoxNivelxId(nivel, idPersonaje);
 
 	if (personaje != NULL)
 		agregarPersonajeFinAnormal(personaje);
@@ -228,8 +228,8 @@ void moverPersonajeAFinAnormal (char idPersonaje, char *nivel) {
  * Se utiliza cuando un nivel tuvo un fin anormal.
  */
 void moverPersonajesAFinAnormalxNivel (char *nivel) {
-	t_list *aux;
-	t_list *aux2;
+	t_list *aux = NULL;
+	t_list *aux2 = NULL;
 	log_info(LOGGER, "moverPersonajesAFinAnormal Nivel '%s'", nivel);
 
 	bool _buscar_x_nivel(t_personaje *p) {
@@ -247,8 +247,10 @@ void moverPersonajesAFinAnormalxNivel (char *nivel) {
 	pthread_mutex_unlock (&mutexListaPersonajesNuevos);
 
 	pthread_mutex_lock (&mutexListaPersonajesFinAnormal);
-	list_add_all(listaPersonajesFinAnormal, aux);
-	list_add_all(listaPersonajesFinAnormal, aux2);
+	if (aux != NULL)
+		list_add_all(listaPersonajesFinAnormal, aux);
+	if (aux2 != NULL)
+		list_add_all(listaPersonajesFinAnormal, aux2);
 	pthread_mutex_unlock (&mutexListaPersonajesFinAnormal);
 
 	list_destroy(aux);
@@ -284,7 +286,8 @@ t_planificador* cambiarEstadoNivelaFinalizado (char* nivel) {
 	pthread_mutex_lock (&mutexListaNiveles);
 	t_planificador *planner = NULL;
 	planner = dictionary_get(listaNiveles, nivel);
-	planner->estado = FINALIZADO;
+	if (planner != NULL)
+		planner->estado = FINALIZADO;
 	pthread_mutex_unlock (&mutexListaNiveles);
 	return planner;
 }

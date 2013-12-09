@@ -8,6 +8,7 @@
 #include "plataforma.h"
 
 t_personaje* moverPersonajeNuevoAListo(t_planificador *planner);
+t_personaje* existePersonajeBloqueadoxRecurso(t_queue *colaPersonajes, char simboloRecurso);
 t_personaje* quitarPersonajeColaxId(t_queue *personajesListos, char idPersonaje);
 t_personaje* quitarPersonajeColaxFD(t_queue *colaPersonajes, int32_t fdPersonaje);
 t_personaje* moverPersonajeListoABloqueado(t_planificador *planner, char idPersonaje);
@@ -21,6 +22,7 @@ int recibirCambiosConfiguracion(int32_t fdNivel, header_t header, t_planificador
 int recibirSolicitudUbicacion(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirUbicacionRecursoNivel( header_t header, fd_set *master, t_planificador *planner );
 int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
+int enviarSolicitudRecursoNivel ( t_personaje personaje, t_planificador *planner );
 int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoLiberado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner );
@@ -267,6 +269,29 @@ t_personaje* moverPersonajeNuevoAListo(t_planificador *planner) {
 
 
 /**
+ * @NAME: existePersonajeBloqueadoxRecurso
+ * @DESC: Busca si existe un personaje bloqueado por el recurso dado
+ * Se le pasa la cola de personajes y el simbolo del recurso que tiene el personaje buscado.
+ */
+t_personaje* existePersonajeBloqueadoxRecurso(t_queue *colaPersonajes, char simboloRecurso) {
+	int tamanio = queue_size(colaPersonajes);
+	int i;
+	t_personaje *personaje=NULL, *aux=NULL;
+
+	for (i = 0; i < tamanio; i++) {
+		aux = queue_pop(colaPersonajes);
+		queue_push(colaPersonajes, aux);
+
+		if(personaje==NULL && aux->recurso == simboloRecurso) {
+			personaje = aux;
+		}
+	}
+
+	return personaje;
+}
+
+
+/**
  * @NAME: quitarPersonajeColaxId
  * @DESC: Quita un personaje de la cola de personajes buscandolo por id de personaje (simbolo)
  * Si lo encuentra devuelve el puntero a la estructura t_personaje.
@@ -281,7 +306,7 @@ t_personaje* quitarPersonajeColaxId(t_queue *colaPersonajes, char idPersonaje) {
 	for (i = 0; i < tamanio; i++) {
 		aux = queue_pop(colaPersonajes);
 
-		if(aux->id == idPersonaje) {
+		if(personaje==NULL && aux->id == idPersonaje) {
 			personaje = aux;
 		} else {
 			queue_push(colaPersonajes, aux);
@@ -292,7 +317,7 @@ t_personaje* quitarPersonajeColaxId(t_queue *colaPersonajes, char idPersonaje) {
 }
 
 /**
- * @NAME: quitarPersonajeColaxId
+ * @NAME: quitarPersonajeColaxRecurso
  * @DESC: Quita un personaje de la cola de personajes buscandolo por id de recurso (simbolo)
  * Si lo encuentra devuelve el puntero a la estructura t_personaje.
  * Si no lo encuentra devuelve NULL.
@@ -306,7 +331,7 @@ t_personaje* quitarPersonajeColaxRecurso(t_queue *colaPersonajes, char simboloRe
 	for (i = 0; i < tamanio; i++) {
 		aux = queue_pop(colaPersonajes);
 
-		if(aux->recurso == simboloRecurso) {
+		if(personaje==NULL && aux->recurso == simboloRecurso) {
 			personaje = aux;
 		} else {
 			queue_push(colaPersonajes, aux);
@@ -315,6 +340,8 @@ t_personaje* quitarPersonajeColaxRecurso(t_queue *colaPersonajes, char simboloRe
 
 	return personaje;
 }
+
+
 
 /**
  * @NAME: quitarPersonajeColaxFD
@@ -331,7 +358,7 @@ t_personaje* quitarPersonajeColaxFD(t_queue *colaPersonajes, int32_t fdPersonaje
 	for (i = 0; i < tamanio; i++) {
 		aux = queue_pop(colaPersonajes);
 
-		if(aux->fd == fdPersonaje) {
+		if(personaje==NULL && aux->fd == fdPersonaje) {
 			personaje = aux;
 		} else {
 			queue_push(colaPersonajes, aux);
@@ -562,8 +589,13 @@ int recibirSolicitudUbicacion(int fdPersonaje, header_t header, fd_set *master, 
 	return ret;
 }
 
-int enviarSolicitudRecursoNivel ( header_t header, t_personaje personaje, t_planificador *planner ) {
+int enviarSolicitudRecursoNivel ( t_personaje personaje, t_planificador *planner ) {
 	int ret;
+	header_t header;
+
+	initHeader(&header);
+	header.tipo = SOLICITUD_RECURSO;
+	header.largo_mensaje = 0;
 
 	log_debug(LOGGER, "enviarSolicitudRecursoNivel: Envio header (size: %d) SOLICITUD_RECURSO recurso %c al Nivel %s", sizeof(header_t), personaje.recurso, planner->nivel.nombre);
 
@@ -603,7 +635,7 @@ int recibirSolicitudRecurso(int fdPersonaje, header_t header, fd_set *master, t_
 	planner->personajeEjecutando = NULL;
 
 	// Solicitar Recurso al NIVEL...
-	ret = enviarSolicitudRecursoNivel(header, personaje, planner);
+	ret = enviarSolicitudRecursoNivel(personaje, planner);
 
 	return ret;
 }
@@ -639,8 +671,26 @@ int recibirMovimientoRealizado(int fdPersonaje, header_t header, fd_set *master,
 }
 
 int recibirRecursoLiberado (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
-	header.id[2] = 'S';
-	return recibirRecursoConcedido ( fdPersonaje, header, master, planner );
+//	header.id[2] = 'S';
+//	return recibirRecursoConcedido ( fdPersonaje, header, master, planner );
+	int ret, se_desconecto;
+	t_personaje *personaje = NULL;
+	t_caja caja;
+
+	// espero recibir estructura t_caja del recurso liberado.
+	initCaja(&caja);
+	if ((ret = recibir_caja(planner->nivel.fdSocket, &caja, master, &se_desconecto)) != EXITO) {
+		log_error(LOGGER, "%s ERROR en recibirRecursoConcedido al recibir t_caja", planner->nivel.nombre);
+		return ret;
+	}
+
+	// Buscar en la cola de bloqueados si existe un personaje que haya pedido el recurso.
+	personaje = existePersonajeBloqueadoxRecurso(planner->personajesBloqueados, caja.SIMBOLO);
+	if (personaje != NULL){
+		ret = enviarSolicitudRecursoNivel(*personaje, planner);
+	}
+
+	return ret;
 }
 
 int recibirRecursoConcedido (int fdPersonaje, header_t header, fd_set *master, t_planificador *planner ) {
@@ -770,7 +820,9 @@ int recibirMuertePersonajePJ2Plan(int fdPersonaje, header_t header, fd_set *mast
 	// quitar personaje de colas del planificador.
 	quitarPersonajeColaxId(planner->personajesListos, personaje.id);
 	quitarPersonajeColaxId(planner->personajesBloqueados, personaje.id);
-	planner->personajeEjecutando = NULL;
+
+	if (planner->personajeEjecutando != NULL && planner->personajeEjecutando->id == personaje.id)
+		planner->personajeEjecutando = NULL;
 
 	// TODO quitar personaje de TODAS las listas compartidas
 	moverPersonajeAFinAnormal(personaje.id, planner->nivel.nombre);
@@ -811,7 +863,8 @@ int recibirMuertePersonajeNivel2Plan(header_t header, fd_set *master, t_planific
 	}
 
 	// quitar personaje de listas compartidas
-	moverPersonajeAFinAnormal(pj->id, planner->nivel.nombre);
+	if ( pj != NULL )
+		moverPersonajeAFinAnormal(pj->id, planner->nivel.nombre);
 
 	// enviar Msj al personaje
 	log_debug(LOGGER, "recibirMuertePersonajeNivel2Plan: Enviando mensaje de MUERTE_PERSONAJE al personaje %s ('%c') del %s ", personaje.nombre, personaje.id, personaje.nivel);

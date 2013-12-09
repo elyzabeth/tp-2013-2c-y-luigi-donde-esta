@@ -78,6 +78,7 @@ int enviarMsjAOrquestador (char msj) {
 	int ret;
 	header_t header;
 	char* buffer_header = malloc(sizeof(header_t));
+	char test[2] = {0};
 
 	initHeader(&header);
 	header.tipo = msj;
@@ -88,8 +89,12 @@ int enviarMsjAOrquestador (char msj) {
 
 	log_info(LOGGER, "Enviando mensaje al orquestador.");
 
-	ret =  write(hiloOrquestador.fdPipe[1], buffer_header, sizeof(header_t));
-	pthread_join(hiloOrquestador.tid, NULL);
+	ret =  read(hiloOrquestador.fdPipe[1], test, 1);
+	log_debug(LOGGER, "enviarMsjAOrquestador: %d", ret);
+	if (ret > 0) {
+		ret =  write(hiloOrquestador.fdPipe[1], buffer_header, sizeof(header_t));
+		pthread_join(hiloOrquestador.tid, NULL);
+	}
 
 	free(buffer_header);
 
