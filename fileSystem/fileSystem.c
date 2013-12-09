@@ -336,7 +336,12 @@ size_t copiarABuffer (char *buf, GFile *Nodo, off_t offset, size_t size) {
 	log_debug(LOGGER, "\n\ncopiarABuffer\n*************\n offset: %lu \n indirect_block_number: %lu \n indblk_resto: %lu \n direct_block_number: %lu \n directblk_offset: %lu ", offset, nroBlkInd, indblk_resto, posBlkDirect, offsetBlkDirect);
 	log_debug(LOGGER, "- copiarABuffer: Nodo->blk_indirect[%d]: %d %u", nroBlkInd, Nodo->blk_indirect[nroBlkInd], Nodo->blk_indirect[nroBlkInd]);
 
+	if (size == 0)
+		return size;
 
+	if(Nodo->blk_indirect[nroBlkInd] == 0) {
+		return -EFAULT; //Bad address
+	}
 	// COMO CASTEAR a:  un puntero a arreglo de 1024 de ptrGBloque => (ptrGBloque(*)[1024])
 	// ---------------------------------------------------------------------------
 	directBlk = (ptrGBloque(*)[BLKDIRECT])(DATOS+(Nodo->blk_indirect[nroBlkInd]*BLKSIZE));
@@ -413,9 +418,11 @@ GFile* crearNuevoNodo(const char *path, struct fuse_file_info *fi){
 	GFile *Nodo = NULL;
 	char *subpath = strrchr(path, '/');
 	int nroBloquePadre=0, pos=0;
-	struct timeval now;
+//	struct timeval now;
+//	gettimeofday(&now, NULL);
 
-	gettimeofday(&now, NULL);
+	struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
 
 	buscarNodoPadre(path, &nroBloquePadre);
 	// TODO SI no existe el directorio del archivo lo creo??
@@ -481,8 +488,6 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 	GFile *Nodo = NULL;
 	int posicion;
-	//int i=0, nroBloquePadre=-1, res = 0, encontrado=-1;
-	//char *subpath = strrchr(path, '/');
 
 	memset(stbuf, 0, sizeof(struct stat));
 
@@ -495,12 +500,6 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_gid = 1001;
 
 	} else {
-
-		// TODO buscar nodo padre para diferenciar directorios y archivos
-		// con mismo nombre en distintos directorios.
-//		buscarNodoPadre(path, &nroBloquePadre);
-//		if ( nroBloquePadre == -1 )
-//			return -ENOENT;
 
 		Nodo = getGrasaNode(path, &posicion);
 		if (posicion == -1)
@@ -525,46 +524,14 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 //----------------------------------------------
 
-//		for(i=0; i < 1024; i++) {
-//
-//			if (NODOS[i]->state != BORRADO && nroBloquePadre == NODOS[i]->parent_dir_block && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
-//
-//				encontrado = i;
-//
-//				stbuf->st_ctim.tv_sec = NODOS[i]->c_date;
-//				stbuf->st_mtim.tv_sec = NODOS[i]->m_date;
-//				stbuf->st_size = NODOS[i]->file_size;
-//				stbuf->st_uid = 1001;
-//				stbuf->st_gid = 1001;
-//
-//				if (NODOS[i]->state == 2) {
-//					stbuf->st_mode = S_IFDIR | 0755;
-//					stbuf->st_nlink = 2;
-//					//stbuf->st_size = BLKLEN;
-//
-//				} else if (NODOS[i]->state == 1) {
-//					stbuf->st_mode = S_IFREG | 0777;
-//					stbuf->st_nlink = 1;
-//				}
-//
-//				// TODO debo cortar ciclo cuando lo encuentro???
-//				break;
-//			}
-//		}
-
-//	}
-
-//	if (encontrado==-1)
-//		return -ENOENT;
-
 	return 0;
 }
 
 
 /** Get extended attributes */
 int grasa_getxattr (const char *path, const char *name, char *value, size_t size) {
-	log_debug(LOGGER, "grasa_getxattr: %s - name: %s", path, name);
-		return 0;
+	//log_debug(LOGGER, "grasa_getxattr: %s - name: %s", path, name);
+	return 0;
 }
 
 /**
@@ -605,29 +572,17 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler, of
 	(void) offset;
 	(void) fi;
 	int i;
-	//int encontrado=-1;
-	//int nroBloquePadre=-1;
 	struct stat *stbuf;
 	uint32_t directorio = 0;
-	//char *subpath = strrchr(path, '/');
-	//GFile *Nodo = NULL;
 	int posicion;
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 
-	//encontrado = 1;
-
 	if (strcmp(path, "/")==0) {
 		directorio = 0;
 	} else {
-//		buscarNodoPadre(path, &nroBloquePadre);
-//		for(i=0; i < BLKDIRECT; i++) {
-//			if (NODOS[i]->state != 0 && NODOS[i]->parent_dir_block == nroBloquePadre && strcmp(subpath+1, NODOS[i]->fname) == 0 ) {
-//				encontrado = i;
-//				directorio = i+1;
-//			}
-//		}
+
 		getGrasaNode(path, &posicion);
 		if (posicion == -1)
 			return -ENOENT;
@@ -954,8 +909,8 @@ int main (int argc, char**argv) {
 	pthread_mutex_init (&mutexGrasaBitVector, NULL);
 	pthread_mutex_init (&mutexGrasaNodesTable, NULL);
 
-	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_DEBUG);
-	//LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_INFO);
+	//LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_DEBUG);
+	LOGGER = log_create("fileSystem.log", "FILESYSTEM", 0, LOG_LEVEL_INFO);
 	log_info(LOGGER, "INICIALIZANDO FILESYSTEM ");
 
 	if ((fd = open("./disk.bin", O_RDWR, 0777)) == -1)
