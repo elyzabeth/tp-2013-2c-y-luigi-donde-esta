@@ -9,7 +9,7 @@
 
 int main (int argc, char *argv[]) {
 
-	// Correr tests
+	// Copiar nombre archivo configuracion
 	if ( argc > 1 ){
 		strncpy(CONFIG_FILE, argv[1], MAXCHARLEN);
 	}
@@ -409,17 +409,17 @@ void reinicioNivelCompleto() {
 	printf("\n\n\n Knock, knock, Neo...\n\n");
 	sleep(2);
 	printf("You take the blue pill and the story ends. You wake in your bed and you believe whatever you want to believe....\n\n");
-	sleep(4);
+	sleep(2);
 	printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n...\n");
-	sleep(3);
+	sleep(2);
 	printf("Remember that all I'am offering is the truth. Nothing more. \n");
 	printf("\nThis is your last chance. After this there is no turning back... \n\n Choose blue or red pill b/r: ");
 	printf("\n(traducción: Desea reiniciar el juego? s/n:) ");
 
 	while ((respuesta=getc(stdin)) != 's' && respuesta != 'b' && respuesta != 'n' && respuesta != 'r')
-		printf("\nPor favor ingrese 's' o 'b' para reiniciar, o ingrese 'n' o 'r' para terminar: ");
+		printf("\nPor favor ingrese 's' o 'r' para reiniciar, o ingrese 'n' o 'b' para terminar: ");
 
-	if(respuesta == 's' || respuesta == 'b') {
+	if(respuesta == 's' || respuesta == 'r') {
 		REINTENTOS++;
 		log_info(LOGGER, "\n\nVOLVIENDO A MATRIX...\n\nREINICIANDO EL JUEGO...");
 
