@@ -5,28 +5,22 @@
  * Author: elizabeth
  */
 
-//#include <stdlib.h>
-//#include "tads/tad_enemigo.h"
-//#include <commons/collections/list.h>
 
 #include "funcionesNivel.h"
 
+
+t_dictionary *listaPosicionesProhibidas; // = configNivelRecursos();
+
+
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo);
-void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo,int32_t* posX,int32_t* posY);
-t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
-t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
-t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia);
+//void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo,int32_t* posX,int32_t* posY);
 void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* x,int32_t* y);
 t_personaje obternerPersonajeMasCercano(t_posicion miPosicion);
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y);
-void* enemigo (t_hiloEnemigo *enemy);
-//int32_t posicionConItem(t_hiloEnemigo* hiloEnemigo, t_posicion posicion);
-t_dictionary *listaPosicionesProhibidas;
-
+t_posicion moverEnemigoHaciaPJ (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
+t_posicion moverEnemigoEnL (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia);
 void verificarPosicionPersonajes(t_hiloEnemigo *enemy);
-//t_posicion posProhibidas array[]
 
-t_dictionary* listaPosicionesProhibidas; // = configNivelRecursos();
 
 
 void* enemigo (t_hiloEnemigo *enemy) {
@@ -117,6 +111,9 @@ void* enemigo (t_hiloEnemigo *enemy) {
 
 
 
+// SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
+// ******************************************************
+
 void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	pthread_mutex_lock (&mutexListaPersonajesMuertosxEnemigo);
@@ -155,163 +152,319 @@ void verificarPosicionPersonajes(t_hiloEnemigo *enemy) {
 
 }
 
-//SECCION de FUNCIONES PARA EL MOVIMIENTO DE LOS ENEMIGOS
+
+
 void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 	int32_t posX=0, posY=0;
 	t_personaje PJ;
 	t_posicion posicionPJ;
 	int posValida=0;
+	int hayPersonajes = obtenerCantPersonajesEnJuego();
 
-	// hay personajes en el nivel?
+	// Si hay personajes en el nivel el movimiento es hacia el personaje mas cercano.
 	//if (list_size(listaPersonajesEnJuego))
-	if(obtenerCantPersonajesEnJuego())
+	if(hayPersonajes)
 	{
 		PJ = obternerPersonajeMasCercano(hiloEnemigo->enemigo.posicionActual);
 		posicionPJ = PJ.posActual;
-		// TODO ver porque se congelan los enemigos cuando coinciden en un mismo eje que el personaje.
-		moverEnemigoPorEje(hiloEnemigo, posicionPJ);
+
+		// Si el personaje mas cercano No esta en una posicion prohibida
+		if (validarPosicionEnemigo(hiloEnemigo, posicionPJ.x, posicionPJ.y))
+		{
+			//moverEnemigoPorEje(hiloEnemigo, posicionPJ);
+			moverEnemigoHaciaPJ(hiloEnemigo, posicionPJ);
+		} else {
+
+			// Opcion 1: Si el personaje esta en posicion prohibida cambio el eje por el que se debe mover
+			//hiloEnemigo->enemigo.moverPorX = !hiloEnemigo->enemigo.moverPorX;
+
+			// Opcion 2: Si el personaje esta en posicion prohibida fuerzo movimiento en L
+			hayPersonajes = 0;
+		}
 	}
 
-	else{ //No hay personajes en el nivel
+	// Si No hay personajes en el nivel el movimiento es en L
+	if(!hayPersonajes) {
 
-		if (
-			((hiloEnemigo->enemigo.posicionActual.x) == (hiloEnemigo->enemigo.posicionEleSiguiente.x)) &&
-			((hiloEnemigo->enemigo.posicionActual.y) == (hiloEnemigo->enemigo.posicionEleSiguiente.y))
+		// Si ya llego a la ultima posicion del movimiento en L
+		// Debo calcular el proximo movimento en L
+		if ((hiloEnemigo->enemigo.posicionActual.x == hiloEnemigo->enemigo.posicionEleSiguiente.x) &&
+			(hiloEnemigo->enemigo.posicionActual.y == hiloEnemigo->enemigo.posicionEleSiguiente.y)
 			)
-			{
+		{
 
 			while (!posValida) {
+				// Estimo proxima posicion en L y valido que no este en ninguna coordenada prohibida.
 				estimarMovimientoL(hiloEnemigo, &posX, &posY);
 				posValida = validarPosicionEnemigo(hiloEnemigo, posX, posY);
 			}
 			
 			hiloEnemigo->enemigo.posicionEleSiguiente.x = posX;
 			hiloEnemigo->enemigo.posicionEleSiguiente.y = posY;
+
+		} else {
+			if( 3 < (calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual,hiloEnemigo->enemigo.posicionEleSiguiente))){
+				hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+				hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+			}
 		}
-		else{
-				if(3<(calcularDistanciaCoord(hiloEnemigo->enemigo.posicionActual,hiloEnemigo->enemigo.posicionEleSiguiente))){
-					hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
-					hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;		
+
+		moverEnemigoEnL(hiloEnemigo, hiloEnemigo->enemigo.posicionEleSiguiente);
+		// TODO ver porque en el movimiento de a uno pasa por coordenadas prohibidas
+		//moverDeUnoHacia(hiloEnemigo, &posX, &posY);
+		//log_debug(LOGGER, "act:(%d, %d) - eleSig:(%d, %d)", hiloEnemigo->enemigo.posicionActual.x, hiloEnemigo->enemigo.posicionActual.y, hiloEnemigo->enemigo.posicionEleSiguiente.x, hiloEnemigo->enemigo.posicionEleSiguiente.y);
+
+	}
+
+}
+
+
+/*
+ * moverEnemigoHaciaPJ
+ * Mueve al enemigo hacia el personaje alternando ejes x/y
+ * y valida que la nueva posicion no sea una coordenada prohibida.
+ */
+t_posicion moverEnemigoHaciaPJ (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia) {
+	t_posicion posicionNueva;
+	int flag = false;
+	int posValida = 0;
+	posicionNueva = hiloEnemigo->enemigo.posicionActual;
+
+	log_debug(LOGGER, "e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+	while(!posValida) {
+		//flag = false;
+		posicionNueva = hiloEnemigo->enemigo.posicionActual;
+
+		if (hiloEnemigo->enemigo.moverPorX || hiloEnemigo->enemigo.posicionActual.y == posicionHacia.y) {
+			if(hiloEnemigo->enemigo.posicionActual.x < posicionHacia.x ) {
+				//posicionNueva.x = hiloEnemigo->enemigo.posicionActual.x+1;
+				posicionNueva.x++;
+				log_debug(LOGGER, "posNueva1: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
+				flag = true;
+			} else if(hiloEnemigo->enemigo.posicionActual.x > posicionHacia.x ) {
+				//posicionNueva.x = hiloEnemigo->enemigo.posicionActual.x-1;
+				posicionNueva.x--;
+				log_debug(LOGGER, "posNueva2: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
+				flag = true;
+			}
+
+		}
+		if (!flag) {
+			if ((!hiloEnemigo->enemigo.moverPorX || hiloEnemigo->enemigo.posicionActual.x == posicionHacia.x)) {
+				if(hiloEnemigo->enemigo.posicionActual.y < posicionHacia.y ){
+					//hiloEnemigo->enemigo.posicionActual.y++;
+					//posicionNueva.y = hiloEnemigo->enemigo.posicionActual.y+1;
+					posicionNueva.y++;
+					log_debug(LOGGER, "posNueva3: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
+				} else if(hiloEnemigo->enemigo.posicionActual.y > posicionHacia.y ){
+					//hiloEnemigo->enemigo.posicionActual.y--;
+					//posicionNueva.y = hiloEnemigo->enemigo.posicionActual.y-1;
+					posicionNueva.y--;
+					log_debug(LOGGER, "posNueva4: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
 				}
 			}
-		// TODO ver porque se congelan los enemigos cuando coinciden en un mismo eje que el personaje.
-		moverDeUnoHacia(hiloEnemigo, &posX, &posY);
-		//log_debug(LOGGER, "act:(%d, %d) - eleSig:(%d, %d)", hiloEnemigo->enemigo.posicionActual.x, hiloEnemigo->enemigo.posicionActual.y, hiloEnemigo->enemigo.posicionEleSiguiente.x, hiloEnemigo->enemigo.posicionEleSiguiente.y);
+		}
+		hiloEnemigo->enemigo.moverPorX = !hiloEnemigo->enemigo.moverPorX;
+		if (!(posValida = validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y)))
+			flag = !flag;
 	}
+
+	hiloEnemigo->enemigo.posicionActual = posicionNueva;
+
+	return posicionNueva;
 }
 
-//PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
-//SIEMPRE SE MUEVE PRIMERO EN X
-void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
-	if ((hiloEnemigo->enemigo.posicionActual.x) != hiloEnemigo->enemigo.posicionEleSiguiente.x) {
-			if ((hiloEnemigo->enemigo.posicionActual.x) > hiloEnemigo->enemigo.posicionEleSiguiente.x){
-						(hiloEnemigo->enemigo.posicionActual.x)--;
-						}
-			if ((hiloEnemigo->enemigo.posicionActual.x) < hiloEnemigo->enemigo.posicionEleSiguiente.x){
-						(hiloEnemigo->enemigo.posicionActual.x)++;
-						}
-	}
-	else {
-		if ((hiloEnemigo->enemigo.posicionActual.y) > hiloEnemigo->enemigo.posicionEleSiguiente.y){
-			(hiloEnemigo->enemigo.posicionActual.y)--;
+
+t_posicion moverEnemigoEnL (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia) {
+	t_posicion posicionNueva;
+	int flag = true;
+	int posValida = 0;
+	posicionNueva = hiloEnemigo->enemigo.posicionActual;
+	int i;
+	char eje;
+	hiloEnemigo->enemigo.imovL = hiloEnemigo->enemigo.imovL > 2 ? 0 : hiloEnemigo->enemigo.imovL;
+	i = hiloEnemigo->enemigo.imovL;
+	eje = hiloEnemigo->enemigo.movL[i];
+
+	while(!posValida) {
+
+		posicionNueva = hiloEnemigo->enemigo.posicionActual;
+		log_debug(LOGGER, "L - e%c: (%d,%d) - dest: (%d,%d) - movL: %s - movL[%d]: %c", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.movL, i, eje);
+
+		if (flag) {
+			if (eje == 'x')
+			{
+				if(hiloEnemigo->enemigo.posicionActual.x < posicionHacia.x ) {
+					posicionNueva.x++;
+					log_debug(LOGGER, "L - posNueva1: e%c: (%d,%d) - dest: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = true;
+				} else if(hiloEnemigo->enemigo.posicionActual.x > posicionHacia.x ) {
+					posicionNueva.x--;
+					log_debug(LOGGER, "L - posNueva2: e%c: (%d,%d) - dest: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = true;
+				} else {
+					flag = false;
+				}
 			}
-		if ((hiloEnemigo->enemigo.posicionActual.y) < hiloEnemigo->enemigo.posicionEleSiguiente.y){
-			(hiloEnemigo->enemigo.posicionActual.y)++;
+
+			if (eje == 'y') {
+				if(hiloEnemigo->enemigo.posicionActual.y < posicionHacia.y ){
+					posicionNueva.y++;
+					log_debug(LOGGER, "L - posNueva3: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = false;
+				} else if(hiloEnemigo->enemigo.posicionActual.y > posicionHacia.y ){
+					posicionNueva.y--;
+					log_debug(LOGGER, "L - posNueva4: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = false;
+				}
 			}
-	}
-}
+		} else {
 
-t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia){
-	t_posicion posicionNueva;
-	if ((hiloEnemigo->enemigo.moverPorX) &&
-			(hiloEnemigo->enemigo.posicionActual.x != posicionHacia.x)){
-		posicionNueva = moverEnemigoEnX(hiloEnemigo, posicionHacia);
-	}
-	else{
-		if(hiloEnemigo->enemigo.posicionActual.y != posicionHacia.y){
-			posicionNueva = moverEnemigoEnY(hiloEnemigo, posicionHacia);
+			if (eje == 'y')
+			{
+				if(hiloEnemigo->enemigo.posicionActual.x < posicionHacia.x ) {
+					posicionNueva.x++;
+					log_debug(LOGGER, "L - posNueva1: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = true;
+				} else if(hiloEnemigo->enemigo.posicionActual.x > posicionHacia.x ) {
+					posicionNueva.x--;
+					log_debug(LOGGER, "L - posNueva2: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = true;
+				} else {
+					break;
+				}
+			}
+
+			if (eje == 'x') {
+				if(hiloEnemigo->enemigo.posicionActual.y < posicionHacia.y ){
+					posicionNueva.y++;
+					log_debug(LOGGER, "L - posNueva3: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = false;
+				} else if(hiloEnemigo->enemigo.posicionActual.y > posicionHacia.y ){
+					posicionNueva.y--;
+					log_debug(LOGGER, "L - posNueva4: e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
+					hiloEnemigo->enemigo.moverPorX = false;
+				} else {
+					break;
+				}
+			}
 		}
+
+		if (!(posValida = validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y))){
+			flag = !flag;
+			//hiloEnemigo->enemigo.imovL = 0;
+		}
+
 	}
+
+	if (posValida) {
+		hiloEnemigo->enemigo.posicionActual = posicionNueva;
+		hiloEnemigo->enemigo.imovL++;
+	} else {
+		posicionNueva = hiloEnemigo->enemigo.posicionActual;
+		hiloEnemigo->enemigo.posicionEleSiguiente = hiloEnemigo->enemigo.posicionActual;
+	}
+
 	return posicionNueva;
 }
 
-t_posicion moverEnemigoEnX(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia){
-	t_posicion posicionNueva;
-	posicionNueva = (hiloEnemigo->enemigo.posicionActual);
-	if ((posicionHacia.x) > (hiloEnemigo->enemigo.posicionActual.x)){
-		(posicionNueva.x)++;
-		if (validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y)){
-			(hiloEnemigo->enemigo.posicionActual.x)++;
-		}
-		else{//nuevo
-		hiloEnemigo->enemigo.moverPorX = 1;
-			(hiloEnemigo->enemigo.posicionActual.y)++;
-		}
 
-	}else{
-		(posicionNueva.x)--;
-		if (validarPosicionEnemigo(hiloEnemigo,posicionNueva.x,posicionNueva.y)){
-			(hiloEnemigo->enemigo.posicionActual.x)--;
-		}
-	}
-	hiloEnemigo->enemigo.moverPorX = 0;
-	return posicionNueva;
-}
+////PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
+////SIEMPRE SE MUEVE PRIMERO EN X
+//void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
+//	if ((hiloEnemigo->enemigo.posicionActual.x) != hiloEnemigo->enemigo.posicionEleSiguiente.x) {
+//			if ((hiloEnemigo->enemigo.posicionActual.x) > hiloEnemigo->enemigo.posicionEleSiguiente.x){
+//						(hiloEnemigo->enemigo.posicionActual.x)--;
+//						}
+//			if ((hiloEnemigo->enemigo.posicionActual.x) < hiloEnemigo->enemigo.posicionEleSiguiente.x){
+//						(hiloEnemigo->enemigo.posicionActual.x)++;
+//						}
+//	}
+//	else {
+//		if ((hiloEnemigo->enemigo.posicionActual.y) > hiloEnemigo->enemigo.posicionEleSiguiente.y){
+//			(hiloEnemigo->enemigo.posicionActual.y)--;
+//			}
+//		if ((hiloEnemigo->enemigo.posicionActual.y) < hiloEnemigo->enemigo.posicionEleSiguiente.y){
+//			(hiloEnemigo->enemigo.posicionActual.y)++;
+//			}
+//	}
+//}
 
-
-t_posicion moverEnemigoEnY(t_hiloEnemigo* hiloEnemigo, t_posicion posicionHacia){
-	t_posicion posicionNueva;
-	posicionNueva = (hiloEnemigo->enemigo.posicionActual);
-	if ((posicionHacia.y) > (hiloEnemigo->enemigo.posicionActual.y))
-	{
-		(posicionNueva.y)++;
-		if(validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y))
-		{
-			(hiloEnemigo->enemigo.posicionActual.y)++;
-		}
-	}
-	else{
-		(posicionNueva.y)--;
-		if(validarPosicionEnemigo(hiloEnemigo,posicionNueva.x,posicionNueva.y))
-		{
-			(hiloEnemigo->enemigo.posicionActual.y)--;
-		}
-	}
-	hiloEnemigo->enemigo.moverPorX = 1;
-	return posicionNueva;
-}
 
 void estimarMovimientoL(t_hiloEnemigo* hiloEnemigo, int32_t* posX, int32_t* posY) {
 	*posX = hiloEnemigo->enemigo.posicionActual.x;
 	*posY = hiloEnemigo->enemigo.posicionActual.y;
 	srand(time(NULL));
-	int r = (rand()+hiloEnemigo->tid+hiloEnemigo->enemigo.id) % 8;
+	int r = (rand()+hiloEnemigo->tid+hiloEnemigo->enemigo.id) % 16;
+	hiloEnemigo->enemigo.imovL = 0;
 
 	switch(r) {
-	case 1:
-		(*posY)++; *posX = (*posX)+2;
-		break;
-	case 2:
-		(*posY)++; *posX= (*posX)-2;
-		break;
-	case 3:
-		(*posY)--; *posX= (*posX)+2;
-		break;
-	case 4:
-		(*posY)--; *posX= (*posX)-2;
-		break;
-	case 5:
-		*posY= (*posY)+2; (*posX)++;
-		break;
-	case 6:
-		*posY= (*posY)-2; (*posX)++;
-		break;
-	case 7:
-		*posY= (*posY)+2; (*posX)--;
-		break;
-	case 0:
-		*posY= (*posY)-2; (*posX)--;
-		break;
+		case 0:
+			(*posY)++; *posX = (*posX)+2;
+			strcpy(hiloEnemigo->enemigo.movL, "xxy");
+			break;
+		case 1:
+			(*posY)++; *posX= (*posX)-2;
+			strcpy(hiloEnemigo->enemigo.movL, "xxy");
+			break;
+		case 2:
+			(*posY)--; *posX= (*posX)+2;
+			strcpy(hiloEnemigo->enemigo.movL, "xxy");
+			break;
+		case 3:
+			(*posY)--; *posX= (*posX)-2;
+			strcpy(hiloEnemigo->enemigo.movL, "xxy");
+			break;
+		case 4:
+			*posY= (*posY)+2; (*posX)++;
+			strcpy(hiloEnemigo->enemigo.movL, "yyx");
+			break;
+		case 5:
+			*posY= (*posY)-2; (*posX)++;
+			strcpy(hiloEnemigo->enemigo.movL, "yyx");
+			break;
+		case 6:
+			*posY= (*posY)+2; (*posX)--;
+			strcpy(hiloEnemigo->enemigo.movL, "yyx");
+			break;
+		case 7:
+			*posY= (*posY)-2; (*posX)--;
+			strcpy(hiloEnemigo->enemigo.movL, "yyx");
+			break;
+
+
+		case 8:
+			(*posY)++; *posX = (*posX)+2;
+			strcpy(hiloEnemigo->enemigo.movL, "yxx");
+			break;
+		case 9:
+			(*posY)++; *posX= (*posX)-2;
+			strcpy(hiloEnemigo->enemigo.movL, "yxx");
+			break;
+		case 10:
+			(*posY)--; *posX= (*posX)+2;
+			strcpy(hiloEnemigo->enemigo.movL, "yxx");
+			break;
+		case 11:
+			(*posY)--; *posX= (*posX)-2;
+			strcpy(hiloEnemigo->enemigo.movL, "yxx");
+			break;
+		case 12:
+			*posY= (*posY)+2; (*posX)++;
+			strcpy(hiloEnemigo->enemigo.movL, "xyy");
+			break;
+		case 13:
+			*posY= (*posY)-2; (*posX)++;
+			strcpy(hiloEnemigo->enemigo.movL, "xyy");
+			break;
+		case 14:
+			*posY= (*posY)+2; (*posX)--;
+			strcpy(hiloEnemigo->enemigo.movL, "xyy");
+			break;
+		case 15:
+			*posY= (*posY)-2; (*posX)--;
+			strcpy(hiloEnemigo->enemigo.movL, "xyy");
+			break;
 	}
 }
 
@@ -348,17 +501,18 @@ t_personaje obternerPersonajeMasCercano(t_posicion miPosicion)
 
 
 int32_t validarPosicionEnemigo(t_hiloEnemigo* hiloEnemigo, int32_t X,int32_t Y) {
-        if((X<=0)||(Y<=0)){return 0;}// POSICION INVALIDA
-        if((Y >= MAXROWS) || (X >= MAXCOLS)){return 0;}// POSICION INVALIDA
-        int i;
+//        if((X<=0)||(Y<=0)){return 0;}// POSICION INVALIDA
+//        if((Y >= MAXROWS) || (X >= MAXCOLS)){return 0;}// POSICION INVALIDA
+	if( X<=0 || Y<=0 || Y >= MAXROWS || X >= MAXCOLS ){return 0;}// POSICION INVALIDA
+	int i;
 
-        for (i=0; i<totalCoordProhibidas; i++) {
-        	//log_debug(LOGGER, "    posicion de la cajita: (%d,%d) - enemigo: (%d,%d)",coordProhibidas[i].x ,coordProhibidas[i].y, X, Y);
+	for (i=0; i<totalCoordProhibidas; i++) {
+       	//log_debug(LOGGER, "    posicion de la cajita: (%d,%d) - enemigo: (%d,%d)",coordProhibidas[i].x ,coordProhibidas[i].y, X, Y);
 
-        	if((coordProhibidas[i].x == X ) && (coordProhibidas[i].y == Y)) {
-				return 0;// POSICION INVALIDA
-			}
+       	if((coordProhibidas[i].x == X ) && (coordProhibidas[i].y == Y)) {
+			return 0;// POSICION INVALIDA
 		}
+	}
 
-        return 1;//PosicionOK
+	return 1;//PosicionOK
 }

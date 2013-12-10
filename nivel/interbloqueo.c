@@ -266,14 +266,14 @@ int imprimirMatrices() {
 	char r[50] = {0};
 
 	log_debug(LOGGER, "\n\n vecDisponibles \n");
-	for (i=0; i < totalPersonajes; i++){
+	for (i=0; i < totalRecursos; i++){
 		r[i] = vecRecursos[i];
 		log_debug(LOGGER,"\r     recurso: %c disponible: %d                                                  ", vecRecursos[i], vecDisponibles[i]);
 	}
 
 	log_debug(LOGGER, "\r                                                                             \n\n");
 	log_debug(LOGGER, "\r  copia T de vecDisponibles                                                  \n");
-	for (i=0; i < totalPersonajes; i++){
+	for (i=0; i < totalRecursos; i++){
 		log_debug(LOGGER,"\r     recurso: %c disponible: %d                                                  ", vecRecursos[i], T[i]);
 	}
 
