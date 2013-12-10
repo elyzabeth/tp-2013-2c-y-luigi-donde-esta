@@ -229,15 +229,24 @@ void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
 
 t_posicion moverEnemigoPorEje (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia){
         t_posicion posicionNueva;
-        if ((hiloEnemigo->enemigo.moverPorX) &&
-                        (hiloEnemigo->enemigo.posicionActual.x != posicionHacia.x)){
-                posicionNueva = moverEnemigoEnX(hiloEnemigo, posicionHacia);
-        }
-        else{
-                if(hiloEnemigo->enemigo.posicionActual.y != posicionHacia.y){
-                        posicionNueva = moverEnemigoEnY(hiloEnemigo, posicionHacia);
-                }
-        }
+        if(hiloEnemigo->enemigo.posicionActual.x == posicionHacia.x){
+        	posicionNueva = moverEnemigoEnY(hiloEnemigo, posicionHacia);
+        	}
+        else {
+        	if(hiloEnemigo->enemigo.posicionActual.y == posicionHacia.y){
+        		posicionNueva = moverEnemigoEnX(hiloEnemigo, posicionHacia);
+        	}
+        	else {
+        		if (hiloEnemigo->enemigo.moverPorX){
+        		        posicionNueva = moverEnemigoEnX(hiloEnemigo, posicionHacia);
+        		        }
+        		        else{
+        		            posicionNueva = moverEnemigoEnY(hiloEnemigo, posicionHacia);
+        		            }
+
+        		}
+
+        	}
         return posicionNueva;
 }
 
