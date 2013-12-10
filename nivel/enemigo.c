@@ -209,21 +209,50 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
 //PARA QUE EL MOVIMIENTO SE REALICE DE A UNO POR VEZ
 //SIEMPRE SE MUEVE PRIMERO EN X
 void moverDeUnoHacia(t_hiloEnemigo* hiloEnemigo, int32_t* posX,int32_t* posY){
+	t_posicion posAux;
+	posAux.x = hiloEnemigo->enemigo.posicionActual.x;
+	posAux.y = hiloEnemigo->enemigo.posicionActual.y;
         if ((hiloEnemigo->enemigo.posicionActual.x) != hiloEnemigo->enemigo.posicionEleSiguiente.x) {
                         if ((hiloEnemigo->enemigo.posicionActual.x) > hiloEnemigo->enemigo.posicionEleSiguiente.x){
-                                                (hiloEnemigo->enemigo.posicionActual.x)--;
-                                                }
+                        	if (validarPosicionEnemigo(hiloEnemigo, (posAux.x-1), (posAux.y))){
+                        	                        (hiloEnemigo->enemigo.posicionActual.x)--;
+                        	                }
+                        					else
+                        	                	{
+                        	                	hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+                        	                	hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+                        	                	}
+                        }
                         if ((hiloEnemigo->enemigo.posicionActual.x) < hiloEnemigo->enemigo.posicionEleSiguiente.x){
-                                                (hiloEnemigo->enemigo.posicionActual.x)++;
-                                                }
+                        	if (validarPosicionEnemigo(hiloEnemigo, (posAux.x+1), (posAux.y))){
+                        		(hiloEnemigo->enemigo.posicionActual.x)++;
+                                                }else
+                        	                	{
+                        	                	hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+                        	                	hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+                        	                	}
+
+                        }
         }
         else {
                 if ((hiloEnemigo->enemigo.posicionActual.y) > hiloEnemigo->enemigo.posicionEleSiguiente.y){
-                        (hiloEnemigo->enemigo.posicionActual.y)--;
-                        }
+                	if (validarPosicionEnemigo(hiloEnemigo, (posAux.x), (posAux.y-1))){
+                		(hiloEnemigo->enemigo.posicionActual.y)--;
+                	}else
+                	{
+                	hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+                	hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+                	}
+                }
                 if ((hiloEnemigo->enemigo.posicionActual.y) < hiloEnemigo->enemigo.posicionEleSiguiente.y){
-                        (hiloEnemigo->enemigo.posicionActual.y)++;
-                        }
+                	if (validarPosicionEnemigo(hiloEnemigo, (posAux.x), (posAux.y+1))){
+                		(hiloEnemigo->enemigo.posicionActual.y)++;
+                		}else
+	                	{
+	                	hiloEnemigo->enemigo.posicionEleSiguiente.x = hiloEnemigo->enemigo.posicionActual.x;
+	                	hiloEnemigo->enemigo.posicionEleSiguiente.y = hiloEnemigo->enemigo.posicionActual.y;
+	                	}
+                }
         }
 }
 
