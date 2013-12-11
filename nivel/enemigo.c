@@ -226,23 +226,22 @@ void moverEnemigo(t_hiloEnemigo* hiloEnemigo) {
  */
 t_posicion moverEnemigoHaciaPJ (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia) {
 	t_posicion posicionNueva;
+	int i =0;
 	int flag = false;
 	int posValida = 0;
 	posicionNueva = hiloEnemigo->enemigo.posicionActual;
 
 	log_debug(LOGGER, "e%c: (%d,%d) - pj: (%d,%d) - moverPorX: %d", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.moverPorX );
-	while(!posValida) {
+	while(!posValida && i < 5) {
 		//flag = false;
 		posicionNueva = hiloEnemigo->enemigo.posicionActual;
 
 		if (hiloEnemigo->enemigo.moverPorX || hiloEnemigo->enemigo.posicionActual.y == posicionHacia.y) {
 			if(hiloEnemigo->enemigo.posicionActual.x < posicionHacia.x ) {
-				//posicionNueva.x = hiloEnemigo->enemigo.posicionActual.x+1;
 				posicionNueva.x++;
 				log_debug(LOGGER, "posNueva1: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
 				flag = true;
 			} else if(hiloEnemigo->enemigo.posicionActual.x > posicionHacia.x ) {
-				//posicionNueva.x = hiloEnemigo->enemigo.posicionActual.x-1;
 				posicionNueva.x--;
 				log_debug(LOGGER, "posNueva2: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
 				flag = true;
@@ -252,24 +251,27 @@ t_posicion moverEnemigoHaciaPJ (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHa
 		if (!flag) {
 			if ((!hiloEnemigo->enemigo.moverPorX || hiloEnemigo->enemigo.posicionActual.x == posicionHacia.x)) {
 				if(hiloEnemigo->enemigo.posicionActual.y < posicionHacia.y ){
-					//hiloEnemigo->enemigo.posicionActual.y++;
-					//posicionNueva.y = hiloEnemigo->enemigo.posicionActual.y+1;
 					posicionNueva.y++;
 					log_debug(LOGGER, "posNueva3: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
 				} else if(hiloEnemigo->enemigo.posicionActual.y > posicionHacia.y ){
-					//hiloEnemigo->enemigo.posicionActual.y--;
-					//posicionNueva.y = hiloEnemigo->enemigo.posicionActual.y-1;
 					posicionNueva.y--;
 					log_debug(LOGGER, "posNueva4: e%c: (%d,%d) - pj: (%d,%d)", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y );
+				} else {
+					break;
 				}
 			}
 		}
 		hiloEnemigo->enemigo.moverPorX = !hiloEnemigo->enemigo.moverPorX;
 		if (!(posValida = validarPosicionEnemigo(hiloEnemigo, posicionNueva.x, posicionNueva.y)))
-			flag = !flag;
+			flag = false;
+
+		i++;
 	}
 
-	hiloEnemigo->enemigo.posicionActual = posicionNueva;
+	if (posValida)
+		hiloEnemigo->enemigo.posicionActual = posicionNueva;
+	else
+		posicionNueva = hiloEnemigo->enemigo.posicionActual;
 
 	return posicionNueva;
 }
@@ -289,7 +291,7 @@ t_posicion moverEnemigoEnL (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia)
 	while(!posValida) {
 
 		posicionNueva = hiloEnemigo->enemigo.posicionActual;
-		log_debug(LOGGER, "L - e%c: (%d,%d) - dest: (%d,%d) - movL: %s - movL[%d]: %c", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.movL, i, eje);
+		log_debug(LOGGER, "L - e%c: (%d,%d) - dest: (%d,%d) - movL: %s - movL[%d]: %c - flag: %d ", hiloEnemigo->id, posicionNueva.x, posicionNueva.y, posicionHacia.x, posicionHacia.y, hiloEnemigo->enemigo.movL, i, eje, flag);
 
 		if (flag) {
 			if (eje == 'x')
@@ -318,6 +320,7 @@ t_posicion moverEnemigoEnL (t_hiloEnemigo* hiloEnemigo,t_posicion posicionHacia)
 					hiloEnemigo->enemigo.moverPorX = false;
 				}
 			}
+
 		} else {
 
 			if (eje == 'y')

@@ -412,7 +412,7 @@ void reinicioNivelCompleto() {
 	sleep(2);
 	printf("You take the red pill and you stay in Wonderland and I show you how deep the rabbit-hole goes.\n...\n");
 	sleep(2);
-	printf("Remember that all I'am offering is the truth. Nothing more. \n");
+	printf("Remember that all I am offering is the truth. Nothing more. \n");
 	printf("\nThis is your last chance. After this there is no turning back... \n\n Choose blue or red pill b/r: ");
 	printf("\n(traducción: Desea reiniciar el juego? s/n:) ");
 
