@@ -341,14 +341,14 @@ void recibirPlanNivelesConcluido(header_t *header, int *fin) {
 	if ( list_size(listaPersonajesEnJuego)== 0 && list_size(listaPersonajesNuevos) == 0 ) {
 		log_info(LOGGER, "\n\n\nTODOS LOS PERSONAJES CONCLUYERON SUS PLANES DE NIVELES...\n\nEJECUTO PROCESO KOOPAA!!!!!");
 
-		// TODO lanzar proceso Koopa!
+		// lanzar proceso Koopa!
 		char *koopaCommand ;
 		//koopaCommand  = string_from_format("%s %s %s", configPlatKoopa(), "/tmp/Koopa", configPlatScript() );
 		koopaCommand  = string_from_format("%s %s %s", configPlatKoopa(), configPlatFileSystem(), configPlatScript() );
 
 		int exitKoopa = system(koopaCommand);
 
-		log_info(LOGGER, "\n\n Proceso Koopa: %d", exitKoopa);
+		log_info(LOGGER, "\n\n ---.:**:.  Salida Proceso Koopa: %d .:**:.---\n\n", exitKoopa);
 		free(koopaCommand);
 		finalizarPlataforma();
 		exit(exitKoopa);
