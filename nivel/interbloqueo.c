@@ -250,9 +250,9 @@ void* interbloqueo(t_hiloInterbloqueo *hiloInterbloqueo) {
 
 t_caja* buscaRecursoXIdRecursoDD(t_list* list,char IdRecurso)
 {
-	bool esMismoRecursoAux(t_caja *recurso)
+	bool esMismoRecursoAux(t_RecursoAsignado  *recurso)
 	{
-		return (recurso->SIMBOLO == IdRecurso);
+		return (recurso->cIdRecurso[0] == IdRecurso);
 		//return (!strcmp(&recurso->SIMBOLO, &IdRecurso));
 	}
 	return list_find(list, (void*)esMismoRecursoAux);
