@@ -252,7 +252,7 @@ t_caja* buscaRecursoXIdRecursoDD(t_list* list,char IdRecurso)
 {
 	bool esMismoRecursoAux(t_caja *recurso)
 	{
-		return !(recuso->SIMBOLO == IdRecurso);
+		return (recuso->SIMBOLO == IdRecurso);
 		//return (!strcmp(&recurso->SIMBOLO, &IdRecurso));
 	}
 	return list_find(list, (void*)esMismoRecursoAux);
