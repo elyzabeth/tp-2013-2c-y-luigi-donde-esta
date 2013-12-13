@@ -25,7 +25,7 @@ endif
 all: fileSystem
 
 dependents:
-	-cd ../../so-commons-library/Debug && $(MAKE) clean all
+	-cd ../../so-commons-library/Debug && $(MAKE) all
 
 # Tool invocations
 fileSystem: $(OBJS) $(USER_OBJS) ../../so-commons-library/Debug/libso-commons-library.so

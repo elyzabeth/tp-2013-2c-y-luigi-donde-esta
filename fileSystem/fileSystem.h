@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 
 #include "commons/bitarray.h"
@@ -39,7 +40,6 @@
 #define BLKDIRECT 1024
 #define BLKSIZE 4096 //Tamaño de bloque fijo en bytes
 
-#define TAMANIODISCO 10485760 // TODO tamaño del disco, lo debe tomar por parametro
 
 #define BORRADO 0
 #define ARCHIVO 1
@@ -74,8 +74,15 @@ GFile *NODOS[GFILEBYTABLE]; // un array de 1024 posiciones de estructuras de tip
 char *DATOS;
 ptrGBloque blk_direct[BLKDIRECT];
 
+uint32_t TAMANIODISCO; // TODO tamaño del disco, lo debe tomar por parametro
+uint32_t BITMAPBITS;
+uint32_t ADMINBLKS;
+uint32_t MAXBLK;
+
 t_log* LOGGER;
 
 pthread_mutex_t mutexGrasaWrite;
+pthread_mutex_t mutexGrasaBitVector;
+pthread_mutex_t mutexGrasaNodesTable;
 
 #endif /* FILESYSTEM_H_ */
