@@ -11,6 +11,7 @@ typedef struct {
 	int32_t PUERTO;					// PUERTO=5000
 	char KOOPA[MAXCHARLEN+1];		// KOOPA=/home/utnso/koopa
 	char SCRIPT[MAXCHARLEN+1];		// SCRIPT=/home/utnso/evaluacion.sh
+	char FILESYSTEM[MAXCHARLEN+1];	// FILESYSTEM=/home/utnso/fsGrasa // Path al punto de montaje del FileSystem GRASA
 	int32_t SLEEP_KOOPA;
 	int32_t RD;						// RD=10 (remaining distance)
 	char LOG_PATH[MAXCHARLEN+1];	// LOG_PATH=/tmp/plataforma.log
@@ -24,6 +25,7 @@ void inicializarConfigPlat () {
 	configPlat.PUERTO = 0;
 	configPlat.KOOPA[0]='\0';
 	configPlat.SCRIPT[0]='\0';
+	configPlat.FILESYSTEM[0]='\0';
 	configPlat.SLEEP_KOOPA=0;
 	configPlat.RD=0;
 	configPlat.LOG_PATH[0]='\0';
@@ -63,6 +65,16 @@ const char* configPlatKoopa () {
  */
 const char* configPlatScript (){
 	return configPlat.SCRIPT;
+}
+
+/**
+ * @NAME: configPlatFileSystem
+ * @DESC: Devuelve Valor del campo FileSystem del archivo de configuracion
+ * Representa el Path absoluto al punto de montaje del file system GRASA
+ * ej: FILESYSTEM=/utnso/fsGrasa
+ */
+const char* configPlatFileSystem (){
+	return configPlat.FILESYSTEM;
 }
 
 /**
@@ -134,6 +146,7 @@ void levantarArchivoConfiguracionPlataforma() {
 
 	strcpy(configPlat.KOOPA, config_get_string_value(config, "KOOPA"));
 	strcpy(configPlat.SCRIPT, config_get_string_value(config, "SCRIPT"));
+	strcpy(configPlat.FILESYSTEM, config_get_string_value(config, "FILESYSTEM"));
 	configPlat.SLEEP_KOOPA = config_get_int_value(config, "SLEEP_KOOPA");
 	configPlat.RD = config_get_int_value(config, "RD");
 

@@ -20,6 +20,8 @@ typedef struct {
 	t_posicion posicionActual;
 	t_posicion posicionEleSiguiente;
 	int32_t moverPorX;//flag para q no se muevan por el mismo eje
+	char movL[4];
+	int32_t imovL;
 } t_enemigo;
 #pragma pack(0)
 

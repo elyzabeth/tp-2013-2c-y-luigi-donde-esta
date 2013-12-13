@@ -1,8 +1,8 @@
 /*
  * tad_posicion.h
  *
- *  Created on: 26/10/2013
- *      Author: arwen
+ *  Created on: Oct 24, 2013
+ *      Author: elizabeth
  */
 
 #ifndef TAD_POSICION_H_

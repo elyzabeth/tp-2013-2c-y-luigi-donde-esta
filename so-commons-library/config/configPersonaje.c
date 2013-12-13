@@ -186,10 +186,13 @@ void GenerarPlanDeNiveles(t_config *config) {
 
 }
 
-void levantarArchivoConfiguracionPersonaje () {
+void levantarArchivoConfiguracionPersonaje (char *CONFIG_FILE) {
 	t_config *config;
 	char simbolo[2];
-	config = config_create(PATH_CONFIG_PERSONAJE);
+	if (CONFIG_FILE == NULL || strlen(CONFIG_FILE)==0 )
+		config = config_create(PATH_CONFIG_PERSONAJE);
+	else
+		config = config_create(CONFIG_FILE);
 
 	if (config->properties->elements_amount == 0) {
 		printf("\nERROR AL LEVANTAR ARCHIVO DE CONFIGURACION %s \n", PATH_CONFIG_PERSONAJE);

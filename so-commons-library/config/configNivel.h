@@ -35,8 +35,10 @@
 
 // DECLARACION DE FUNCIONES
 
-void levantarArchivoConfiguracionNivel ();
-void levantarCambiosArchivoConfiguracionNivel();
+//void levantarArchivoConfiguracionNivel ();
+void levantarArchivoConfiguracionNivel (char *CONFIG_FILE);
+//void levantarCambiosArchivoConfiguracionNivel();
+void levantarCambiosArchivoConfiguracionNivel (char *CONFIG_FILE);
 void destruirConfigNivel ();
 
 char* configNivelNombre();

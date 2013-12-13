@@ -17,6 +17,8 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <netinet/tcp.h>
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
 
 #include "../tads/tad_personaje.h"
 #include "../tads/tad_caja.h"
@@ -40,16 +42,17 @@
 #define RECURSO_INEXISTENTE		0x20
 #define TURNO_CONCEDIDO			0x21
 #define FINALIZAR				0x22
-#define CAMBIOS_CONFIGURACION	0x23
-#define UBICACION_RECURSO		0x24
-#define MOVIMIENTO_REALIZADO	0x25
-#define PLAN_NIVEL_FINALIZADO	0x26
-#define PLAN_NIVELES_CONCLUIDO	0x27
-#define MUERTE_PERSONAJE		0x28
-#define MUERTE_PERSONAJE_XENEMIGO		0x29
-#define MUERTE_PERSONAJE_XRECOVERY		0x30
-#define NIVEL_INEXISTENTE		0x31
-#define PERSONAJE_DESBLOQUEADO	0x32
+#define IMPRIMIR				0x23
+#define CAMBIOS_CONFIGURACION	0x24
+#define UBICACION_RECURSO		0x25
+#define MOVIMIENTO_REALIZADO	0x26
+#define PLAN_NIVEL_FINALIZADO	0x27
+#define PLAN_NIVELES_CONCLUIDO	0x28
+#define MUERTE_PERSONAJE		0x29
+#define MUERTE_PERSONAJE_XENEMIGO		0x30
+#define MUERTE_PERSONAJE_XRECOVERY		0x31
+#define NIVEL_INEXISTENTE		0x32
+#define PERSONAJE_DESBLOQUEADO	0x33
 
 
 
@@ -72,6 +75,7 @@ int aceptar_conexion(int *listener, int *nuevo_sock);
 
 int enviar_header (int sock, header_t *header);
 int recibir_header(int sock, header_t *header, fd_set *master/*por si se desconecta*/, int *seDesconecto);
+int recibir_header_simple(int sock, header_t *header);
 int enviar_nivel(int sock, t_nivel *nivel);
 int recibir_nivel(int sock, t_nivel *nivel, fd_set *master, int *seDesconecto);
 int enviar_personaje(int sock, t_personaje *personaje);

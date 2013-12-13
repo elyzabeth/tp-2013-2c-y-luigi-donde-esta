@@ -32,7 +32,7 @@ typedef struct {
 
 // DECLARACION DE FUNCIONES
 
-void levantarArchivoConfiguracionPersonaje ();
+void levantarArchivoConfiguracionPersonaje(char *CONFIG_FILE);
 void destruirConfigPersonaje ();
 
 t_objetivosxNivel* crearObjetivosxNivel();
