@@ -7,305 +7,581 @@
 
 #include "personaje.h"
 
+void initProximoObjetivo ( t_proximoObjetivo *proximoObjetivo );
+void setearProximoObjetivo ( t_proximoObjetivo *proximoObjetivo, t_hilo_personaje* hiloPxN );
+int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *sock, fd_set *master, int *maxDesc );
 
-/**
- * @NAME: inicializarPersonaje
- * @DESC: Inicializa todas las variables y estructuras necesarias para el proceso personaje
- */
-void inicializarPersonaje() {
-	levantarArchivoConfiguracionPersonaje();
-	// TODO agregar inicializaciones necesarias
-	LOGGER = log_create(configPersonajeLogPath(), "PERSONAJE", configPersonajeLogConsola(), configPersonajeLogNivel() );
-	log_info(LOGGER, "INICIALIZANDO PERSONAJE '%s' ", configPersonajeNombre());
+void* personajexNivel (t_hilo_personaje* hiloPxN) {
 
-	strcpy(personaje.nombre, configPersonajeNombre());
-	strcpy(personaje.ip_orquestador, configPersonajePlataformaIp());
-	personaje.puerto_orquestador = configPersonajePlataformaPuerto();
-	VIDAS = configPersonajeVidas();
-	REINTENTOS = 0;
-	planDeNiveles = configPersonajePlanDeNiveles();
-	listaHilosxNivel = list_create();
+	int idProcesoHilo;
+	int sock = -1;
 
-	pthread_mutex_init (&mutexEnvioMensaje, NULL);
-}
+	fd_set master;
+	fd_set read_fds;
+	int max_desc = 0;
+	int i, ret;
+	int fin = false;
+	header_t header;
+	t_proximoObjetivo proximoObjetivo;
 
-/**
- * @NAME: finalizarPersonaje
- * @DESC: Finaliza todas las variables y estructuras que fueron creadas para el proceso personaje
- */
-void finalizarPersonaje() {
-	log_info(LOGGER, "FINALIZANDO PERSONAJE\n");
+	idProcesoHilo = getpid();
+	//system("clear");
 
-	// TODO Bajar Hilos
-	// matarHilos()...
-
-	pthread_mutex_destroy(&mutexEnvioMensaje);
-
-	list_destroy_and_destroy_elements(listaHilosxNivel, (void*)destruirHiloPersonaje);
-	destruirConfigPersonaje();
-	log_destroy(LOGGER);
-}
+	log_info(LOGGER,"\n\n\n************** Iniciando Personaje '%s' del nivel %s (PID: %d) ***************\n", personaje.nombre, hiloPxN->personaje.nivel, idProcesoHilo);
 
 
-void esperarHilosxNivel() {
+	initProximoObjetivo(&proximoObjetivo);
+	setearProximoObjetivo(&proximoObjetivo, hiloPxN);
 
-	void _join_thread (t_hilo_personaje hilo){
-		pthread_join(hilo.tid, NULL);
+	/***************** ME CONECTO Y ARMO MENSAJE DE PRESENTACION *******/
+	log_info(LOGGER,"************** CONECTANDOSE  ***************\n");
+	conectar(personaje.ip_orquestador, personaje.puerto_orquestador, &sock);
+
+	FD_ZERO(&master);
+
+	// Agrego descriptor del Pipe con Nivel.
+	log_info(LOGGER,"%s de %s - agregar_descriptor hiloPxN->fdPipe[0]: '%d' \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel, hiloPxN->fdPipe[0]);
+	agregar_descriptor(hiloPxN->fdPipe[0], &master, &max_desc);
+
+	agregar_descriptor(sock, &master, &max_desc);
+
+	if (enviarMsjNuevoPersonaje(sock, hiloPxN) != EXITO) {
+		fin = true;
 	}
 
-	list_iterate(listaHilosxNivel, (void*)_join_thread);
-}
+	while(!fin)
+	{
+		FD_ZERO (&read_fds);
+		read_fds = master;
 
-void levantarHilosxNivel() {
-	int i;
-	int cant = queue_size(planDeNiveles);
-	t_objetivosxNivel *oxn;
-	t_hilo_personaje *hiloPersonaje;
+		ret = select(max_desc+1, &read_fds, NULL, NULL, NULL);
 
-	for (i = 0; i < cant; i++) {
-		hiloPersonaje = crearHiloPersonaje(personaje);
-		oxn = queue_pop(planDeNiveles);
-		strcpy(hiloPersonaje->personaje.nivel, oxn->nivel);
-		strcpy(hiloPersonaje->personaje.nombre, configPersonajeNombre());
-		hiloPersonaje->personaje.id = configPersonajeSimbolo();
-		hiloPersonaje->objetivos = *oxn;
+		if(ret == -1) {
+			printf("Personaje: ERROR en select en %s", hiloPxN->personaje.nivel);
+			sleep(1);
+		}
 
-		list_add(listaHilosxNivel, hiloPersonaje);
+		if (ret > 0) {
+			for(i = 0; i <= max_desc; i++)
+			{
 
-		// Creo el hilo para el nivel
-		pthread_create (&hiloPersonaje->tid, NULL, (void*)personajexNivel, (t_hilo_personaje*)hiloPersonaje);
+				if (FD_ISSET(i, &read_fds))
+				{
+					// Pregunto si el socket con actividad es el del Pipe
+					if( i == hiloPxN->fdPipe[0])
+					{
+						initHeader(&header);
+						log_info(LOGGER, "Personaje '%c': Recibo mensaje desde Main por Pipe", hiloPxN->personaje.id);
+						read (hiloPxN->fdPipe[0], &header, sizeof(header_t));
 
-		pthread_join(hiloPersonaje->tid, NULL);
-		break;
+						log_debug(LOGGER, "Personaje '%c': mensaje recibido '%d'", hiloPxN->personaje.id, header.tipo);
+						if (header.tipo == FINALIZAR) {
+							log_debug(LOGGER, "\n\nPersonaje '%c' de %s: '%d' ES FINALIZAR", hiloPxN->personaje.id, hiloPxN->personaje.nivel, header.tipo);
+							fin = true;
+
+							// TODO enviar mensaje al planificador???
+							enviarMsjMuertePersonajePlan(sock, hiloPxN);
+
+							break;
+						}
+
+					} else if (i == sock) {
+
+						// Si NO es un mensaje del hilo principal por Pipe es un mensaje del proceso Plataforma.
+
+						initHeader(&header);
+						recibirHeaderNuevoMsj(sock, &header, &master);
+
+						switch (header.tipo)
+						{
+							case PERSONAJE_CONECTADO: log_info(LOGGER,"PERSONAJE_CONECTADO en %s", hiloPxN->personaje.nivel);
+							//hiloPxN.estado = PERSONAJE_CONECTADO;
+							enviarInfoPersonaje(sock, hiloPxN);
+							break;
+
+							case NIVEL_INEXISTENTE: log_info(LOGGER,"\n\nPersonaje: %s - NIVEL_INEXISTENTE (%s) !!!! \n\n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+							hiloPxN->estado = NIVEL_INEXISTENTE;
+							fin=true;
+							// TODO hago algo mas si el nivel no existe??
+							break;
+
+							case TURNO_CONCEDIDO: log_info(LOGGER,"TURNO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarTurnoConcedido(sock, &proximoObjetivo, hiloPxN);
+							break;
+
+							case UBICACION_RECURSO: log_info(LOGGER, "UBICACION_RECURSO en %s", hiloPxN->personaje.nivel);
+							recibirUbicacionRecursoPlanificador( sock, &master, &proximoObjetivo, hiloPxN);
+							break;
+
+							case RECURSO_CONCEDIDO: log_info(LOGGER,"RECURSO_CONCEDIDO en %s", hiloPxN->personaje.nivel);
+							gestionarRecursoConcedido(sock, &proximoObjetivo, hiloPxN, &fin);
+							break;
+
+							case RECURSO_INEXISTENTE: log_info(LOGGER,"RECURSO_INEXISTENTE en %s", hiloPxN->personaje.nivel);
+							log_error(LOGGER, "ERROR!! \n\nERROR en configuración '%c' RECURSO_INEXISTENTE en %s!!!\n\n", hiloPxN->personaje.recurso, hiloPxN->personaje.nivel);
+							fin=true;
+							break;
+
+							case MUERTE_PERSONAJE_XENEMIGO: log_info(LOGGER,"MUERTE_PERSONAJE_XENEMIGO en %s", hiloPxN->personaje.nivel);
+							fin = muertePersonaje(MUERTE_POR_ENEMIGO, &proximoObjetivo, hiloPxN, &sock, &master, &max_desc);
+							break;
+
+							case MUERTE_PERSONAJE_XRECOVERY: log_info(LOGGER,"MUERTE_PERSONAJE_XRECOVERY en %s ", hiloPxN->personaje.nivel);
+							fin = muertePersonaje(MUERTE_POR_INTERBLOQUEO, &proximoObjetivo, hiloPxN, &sock, &master, &max_desc);
+							break;
+
+							case OTRO: log_info(LOGGER, "que otro?? %s", hiloPxN->personaje.nivel);
+							break;
+
+							default: log_error(LOGGER, "\n\n Personaje '%c': ERROR mensaje NO RECONOCIDO (%d) !!\n",  hiloPxN->personaje.id, header.tipo);
+						}
+
+					} else {
+						log_debug(LOGGER, "\n\n SOCKET NO RECONOCIDO!! Actividad en el socket %d \n\n", i);
+					}
+
+				}
+			}
+		}
+
 	}
 
+	log_info(LOGGER, "\n\nFINALIZANDO Hilo Personaje '%c' Nivel %s\n", hiloPxN->personaje.id, hiloPxN->personaje.nivel);
+	close(sock);
+
+	//destruirEstructuraHiloPersonaje(quitarHiloPersonajexTid(hiloPxN->tid));
+
+	pthread_exit(NULL);
 }
 
-t_hilo_personaje* crearHiloPersonaje() {
-	t_hilo_personaje *hiloPersonaje = calloc(1, sizeof(t_hilo_personaje));
-
-	memset(hiloPersonaje, '\0', sizeof(t_hilo_personaje));
-	hiloPersonaje->personaje.posActual.x = 0;
-	hiloPersonaje->personaje.posActual.y = 0;
-	pipe(hiloPersonaje->fdPipe);
-
-	return hiloPersonaje;
+void setearProximoObjetivo ( t_proximoObjetivo *proximoObjetivo, t_hilo_personaje* hiloPxN ) {
+	proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+	proximoObjetivo->posicion.x = 0;
+	proximoObjetivo->posicion.y = 0;
 }
 
-void destruirHiloPersonaje(t_hilo_personaje* hiloPersonaje) {
-
-	close(hiloPersonaje->fdPipe[0]);
-	close(hiloPersonaje->fdPipe[1]);
-
-	free(hiloPersonaje);
+void initProximoObjetivo ( t_proximoObjetivo *proximoObjetivo ) {
+	memset(proximoObjetivo, 0, sizeof(t_proximoObjetivo));
 }
 
-int recibirHeaderNuevoMsj (int sock, header_t *header) {
+t_hilo_personaje* quitarHiloPersonajexTid (int32_t tid) {
 
-	pthread_mutex_lock (&mutexEnvioMensaje);
-	char *buffer_header;
-	int ret;
+	pthread_mutex_lock (&mutexListaHilosxNivel);
+	t_hilo_personaje* hilo;
+	bool _buscar_x_tid (t_hilo_personaje* h) {
+		return (h->tid == tid);
+	}
+	hilo = list_remove_by_condition(listaHilosxNivel, (void*)_buscar_x_tid);
+	pthread_mutex_unlock (&mutexListaHilosxNivel);
 
-	buffer_header = calloc(1,sizeof(header_t));
-	memset(&header, '\0', sizeof(header_t));
+	return hilo;
+}
 
-	ret = recibir (sock, buffer_header, sizeof(header_t));
-	memcpy(&header, buffer_header, sizeof(header_t));
 
-	free(buffer_header);
-	pthread_mutex_unlock (&mutexEnvioMensaje);
+int recibirHeaderNuevoMsj (int sock, header_t *header, fd_set *master) {
+
+	//pthread_mutex_lock (&mutexEnvioMensaje);
+	int ret, se_desconecto;
+
+	ret = recibir_header(sock, header, master, &se_desconecto);
+
+	//pthread_mutex_unlock (&mutexEnvioMensaje);
 
 	return ret;
 }
 
-int enviarMsjNuevoPersonaje( int sock ) {
-	pthread_mutex_lock (&mutexEnvioMensaje);
+int enviarMsjNuevoPersonaje( int sock, t_hilo_personaje *hiloPxN ) {
 
 	header_t header;
-	char *buffer_header;
 	int ret;
 
-	buffer_header = calloc(1,sizeof(header_t));
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = NUEVO_PERSONAJE;
 	header.largo_mensaje = 0;
 
-	memset(buffer_header, '\0', sizeof(header_t));
-	memcpy(buffer_header, &header, sizeof(header_t));
+	log_debug(LOGGER,"enviarMsjNuevoPersonaje: NUEVO_PERSONAJE sizeof(header): %d, largo mensaje: %d \n", sizeof(header), header.largo_mensaje);
 
-	log_debug(LOGGER,"sizeof(header): %d, largo mensaje: %d  buffer_header: %lu\n", sizeof(header), header.largo_mensaje, sizeof(&buffer_header));
-
-	ret =  enviar(sock, buffer_header, sizeof(header_t));
-	free(buffer_header);
-
-	pthread_mutex_unlock (&mutexEnvioMensaje);
+	if ( (ret =  enviar_header(sock, &header)) != EXITO ) {
+		log_error(LOGGER,"enviarMsjNuevoPersonaje: Error al enviar header NUEVO_PERSONAJE %s \n\n", hiloPxN->personaje.nivel);
+	}
 
 	return ret;
 }
 
-int enviarInfoPersonaje(int sock) {
-	// PRUEBA
+
+int enviarInfoPersonaje(int sock, t_hilo_personaje *hiloPxN) {
 	header_t header;
-	t_personaje yo;
-	char* buffer;
-	log_debug(LOGGER, "Envio mensaje de prueba con info del personaje");
+	t_personaje yo = hiloPxN->personaje;
 
-	log_debug(LOGGER, "Datos: (%s, %d, %c)",  configPersonajeNombre(),configPersonajeSimbolo(), configPersonajeSimbolo());
-	buffer = calloc(1, sizeof(header_t));
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio mensaje con info del personaje");
+	log_debug(LOGGER, "Datos: (%s, %d, %c)",  yo.nombre, yo.id, yo.id);
 
-	memset(&yo, '\0', sizeof(t_personaje));
-	strcpy(yo.nombre, configPersonajeNombre());
-	yo.id = configPersonajeSimbolo();
-	yo.posActual.x = 0;
-	yo.posActual.y = 0;
-	yo.fd = 0;
-	strcpy( yo.nivel, "Nivel1");
-
-	memset(&header, '\0', sizeof(header_t));
+	initHeader(&header);
 	header.tipo = CONECTAR_NIVEL;
 	header.largo_mensaje = sizeof(t_personaje);
 
-	memcpy(buffer, &header, sizeof(header_t));
-
-	log_debug(LOGGER, "Envio header CONECTAR_NIVEL %d", sizeof(header_t));
-	if (enviar(sock, buffer, sizeof(header_t)) != EXITO)
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio header CONECTAR_NIVEL (size: %d)", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar header CONECTAR_NIVEL\n\n");
-		free(buffer);
+		log_error(LOGGER,"enviarInfoPersonaje: Error al enviar header CONECTAR_NIVEL\n\n");
 		return WARNING;
 	}
 
-	free(buffer);
-	buffer = calloc(1, sizeof(t_personaje));
-	memcpy(buffer, &yo, sizeof(t_personaje));
-
-	log_debug(LOGGER, "Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
-	if (enviar(sock, buffer, sizeof(t_personaje)) != EXITO)
+	hiloPxN->estado = CONECTAR_NIVEL;
+	log_debug(LOGGER, "enviarInfoPersonaje: Envio t_personaje %d (%s, %c, %d, %d, %d, %s)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel);
+	if (enviar_personaje(sock, &yo) != EXITO)
 	{
-		log_error(LOGGER,"Error al enviar informacion del personaje\n\n");
-		free(buffer);
+		log_error(LOGGER,"enviarInfoPersonaje: Error al enviar informacion del personaje\n\n");
 		return WARNING;
 	}
-
-	free(buffer);
 
 	return EXITO;
 }
+
+int enviarSolicitudUbicacion (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	header_t header;
+	t_personaje yo;
+
+	hiloPxN->personaje.recurso = proximoObjetivo->simbolo;
+
+	yo = hiloPxN->personaje;
+
+	initHeader(&header);
+	header.tipo = SOLICITUD_UBICACION;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarSolicitudUbicacion: Envio header_t SOLICITUD_UBICACION (size:%d)", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudUbicacion: Error al enviar header SOLICITUD_UBICACION\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarSolicitudUbicacion: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudUbicacion: Error al enviar t_personaje de SOLICITUD_UBICACION\n\n");
+		return WARNING;
+	}
+
+	return EXITO;
+}
+
+
+int recibirUbicacionRecursoPlanificador( int sock, fd_set *master, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN ) {
+	int ret, se_desconecto;
+	t_caja caja;
+
+	log_debug(LOGGER, "recibirUbicacionRecursoPlanificador: Espero recibir estructura t_caja (size:%d)...", sizeof(t_caja));
+
+	if ((ret = recibir_caja(sock, &caja, master, &se_desconecto))!=EXITO) {
+		log_error(LOGGER, "recibirUbicacionRecursoPlanificador: ERROR al recibir t_caja con ubicacion del recurso");
+	}
+
+	log_debug(LOGGER, "recibirUbicacionRecursoPlanificador: Llego: %s (%c) posicion (%d, %d).", caja.RECURSO, caja.SIMBOLO, caja.POSX, caja.POSY);
+
+	proximoObjetivo->posicion.x = caja.POSX;
+	proximoObjetivo->posicion.y = caja.POSY;
+
+	return ret;
+}
+
+
+int enviarSolicitudRecurso (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	header_t header;
+	t_personaje yo;
+
+	hiloPxN->personaje.recurso = proximoObjetivo->simbolo;
+	yo = hiloPxN->personaje;
+
+
+	initHeader(&header);
+	header.tipo = SOLICITUD_RECURSO;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarSolicitudRecurso: Envio header_t SOLICITUD_RECURSO (size:%d)", sizeof(header_t));
+	if (enviar_header(sock, &header) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar header SOLICITUD_RECURSO\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarSolicitudRecurso: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar t_personaje de SOLICITUD_RECURSO\n\n");
+		return WARNING;
+	}
+
+	hiloPxN->estado = SOLICITUD_RECURSO;
+
+	return EXITO;
+}
+
+int enviarMsjPlanDeNivelFinalizado( int sock , t_hilo_personaje *hiloPxN) {
+
+	t_personaje yo;
+	yo = hiloPxN->personaje;
+
+	header_t header;
+	int ret;
+
+	initHeader(&header);
+	header.tipo = PLAN_NIVEL_FINALIZADO;
+	header.largo_mensaje = 0;
+
+	log_debug(LOGGER,"enviarMsjPlanDeNivelFinalizado: PLAN_NIVEL_FINALIZADO %s sizeof(header): %d, largo mensaje: %d \n", hiloPxN->personaje.nivel, sizeof(header), header.largo_mensaje);
+
+	ret =  enviar_header(sock, &header);
+
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjPlanDeNivelFinalizado: Error al enviar t_personaje de PLAN_NIVEL_FINALIZADO\n\n");
+		return WARNING;
+	}
+
+
+	return ret;
+}
+
+int enviarMsjMuertePersonajePlan ( int sock, t_hilo_personaje *hiloPxN ) {
+	int ret;
+	header_t header;
+	t_personaje yo;
+	yo = hiloPxN->personaje;
+
+	initHeader(&header);
+	header.tipo = MUERTE_PERSONAJE;
+	header.largo_mensaje = 0;
+
+	log_debug(LOGGER,"enviarMsjMuertePersonajePlan: MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+
+	 if ((ret = enviar_header(sock, &header)) != EXITO){
+		 log_error(LOGGER,"enviarMsjMuertePersonajePlan: ERROR al enviar MUERTE_PERSONAJE (%s de %s) \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+		 return WARNING;
+	 }
+
+	if (enviar_personaje(sock, &yo) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjMuertePersonajePlan: Error al enviar t_personaje de MUERTE_PERSONAJE\n\n");
+		return WARNING;
+	}
+
+	return ret;
+}
+
+int enviarMsjMovimientoRealizado (int sock, t_hilo_personaje *hiloPxN) {
+	int ret;
+	header_t header;
+	t_personaje yo;
+
+	yo = hiloPxN->personaje;
+
+	initHeader(&header);
+	header.tipo = MOVIMIENTO_REALIZADO;
+	header.largo_mensaje = sizeof(t_personaje);
+
+	log_debug(LOGGER, "enviarMsjMovimientoRealizado: Envio header_t MOVIMIENTO_REALIZADO (size:%d)", sizeof(header_t));
+	if ( (ret = enviar_header(sock, &header)) != EXITO)
+	{
+		log_error(LOGGER,"enviarSolicitudRecurso: Error al enviar header MOVIMIENTO_REALIZADO\n\n");
+		return WARNING;
+	}
+
+	log_debug(LOGGER, "enviarMsjMovimientoRealizado: Envio t_personaje size: %d (%s, %c, pos(%d, %d), fd: %d, nivel: %s, recurso: %c)", sizeof(t_personaje), yo.nombre, yo.id, yo.posActual.x, yo.posActual.y, yo.fd, yo.nivel, yo.recurso);
+	if ((ret = enviar_personaje(sock, &yo)) != EXITO)
+	{
+		log_error(LOGGER,"enviarMsjMovimientoRealizado: Error al enviar t_personaje de MOVIMIENTO_REALIZADO\n\n");
+		return WARNING;
+	}
+
+
+	return ret;
+}
+
+int realizarMovimiento(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+	//header_t header;
+	//int ret;
+	int flag = false;
+
+	if (hiloPxN->moverPorX || hiloPxN->personaje.posActual.y == proximoObjetivo->posicion.y) {
+		if(hiloPxN->personaje.posActual.x < proximoObjetivo->posicion.x ) {
+			hiloPxN->personaje.posActual.x++;
+			flag = true;
+		} else if(hiloPxN->personaje.posActual.x > proximoObjetivo->posicion.x ) {
+			hiloPxN->personaje.posActual.x--;
+			flag = true;
+		}
+
+	}
+	if (!flag) {
+		if ((!hiloPxN->moverPorX || hiloPxN->personaje.posActual.x == proximoObjetivo->posicion.x)) {
+			if(hiloPxN->personaje.posActual.y < proximoObjetivo->posicion.y ){
+				hiloPxN->personaje.posActual.y++;
+			} else if(hiloPxN->personaje.posActual.y > proximoObjetivo->posicion.y ){
+				hiloPxN->personaje.posActual.y--;
+			}
+		}
+	}
+
+	hiloPxN->moverPorX = !hiloPxN->moverPorX;
+
+	log_debug(LOGGER, "Informar MOVIMIENTO_REALIZADO (%d, %d) al %s", hiloPxN->personaje.posActual.x, hiloPxN->personaje.posActual.y, hiloPxN->personaje.nivel);
+
+	// Informar movimiento realizado
+
+//	initHeader(&header);
+//	header.tipo = MOVIMIENTO_REALIZADO;
+//	header.largo_mensaje = sizeof(t_personaje);
+//
+//	if (enviar_header(sock, &header) != EXITO){
+//		log_error(LOGGER, "Error al enviar header MOVIMIENTO_REALIZADO");
+//	}
+//
+//	ret = enviar_personaje(sock, &hiloPxN->personaje);
+//
+//	return ret;
+	return EXITO;
+}
+
+int gestionarTurnoConcedido(int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN) {
+
+	log_info(LOGGER, "gestionarTurnoConcedido.");
+
+	// SI no tengo las coordenadas del proximo objetivo las solicito.
+	if(!proximoObjetivo->posicion.x && !proximoObjetivo->posicion.y) {
+		log_debug(LOGGER, "No tengo coordenadas de proximo objetivo debo solicitar ubicacion.");
+		enviarSolicitudUbicacion(sock, proximoObjetivo, hiloPxN);
+		//hiloPxN.estado = SOLICITUD_UBICACION;
+
+	} else if (!calcularDistanciaCoord(hiloPxN->personaje.posActual, proximoObjetivo->posicion) && hiloPxN->estado != SOLICITUD_RECURSO ) {
+		// SI mi posicion actual es = a la posicion del objetivo
+		// Solicitar una instancia del recurso al Planificador.
+
+
+		log_debug(LOGGER, "Estoy en la caja de recursos, debo solicitar una instancia.");
+		enviarSolicitudRecurso(sock, proximoObjetivo, hiloPxN);
+
+	} else {
+		//hiloPxN.estado = TURNO_CONCEDIDO;
+		// SI tengo coordenadas del objetivo pero no es igual a mi posicion actual.
+		// Calcular proximo movimiento, avanzar y notificar al Planificador con un mensaje.
+		log_debug(LOGGER, "Debo realizar proximo movimiento...");
+		realizarMovimiento(sock, proximoObjetivo, hiloPxN);
+		enviarMsjMovimientoRealizado(sock, hiloPxN);
+	}
+
+	return EXITO;
+}
+
+int gestionarRecursoConcedido (int sock, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *fin) {
+
+	hiloPxN->objetivosConseguidos++;
+	hiloPxN->estado = RECURSO_CONCEDIDO;
+	log_info(LOGGER, "gestionarRecursoConcedido. objetivosConseguidos: %d/%d", hiloPxN->objetivosConseguidos,hiloPxN->objetivos.totalObjetivos );
+
+	//	Cuando el recurso sea asignado, el hilo analizará si necesita otro recurso y
+	//	volverá al punto 3) (esperar TURNO_CONCEDIDO), o, si ya cumplió sus objetivos del Nivel
+	// Notificar a su Planificador que completó los objetivos de ese nivel y desconectarse.
+	if(hiloPxN->objetivosConseguidos == hiloPxN->objetivos.totalObjetivos){
+
+		// TODO Se completo el nivel
+		log_info(LOGGER, "\n\nCOMPLETE EL PLAN DEL %s !!!\n", hiloPxN->personaje.nivel);
+		hiloPxN->estado = PLAN_NIVEL_FINALIZADO;
+		enviarMsjPlanDeNivelFinalizado(sock, hiloPxN);
+		*fin = true;
+
+	} else if (hiloPxN->objetivosConseguidos < hiloPxN->objetivos.totalObjetivos) {
+
+		// Todavia quedan recursos por conseguir.
+		setearProximoObjetivo(proximoObjetivo, hiloPxN);
+
+//		proximoObjetivo->simbolo = hiloPxN->objetivos.objetivos[hiloPxN->objetivosConseguidos];
+//		proximoObjetivo->posicion.x = 0;
+//		proximoObjetivo->posicion.y = 0;
+
+	}
+
+	return EXITO;
+}
+
 
 /*
  * En caso de tener vidas disponibles, el Personaje se descontará una vida, volverá a conectarse
  * al hilo Orquestador y le notificará su intención de iniciar nuevamente el Nivel en que estaba jugando.
  */
-void muertePersonaje(MOTIVO_MUERTE motivo) {
-	//TODO hacer lo necesario antes de morir, informar el motivo de muerte por pantalla y al planificador/orquestador
-	decrementarVida();
+int muertePersonaje(MOTIVO_MUERTE motivo, t_proximoObjetivo *proximoObjetivo, t_hilo_personaje *hiloPxN, int *sock, fd_set *master, int *maxDesc) {
+	int32_t vidas;
+
+	//  informar el motivo de muerte por pantalla
 	switch(motivo){
 		case MUERTE_POR_ENEMIGO:
-			log_info(LOGGER, "Muerte por enemigo");
+			log_info(LOGGER, "\n\n MUERTE POR ENEMIGO!! en %s \n", hiloPxN->personaje.nivel);
+			hiloPxN->estado = MUERTE_PERSONAJE_XENEMIGO;
 			break;
 		case MUERTE_POR_INTERBLOQUEO:
-			log_info(LOGGER, "Muerte por interbloqueo");
+			log_info(LOGGER, "\n\n MUERTE POR INTERBLOQUEO!! en %s \n", hiloPxN->personaje.nivel);
+			hiloPxN->estado = MUERTE_PERSONAJE_XRECOVERY;
 			break;
 //		case MUERTE_POR_SIGKILL:
 //			break;
 //		case MUERTE_POR_SIGTERM:
 //			break;
-		default: log_info(LOGGER, "Motivo de muerte no valido"); break;
-	}
-	// TODO llamar funcion para reiniciar el juego
-
-}
-
-/*
- * @NAME: per_signal_callback_handler
- * @DESC: Define la funcion a llamar cuando una señal es enviada al proceso
- * ctrl-c (SIGINT)
- */
-void per_signal_callback_handler(int signum)
-{
-	log_info(LOGGER, "INTERRUPCION POR SEÑAL: %d = %s \n", signum, strsignal(signum));
-
-	switch(signum) {
-
-	case SIGUSR1: // SIGUSR1=10 ( kill -s USR1 <PID> )
-		log_info(LOGGER, " - LLEGO SEÑAL SIGUSR1\n");
-		//Debo incrementar 1 vida
-		incrementarVida();
-		break;
-	case SIGTERM: // SIGTERM=15 ( kill <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGTERM\n");
-		manejoSIGTERM();
-		break;
-	case SIGINT: // SIGINT=2 (ctrl-c)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGINT\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
-	case SIGKILL: // SIGKILL=9 ( kill -9 <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGKILL\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
-	case SIGQUIT: // SIGQUIT=3 (ctrl-4 o kill -s QUIT <PID>)
-		log_info(LOGGER, " - LLEGO SEÑAL SIGQUIT\n");
-		finalizarPersonaje();
-		// Termino el programa
-		exit(signum);
-		break;
+		default: log_info(LOGGER, "\n\n Motivo de muerte no valido!! en %s\n", hiloPxN->personaje.nivel); break;
 	}
 
-}
+	imprimirVidasyReintentos();
 
-int32_t incrementarVida() {
-	VIDAS++;
-	log_info(LOGGER, "Personaje incrementa vidas. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
-	//TODO agregar logica luego de incrementar vidas si corresponde
-	return VIDAS;
-}
+	//TODO hacer lo necesario antes de morir
+	vidas = decrementarVida();
 
-int32_t decrementarVida() {
-	if(VIDAS > 0) {
-		VIDAS--;
-		log_info(LOGGER, "Personaje decrementa 1 vida. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
-		return VIDAS;
-	} else {
-		log_info(LOGGER, "Personaje No tiene VIDAS disponibles. VIDAS restantes: %d - Reintentos: %d\n", VIDAS, REINTENTOS);
-		return -1;
-	}
-}
+	if (vidas >= 0) {
+		// si todavia me quedan vidas, llamar funciones para reiniciar SOLAMENTE el nivel!
 
-/*
- * Si no le quedaran vidas disponibles, el Personaje deberá interrumpir todos sus planes de
- * niveles y mostrar en pantalla un mensaje preguntando al usuario si desea reiniciar el juego,
- * informando también la cantidad de reintentos que ya se realizaron. De aceptar, el Personaje
- * incrementará su contador de reintentos y reiniciará su Plan de Niveles. En caso negativo, el
- * Personaje se cerrará, abandonando el juego.
- */
-void manejoSIGTERM() {
-	char respuesta;
-	int vidas_restantes = decrementarVida();
+		// reinicio posicion actual a (0,0) y recurso a '-'
+//		hiloPxN->personaje.posActual.x = 0;
+//		hiloPxN->personaje.posActual.y = 0;
+//		hiloPxN->personaje.recurso = '-';
+		reiniciarPersonje(&(hiloPxN->personaje));
 
-	if (vidas_restantes == -1){
-		//TODO interrumpir todos los planes de niveles
 
-		printf("Desea reiniciar el juego? s/n: ");
+		// reinicio contador de objetivos conseguidos a cero
+		hiloPxN->objetivosConseguidos = 0;
 
-		while ((respuesta=getc(stdin)) != 's' && respuesta != 'n')
-			printf("\nPor favor ingrese 's' o 'n': ");
+		// seteo proximo objetivo
+		setearProximoObjetivo(proximoObjetivo, hiloPxN);
 
-		if(respuesta == 's'){
-			REINTENTOS++;
-			log_info(LOGGER, "REINICIANDO EL JUEGO (reintentos: %d)...", REINTENTOS);
-			// TODO llamar funcion que reinicie el juego
-		} else {
-			log_info(LOGGER, "CERRANDO PROCESO PERSONAJE");
-			// TODO llamar funcion que baje los hilos
-			finalizarPersonaje();
-			exit(0);
+		// Me desconecto de plataforma
+		close(*sock);
+		quitar_descriptor(*sock, master, maxDesc);
+
+		// Me vuelvo a conectar a plataforma para que me reciba el orquestador
+		log_info(LOGGER,"************** CONECTANDOSE A PLATAFORMA ***************\n");
+		conectar(personaje.ip_orquestador, personaje.puerto_orquestador, sock);
+		agregar_descriptor(*sock, master, maxDesc);
+
+		// y envio mensaje de nuevoPersonaje.
+		if (enviarMsjNuevoPersonaje(*sock, hiloPxN) != EXITO) {
+			return true;
 		}
+
+	} else {
+
+		log_info(LOGGER, "\n\n\n YA NO ME QUEDAN VIDAS PARA CONTINUAR!!!! - personaje %s del %s \n", hiloPxN->personaje.nombre, hiloPxN->personaje.nivel);
+
+		// TODO llamar a funcion de reinicio completo de juego
+		reinicioNivelCompleto();
+
+		return true;
 	}
 
+	return false;
+
 }
+
+
+
+
 
