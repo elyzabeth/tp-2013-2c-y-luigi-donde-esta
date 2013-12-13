@@ -12,10 +12,12 @@
 // Porque se acceden concurrentemente desde varios hilos.
 void gui_borrarItem(char id) {
 	pthread_mutex_lock (&mutexLockGlobalGUI);
+	ITEM_NIVEL* itm;
     bool _search_by_id(ITEM_NIVEL* item) {
         return item->id == id;
     }
-    free(list_remove_by_condition(GUIITEMS, (void*) _search_by_id));
+    itm = list_remove_by_condition(GUIITEMS, (void*) _search_by_id);
+    if (itm != NULL) free(itm);
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
@@ -68,6 +70,11 @@ void gui_dibujarEnemigo(char * msj) {
 	pthread_mutex_unlock (&mutexLockGlobalGUI);
 }
 
+void gui_dibujarMsj(char * msj) {
+	pthread_mutex_lock (&mutexLockGlobalGUI);
+	nivel_gui_dibujar(GUIITEMS, msj);
+	pthread_mutex_unlock (&mutexLockGlobalGUI);
+}
 
 // Funciones sincronizadas para acceder a listas compartidas
 // **********************************************************
@@ -148,7 +155,7 @@ t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje) {
 
 t_caja* obtenerRecurso(char simboloRecurso) {
 	pthread_mutex_lock (&mutexListaRecursos);
-	t_caja* caja = NULL;
+	t_caja *caja = NULL;
 	char simbolo[2] = {0};
 	simbolo[0] = simboloRecurso;
 	caja = dictionary_get(listaRecursos, simbolo);
@@ -156,7 +163,7 @@ t_caja* obtenerRecurso(char simboloRecurso) {
 	return caja;
 }
 
-int32_t obternerCantPersonajesEnJuego() {
+int32_t obtenerCantPersonajesEnJuego() {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
 	int cant=0;
 	cant = list_size(listaPersonajesEnJuego);
@@ -164,7 +171,7 @@ int32_t obternerCantPersonajesEnJuego() {
 	return cant;
 }
 
-int32_t obternerCantPersonajesBloqueados() {
+int32_t obtenerCantPersonajesBloqueados() {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
 	int cant=0;
 	cant = list_size(listaPersonajesBloqueados);
@@ -172,7 +179,7 @@ int32_t obternerCantPersonajesBloqueados() {
 	return cant;
 }
 
-int32_t obternerCantPersonajesEnNivel() {
+int32_t obtenerCantPersonajesEnNivel() {
 	pthread_mutex_lock (&mutexListaPersonajesEnNivel);
 	int cant=0;
 	cant = queue_size(listaPersonajesEnNivel);
@@ -205,7 +212,7 @@ t_personaje* quitarPersonajeEnNivel(char simboloPersonaje) {
 
 	for (i = 0; i < cant; i++ ) {
 		aux = queue_pop(listaPersonajesEnNivel);
-		if (personaje->id != simboloPersonaje) {
+		if (aux->id != simboloPersonaje) {
 			queue_push(listaPersonajesEnNivel, aux);
 		} else {
 			personaje = aux;
@@ -218,7 +225,7 @@ t_personaje* quitarPersonajeEnNivel(char simboloPersonaje) {
 
 t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _remove_x_id (t_personaje *p) {
 		return (p->id == simboloPersonaje);
 	}
@@ -230,7 +237,7 @@ t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje) {
 
 t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
 	pthread_mutex_lock (&mutexListaPersonajesBloqueados);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _remove_x_id (t_personaje *p) {
 		return (p->id == simboloPersonaje);
 	}
@@ -244,7 +251,7 @@ t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje) {
 t_personaje* actualizarPosicionPJEnjuego(char idPersonaje, t_posicion posicion) {
 
 	pthread_mutex_lock (&mutexListaPersonajesJugando);
-	t_personaje *personaje;
+	t_personaje *personaje = NULL;
 	bool _busca_x_id (t_personaje *p) {
 		return (p->id == idPersonaje);
 	}

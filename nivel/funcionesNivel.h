@@ -42,7 +42,7 @@ int32_t notifyFD;
 t_log* LOGGER;
 //char NOMBRENIVEL[20+1];
 char NOMBRENIVEL[MAXCHARLEN+1];
-
+char CONFIG_FILE[MAXCHARLEN];
 
 int MAXROWS, MAXCOLS;
 t_list *GUIITEMS;
@@ -52,12 +52,12 @@ t_list *listaPersonajesFinalizados;
 t_queue *listaPersonajesEnNivel;
 t_queue *listaPersonajesMuertosxRecovery;
 t_queue *listaPersonajesMuertosxEnemigo;
+// Diccionario de recursos asignados clave=idPersonaje data=t_vecRecursos
 t_dictionary *recursosxPersonajes;
 
 // Diccionario de recursos con clave=simbolo data=t_caja
 t_dictionary *listaRecursos;
 t_list *listaEnemigos;
-t_dictionary* listaPosicionesProhibidas;
 
 pthread_mutex_t mutexLockGlobalGUI;
 pthread_mutex_t mutexListaPersonajesJugando;
@@ -71,8 +71,8 @@ pthread_mutex_t mutexRecursosxPersonajes;
 
 typedef struct {
 	pthread_t tid;
-	int32_t fdPipe[2];
-	int32_t fdPipeI2N[2];
+	int32_t fdPipe[2];	 // fdPipe[0] de lectura del interbloqueo / fdPipe[1] de escritura del nivel
+	int32_t fdPipeI2N[2];// fdPipe[0] de lectura del nivel / fdPipe[1] de escritura del interbloqueo
 } t_hiloInterbloqueo;
 
 t_hiloInterbloqueo hiloInterbloqueo;
@@ -81,6 +81,9 @@ typedef struct {
 	int32_t recurso[100];
 	int32_t total;
 } t_vecRecursos;
+
+t_posicion coordProhibidas[100];
+int32_t totalCoordProhibidas;
 
 int correrTest();
 void principal ();
@@ -95,7 +98,6 @@ t_vecRecursos* crearVecRecursos();
 void destruirVecRecursos(t_vecRecursos *vecRecursos);
 void agregarRecursoVec(t_vecRecursos *vecRecursos, char recurso);
 bool posicionDentroDeLosLimites (int32_t x, int32_t y);
-bool hayOtraCajaCercaDe (int32_t x, int32_t y);
 void validarPosicionCaja(char s, int32_t x, int32_t y);
 int desbloquearPersonaje (int sock, header_t header, fd_set *master);
 
@@ -109,12 +111,14 @@ void gui_moverPersonaje (char id, int x, int y);
 void gui_restarRecurso (char id);
 void gui_sumarRecurso (char id);
 void gui_dibujar();
-void gui_dibujarEnemigo(char * msj);
+void gui_dibujarEnemigo(char *msj);
+void gui_dibujarMsj(char *msj);
 
 // funciones listas compartidas
 int32_t obternerCantPersonajesEnJuego();
-void moverPersonajeABloqueados(char simboloPersonaje);
+void moverPersonajeABloqueados(char simboloPersonaje, char recurso);
 t_personaje* moverPersonajeAEnJuego(char simboloPersonaje);
+void agregarPersonajeEnNivel(t_personaje *personaje);
 void agregarPersonajeEnJuegoNivel(t_personaje *personaje);
 void agregarPersonajeABloqueadosNivel(t_personaje *personaje);
 void agregarPersonajeAFinalizadosNivel(t_personaje *personaje);
@@ -124,10 +128,14 @@ void agregarPersonajeMuertoxEnemigo(t_personaje *personaje);
 void incrementarRecursoxPersonaje(t_personaje *personaje, char idRecurso);
 t_vecRecursos* removerRecursoxPersonaje(t_personaje *personaje);
 t_caja* obtenerRecurso(char simboloRecurso);
-t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje);
-t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje);
+int32_t obtenerCantPersonajesEnJuego();
+int32_t obtenerCantPersonajesBloqueados();
+int32_t obtenerCantPersonajesEnNivel();
 t_personaje* quitarPersonajeMuertoxRecovery();
 t_personaje* quitarPersonajeMuertoxEnemigo();
+t_personaje* quitarPersonajeEnNivel(char simboloPersonaje);
+t_personaje* quitarPersonajeEnJuegoNivel(char simboloPersonaje);
+t_personaje* quitarPersonajeBloqueadosNivel(char simboloPersonaje);
 t_personaje* actualizarPosicionPJEnjuego(char idPersonaje, t_posicion posicion);
 t_queue* clonarListaPersonajesEnNivel();
 t_list* clonarListaPersonajesEnjuego();
